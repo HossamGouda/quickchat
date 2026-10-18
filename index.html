@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12704a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>QuickChat Dialer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: single narrow column, dialer card on top, templates + recents below as lists */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --fg:#17201b; --muted:#5d6b63; --line:#dbe2dc;
+  --accent:#12704a; --accent-fg:#ffffff; --accent-soft:#e2f0e8; --danger:#b3261e; --danger-soft:#fbe9e7;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --surface:#18201c; --fg:#e6ece8; --muted:#97a69d; --line:#2a3530;
+  --accent:#3fbf86; --accent-fg:#06140d; --accent-soft:#173327; --danger:#ff8a80; --danger-soft:#3a1f1d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --surface:#18201c; --fg:#e6ece8; --muted:#97a69d; --line:#2a3530;
+  --accent:#3fbf86; --accent-fg:#06140d; --accent-soft:#173327; --danger:#ff8a80; --danger-soft:#3a1f1d; color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header h1{font-size:22px;margin:0;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+label.lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px}
+.countries{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.cc{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:10px;padding:8px 2px;font:600 13px var(--sans);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+.cc small{font:500 11px var(--mono);color:var(--muted)}
+.cc[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.cc[aria-pressed="true"] small{color:var(--accent)}
+.numrow{display:flex;gap:8px;align-items:stretch}
+.prefix{font:600 18px var(--mono);display:flex;align-items:center;padding:0 10px;border:1px solid var(--line);border-radius:10px;color:var(--muted);min-width:64px;justify-content:center}
+.prefix input{width:52px;border:0;background:transparent;font:inherit;color:var(--fg);text-align:center;padding:0;outline:none}
+input.num,textarea,input.txt{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;font:500 16px var(--sans);padding:12px}
+input.num{font:600 20px var(--mono);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+textarea{resize:vertical;min-height:72px}
+input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:13px;color:var(--muted);min-height:1.3em}
+.hint.ok{color:var(--accent)} .hint.err{color:var(--danger)}
+.preview{font:600 15px var(--mono);font-variant-numeric:tabular-nums}
+.apps{display:flex;gap:6px}
+.apps button{flex:1;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:7px;font:500 13px var(--sans);cursor:pointer}
+.apps button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.go{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--accent-fg);text-decoration:none;font:700 17px var(--sans);border-radius:12px;padding:15px;border:0}
+.go[aria-disabled="true"]{opacity:.4;pointer-events:none}
+.row2{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:10px;padding:9px 12px;font:500 14px var(--sans);cursor:pointer}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.danger.solid{background:var(--danger);color:var(--surface)}
+section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.item{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .main{flex:1;min-width:0;cursor:pointer;background:none;border:0;padding:0;text-align:left;color:var(--fg);font:inherit}
+.item .t{font-weight:600;font-size:14px}
+.item .b{color:var(--muted);font-size:13px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item .acts{display:flex;gap:6px;flex-shrink:0}
+.item.editing{flex-direction:column;align-items:stretch;background:var(--accent-soft)}
+.item.editing .acts{justify-content:flex-end}
+.empty{padding:14px;color:var(--muted);font-size:13px}
+.rnum{font:600 15px var(--mono);font-variant-numeric:tabular-nums}
+.confirm{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--danger)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.foot{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>QuickChat</h1>
+    <p>Message any WhatsApp number without saving it.</p>
+  </header>
+
+  <div class="card">
+    <div class="field">
+      <label class="lbl">Country</label>
+      <div class="countries" id="countries"></div>
+    </div>
+
+    <div class="field">
+      <label class="lbl" for="num">Phone number</label>
+      <div class="numrow">
+        <div class="prefix">+<input id="cc" inputmode="numeric" maxlength="4" aria-label="Country code"></div>
+        <input id="num" class="num" inputmode="tel" autocomplete="off" placeholder="05X XXX XXXX">
+        <button type="button" class="btn" id="paste">Paste</button>
+      </div>
+      <div class="hint" id="hint">Paste or type a number. Local or international format both work.</div>
+    </div>
+
+    <div class="field">
+      <label class="lbl" for="msg">Message (optional)</label>
+      <textarea id="msg" placeholder="Pick a template below or type here"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="lbl">Open in</label>
+      <div class="apps">
+        <button type="button" id="appWa" aria-pressed="true">WhatsApp</button>
+        <button type="button" id="appWb" aria-pressed="false">WhatsApp Business</button>
+      </div>
+    </div>
+
+    <a id="go" class="go" href="#" aria-disabled="true">Open chat</a>
+    <div class="row2">
+      <button type="button" class="btn" id="copyLink" style="flex:1">Copy link</button>
+      <button type="button" class="btn" id="clear" style="flex:1">Clear</button>
+    </div>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>Message templates <button type="button" class="btn small primary" id="addTpl">+ New</button></h2>
+    <div class="list" id="tpls"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>Recent numbers <span id="clearRecentWrap"></span></h2>
+    <div class="list" id="recents"></div>
+  </section>
+
+  <p class="foot">Templates and recent numbers are stored only on this phone.</p>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const COUNTRIES=[
+  {id:'sa',name:'KSA',code:'966',len:9,first:/^5/,ph:'05X XXX XXXX'},
+  {id:'ye',name:'Yemen',code:'967',len:9,first:/^7/,ph:'7XX XXX XXX'},
+  {id:'eg',name:'Egypt',code:'20',len:10,first:/^1/,ph:'01X XXXX XXXX'},
+  {id:'om',name:'Oman',code:'968',len:8,first:/^[79]/,ph:'9XXX XXXX'},
+  {id:'ot',name:'Other',code:'',len:0,first:null,ph:'Number without code'}
+];
+const DEFAULT_TPLS=[
+  {id:'t1',title:'Introduction',body:'Hello, this is Hossam from Al-Wasael Industrial Company. I got your number regarding your irrigation inquiry.'},
+  {id:'t2',title:'Quotation sent',body:'Good day. Please find our quotation attached. Let me know if you have any questions.'},
+  {id:'t3',title:'Follow-up',body:'Hello, just following up on our last conversation. Is there any update from your side?'},
+  {id:'t4',title:'Location request',body:'Please share the site location pin so we can arrange the visit.'}
+];
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+let state={
+  country:store.get('qc_country','sa'),
+  app:store.get('qc_app','wa'),
+  tpls:store.get('qc_tpls',null)||DEFAULT_TPLS.slice(),
+  recents:store.get('qc_recents',[]),
+  editing:null, confirmDel:null, confirmClear:false
+};
+const $=id=>document.getElementById(id);
+const ccIn=$('cc'),numIn=$('num'),msgIn=$('msg'),hint=$('hint'),go=$('go');
+
+function country(){return COUNTRIES.find(c=>c.id===state.country)||COUNTRIES[0]}
+
+function renderCountries(){
+  $('countries').innerHTML=COUNTRIES.map(c=>`<button type="button" class="cc" data-id="${c.id}" aria-pressed="${c.id===state.country}">${c.name}<small>${c.code?'+'+c.code:'…'}</small></button>`).join('');
+}
+function setCountry(id,keepCode){
+  state.country=id;store.set('qc_country',id);
+  const c=country();
+  if(!keepCode) ccIn.value=c.code;
+  ccIn.readOnly=c.id!=='ot';
+  numIn.placeholder=c.ph;
+  renderCountries();update();
+}
+
+/* Parse what the user typed. Returns {code, local, full, error} */
+function parse(){
+  let raw=numIn.value.trim();
+  const hadPlus=/^\s*\+/.test(raw);
+  let d=raw.replace(/\D/g,'');
+  if(!d) return {empty:true};
+  // International input: +XXX or 00XXX
+  if(hadPlus||d.startsWith('00')){
+    if(d.startsWith('00')) d=d.slice(2);
+    const hit=COUNTRIES.filter(c=>c.code).find(c=>d.startsWith(c.code));
+    if(hit){
+      if(hit.id!==state.country) setCountry(hit.id);
+      d=d.slice(hit.code.length);
+    } else {
+      if(state.country!=='ot') setCountry('ot');
+      return {full:d,code:'',local:d,warn:'Unknown country code. Number used as typed.'};
+    }
+  } else {
+    // Number already includes the selected country's code without +
+    const c=country();
+    if(c.code && d.startsWith(c.code) && d.length===c.code.length+c.len) d=d.slice(c.code.length);
+  }
+  const c=country();
+  const code=(ccIn.value||'').replace(/\D/g,'');
+  d=d.replace(/^0+/,'');
+  if(c.id==='ot'){
+    if(!code) return {error:'Enter the country code for "Other".'};
+    if(d.length<6) return {error:'Number looks too short.'};
+    return {code,local:d,full:code+d};
+  }
+  if(d.length<c.len) return {error:`Too short. ${c.name} mobile numbers have ${c.len} digits after the code.`,partial:true};
+  if(d.length>c.len) return {error:`Too long. ${c.name} mobile numbers have ${c.len} digits after the code.`};
+  const warn=c.first&&!c.first.test(d)?`This doesn't look like a ${c.name} mobile number. Check it before sending.`:'';
+  return {code,local:d,full:code+d,warn};
+}
+function buildLink(full){
+  const t=msgIn.value.trim();
+  const p='phone='+full+(t?'&text='+encodeURIComponent(t):'');
+  const web='https://wa.me/'+full+(t?'?text='+encodeURIComponent(t):'');
+  const pkg=state.app==='wb'?'com.whatsapp.w4b':'com.whatsapp';
+  if(/Android/i.test(navigator.userAgent))
+    return 'intent://send?'+p+'#Intent;scheme=whatsapp;package='+pkg+';S.browser_fallback_url='+encodeURIComponent(web)+';end';
+  return web;
+}
+let current=null;
+function update(){
+  const r=parse();
+  current=null;
+  hint.className='hint';
+  if(r.empty){hint.textContent='Paste or type a number. Local or international format both work.';}
+  else if(r.error){hint.textContent=r.error;if(!r.partial)hint.className='hint err';}
+  else{
+    current=r;
+    hint.innerHTML=(r.warn?`<span style="color:var(--danger)">${r.warn}</span><br>`:'')+`Will open: <span class="preview">+${r.code} ${r.local}</span>`;
+    if(!r.warn)hint.className='hint ok';
+  }
+  if(current){go.href=buildLink(current.full);go.setAttribute('aria-disabled','false');}
+  else{go.href='#';go.setAttribute('aria-disabled','true');}
+}
+
+function addRecent(){
+  if(!current) return;
+  const c=country();
+  state.recents=state.recents.filter(x=>x.full!==current.full);
+  state.recents.unshift({full:current.full,code:current.code,local:current.local,country:c.id,at:Date.now()});
+  state.recents=state.recents.slice(0,20);
+  store.set('qc_recents',state.recents);renderRecents();
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function renderTpls(){
+  const el=$('tpls');
+  if(!state.tpls.length&&state.editing!=='new'){el.innerHTML='<div class="empty">No templates yet. Tap “+ New” to add one.</div>';return}
+  let html='';
+  const editor=(t)=>`<div class="item editing">
+      <input class="txt" id="eTitle" placeholder="Title" value="${esc(t.title)}">
+      <textarea id="eBody" placeholder="Message text">${esc(t.body)}</textarea>
+      <div class="acts"><button class="btn small" data-act="cancel">Cancel</button><button class="btn small primary" data-act="save" data-id="${t.id}">Save</button></div>
+    </div>`;
+  if(state.editing==='new') html+=editor({id:'new',title:'',body:''});
+  state.tpls.forEach(t=>{
+    if(state.editing===t.id){html+=editor(t);return}
+    const acts=state.confirmDel===t.id
+      ?`<span class="confirm">Delete? <button class="btn small" data-act="nodel">No</button><button class="btn small danger solid" data-act="yesdel" data-id="${t.id}">Yes</button></span>`
+      :`<button class="btn small" data-act="edit" data-id="${t.id}">Edit</button><button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>`;
+    html+=`<div class="item"><button class="main" data-act="use" data-id="${t.id}"><div class="t">${esc(t.title)}</div><div class="b">${esc(t.body)}</div></button><div class="acts">${acts}</div></div>`;
+  });
+  el.innerHTML=html;
+  const f=$('eTitle');if(f&&!f.value)f.focus();
+}
+$('tpls').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const id=b.dataset.id,act=b.dataset.act;
+  if(act==='use'){const t=state.tpls.find(x=>x.id===id);msgIn.value=t.body;update();toast('Template added to message');window.scrollTo({top:0,behavior:'smooth'});return}
+  if(act==='edit'){state.editing=id;state.confirmDel=null}
+  if(act==='del'){state.confirmDel=id}
+  if(act==='nodel'){state.confirmDel=null}
+  if(act==='yesdel'){state.tpls=state.tpls.filter(x=>x.id!==id);state.confirmDel=null;store.set('qc_tpls',state.tpls);toast('Template deleted')}
+  if(act==='cancel'){state.editing=null}
+  if(act==='save'){
+    const title=$('eTitle').value.trim(),body=$('eBody').value.trim();
+    if(!body){toast('Message text is required');return}
+    const t={id:id==='new'?'t'+Date.now():id,title:title||body.slice(0,30),body};
+    if(id==='new')state.tpls.unshift(t);else state.tpls=state.tpls.map(x=>x.id===id?t:x);
+    state.editing=null;store.set('qc_tpls',state.tpls);toast('Template saved');
+  }
+  renderTpls();
+});
+$('addTpl').onclick=()=>{state.editing='new';state.confirmDel=null;renderTpls()};
+
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' h ago';const d=Math.round(h/24);return d+' d ago'}
+function renderRecents(){
+  const el=$('recents'),w=$('clearRecentWrap');
+  if(!state.recents.length){el.innerHTML='<div class="empty">Numbers you open will appear here.</div>';w.innerHTML='';return}
+  w.innerHTML=state.confirmClear
+    ?`<span class="confirm">Clear all? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
+    :`<button class="btn small" data-act="clearall">Clear all</button>`;
+  el.innerHTML=state.recents.map((r,i)=>{
+    const c=COUNTRIES.find(x=>x.id===r.country);
+    return `<div class="item"><button class="main" data-act="reuse" data-i="${i}"><div class="rnum">+${r.code} ${r.local}</div><div class="b">${c?c.name:''} · ${ago(r.at)}</div></button><div class="acts"><button class="btn small" data-act="rm" data-i="${i}" aria-label="Remove">✕</button></div></div>`;
+  }).join('');
+}
+function recentClick(e){
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const act=b.dataset.act,i=+b.dataset.i;
+  if(act==='reuse'){const r=state.recents[i];setCountry(r.country);if(r.country==='ot')ccIn.value=r.code;numIn.value=r.local;update();window.scrollTo({top:0,behavior:'smooth'})}
+  if(act==='rm'){state.recents.splice(i,1);store.set('qc_recents',state.recents)}
+  if(act==='clearall')state.confirmClear=true;
+  if(act==='noclear')state.confirmClear=false;
+  if(act==='yesclear'){state.recents=[];state.confirmClear=false;store.set('qc_recents',[])}
+  renderRecents();
+}
+$('recents').addEventListener('click',recentClick);
+$('clearRecentWrap').addEventListener('click',recentClick);
+
+$('countries').addEventListener('click',e=>{const b=e.target.closest('.cc');if(b)setCountry(b.dataset.id)});
+numIn.addEventListener('input',update);
+ccIn.addEventListener('input',update);
+msgIn.addEventListener('input',update);
+function setApp(a){state.app=a;store.set('qc_app',a);$('appWa').setAttribute('aria-pressed',a==='wa');$('appWb').setAttribute('aria-pressed',a==='wb');update()}
+$('appWa').onclick=()=>setApp('wa');$('appWb').onclick=()=>setApp('wb');
+go.addEventListener('click',e=>{e.preventDefault();if(!current)return;addRecent();location.href=buildLink(current.full)});
+$('paste').onclick=async()=>{try{const t=await navigator.clipboard.readText();if(t){numIn.value=t.trim();update()}else toast('Clipboard is empty')}catch(err){toast('Allow clipboard access, or long-press the field to paste');numIn.focus()}};
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+$('copyLink').onclick=()=>{
+  if(!current){toast('Enter a valid number first');return}
+  const link='https://wa.me/'+current.full+(msgIn.value.trim()?'?text='+encodeURIComponent(msgIn.value.trim()):'');
+  const fallback=()=>{numIn.value=link;numIn.select();toast('Select and copy the link')};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(()=>toast('Link copied'),fallback)}else fallback();
+};
+$('clear').onclick=()=>{numIn.value='';msgIn.value='';update();numIn.focus()};
+let tt;function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800)}
+
+setCountry(state.country);setApp(state.app);renderTpls();renderRecents();
+// Example state on first open so the tool shows how it works
+if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
+})();
+</script>
+
+</body>
+</html>
