@@ -44,7 +44,7 @@ label.lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:upp
 .numrow{display:flex;gap:8px;align-items:stretch}
 .prefix{font:600 18px var(--mono);display:flex;align-items:center;padding:0 10px;border:1px solid var(--line);border-radius:10px;color:var(--muted);min-width:64px;justify-content:center}
 .prefix input{width:52px;border:0;background:transparent;font:inherit;color:var(--fg);text-align:center;padding:0;outline:none}
-input.num,textarea,input.txt{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;font:500 16px var(--sans);padding:12px}
+input.num,textarea,input.txt,select.txt{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;font:500 16px var(--sans);padding:12px}
 input.num{font:600 20px var(--mono);letter-spacing:.02em;font-variant-numeric:tabular-nums}
 textarea{resize:vertical;min-height:72px}
 input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -89,6 +89,22 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .bk{margin:0;font-size:13px;color:var(--muted)}
 .bk.warn{color:var(--danger)}
 .stack{display:flex;flex-direction:column;gap:10px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tabs button{border:0;background:transparent;color:var(--muted);font:600 14px var(--sans);padding:9px 4px;border-radius:9px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg)}
+.tabpane{display:flex;flex-direction:column;gap:20px}
+select.txt{appearance:auto}
+.note{margin:0;font-size:12px;color:var(--muted);border-left:3px solid var(--danger);padding-left:10px}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.qmsg{white-space:pre-wrap;font-size:14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);overflow-wrap:anywhere}
+.st{width:22px;flex-shrink:0;text-align:center;font-weight:700}
+.st.sent{color:var(--accent)} .st.skipped{color:var(--muted)}
+.item.cur{background:var(--accent-soft)}
+.qrbox{align-items:center}
+.qrbox canvas{width:100%;max-width:320px;height:auto;border-radius:10px;border:1px solid var(--line);background:#fff}
+.qrbox .row2{width:100%}
 .picks{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent-soft)}
 .picks p{margin:0;font-size:13px;color:var(--fg)}
 .picks .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -105,6 +121,13 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
     <p>Message any WhatsApp number without saving it.</p>
   </header>
 
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tb-chat" data-tab="chat" aria-selected="true">Chat</button>
+    <button type="button" role="tab" id="tb-queue" data-tab="queue" aria-selected="false">Follow-up</button>
+    <button type="button" role="tab" id="tb-qr" data-tab="qr" aria-selected="false">My QR</button>
+  </nav>
+
+  <div class="tabpane" id="tab-chat">
   <div class="card">
     <div class="field">
       <label class="lbl">Country</label>
@@ -149,7 +172,8 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
   </div>
 
   <section style="display:flex;flex-direction:column;gap:10px">
-    <h2>Message templates <button type="button" class="btn small primary" id="addTpl">+ New</button></h2>
+    <h2>Message templates <span class="row2"><button type="button" class="btn small" id="shareTpl">Share</button><button type="button" class="btn small primary" id="addTpl">+ New</button></span></h2>
+    <div class="picks" id="packBanner" hidden></div>
     <div class="list" id="tpls"></div>
   </section>
 
@@ -172,9 +196,64 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
   </section>
 
   <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so export a backup now and then.</p>
+  </div>
+
+  <div class="tabpane" id="tab-queue" hidden>
+    <div class="card" id="qSetup">
+      <div class="field">
+        <label class="lbl" for="qText">Contacts to follow up</label>
+        <textarea id="qText" dir="auto" rows="6" placeholder="Paste a list, one contact per line. Names on the same line are picked up.&#10;Ahmed 0551234567&#10;Eng. Saleh +967 771 234 567"></textarea>
+        <div class="hint" id="qFound">Paste numbers from a sheet, a message or an email.</div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="qTpl">Message</label>
+        <select id="qTpl" class="txt"></select>
+      </div>
+      <div class="vars" id="qVars" hidden></div>
+      <p class="note">You still tap send in WhatsApp for every message. WhatsApp may restrict accounts that message many people who haven't saved their number, so keep batches small and message people who expect to hear from you.</p>
+      <button type="button" class="go" id="qStart" aria-disabled="true">Start queue</button>
+    </div>
+    <div class="card" id="qRun" hidden>
+      <div class="qhead"><span id="qProg"></span><button type="button" class="btn small" id="qEnd">End queue</button></div>
+      <div class="bar"><i id="qBar"></i></div>
+      <div id="qCur" class="stack"></div>
+      <div id="qActs" class="stack">
+        <button type="button" class="go" id="qOpen">Open chat</button>
+        <div class="row2"><button type="button" class="btn" id="qPrev" style="flex:1">Back</button><button type="button" class="btn" id="qSkip" style="flex:1">Skip</button></div>
+      </div>
+    </div>
+    <div class="list" id="qList" hidden></div>
+  </div>
+
+  <div class="tabpane" id="tab-qr" hidden>
+    <div class="card">
+      <div class="field">
+        <label class="lbl" for="qrNum">Your WhatsApp number</label>
+        <input id="qrNum" class="txt" inputmode="tel" autocomplete="off" placeholder="+966 5X XXX XXXX">
+        <div class="hint" id="qrHint">Clients scan the code and land in a chat with you.</div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="qrMsg">Message the client sends you</label>
+        <textarea id="qrMsg" dir="auto" placeholder="Hello, I'd like a quotation."></textarea>
+      </div>
+      <div class="field">
+        <label class="lbl" for="qrCap">Caption under the code</label>
+        <input id="qrCap" class="txt" dir="auto" placeholder="Scan to chat on WhatsApp">
+      </div>
+    </div>
+    <div class="card qrbox">
+      <canvas id="qrCanvas" width="640" height="780" aria-label="QR code for your WhatsApp chat link"></canvas>
+      <div class="row2">
+        <button type="button" class="btn primary" id="qrSave" style="flex:1">Save image</button>
+        <button type="button" class="btn" id="qrCopy" style="flex:1">Copy link</button>
+      </div>
+      <p class="bk">Use it on quotations, invoices, business cards or a site board.</p>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
+<script src="qrcode.js"></script>
 <script>
 (function(){
 const COUNTRIES=[
@@ -298,12 +377,13 @@ function handleText(text,source){
   if(found.length===1){applyNumber(found[0]);if(source)toast('Number added');return true}
   p.innerHTML='<p>'+found.length+' numbers found. Tap the one to message:</p><div class="chips">'+found.map((n,i)=>{
     const c=COUNTRIES.find(x=>x.id===n.country);
-    return `<button type="button" class="chip" data-i="${i}">+${n.code?n.code+' '+n.local:n.full}<small>${c.id==='ot'?'':c.name}</small></button>`}).join('')+'</div>';
-  p.hidden=false;p._found=found;
+    return `<button type="button" class="chip" data-i="${i}">+${n.code?n.code+' '+n.local:n.full}<small>${c.id==='ot'?'':c.name}</small></button>`}).join('')+'</div>'
+    +'<button type="button" class="btn small" id="toQueue">Add all '+found.length+' to follow-up queue</button>';
+  p.hidden=false;p._found=found;p._text=text;
   return true;
 }
-function buildLink(full){
-  const t=msgIn.value.trim();
+function buildLink(full,txt){
+  const t=(txt===undefined?msgIn.value:txt).trim();
   const p='phone='+full+(t?'&text='+encodeURIComponent(t):'');
   const web='https://wa.me/'+full+(t?'?text='+encodeURIComponent(t):'');
   const pkg=state.app==='wb'?'com.whatsapp.w4b':'com.whatsapp';
@@ -331,9 +411,12 @@ function trimRecents(){let un=0;state.recents=state.recents.filter(r=>r.label||+
 function addRecent(){
   if(!current) return;
   const c=country(),label=labelIn.value.trim();
-  const prev=state.recents.find(x=>x.full===current.full);
-  state.recents=state.recents.filter(x=>x.full!==current.full);
-  state.recents.unshift({full:current.full,code:current.code,local:current.local,country:c.id,at:Date.now(),label:label||(prev&&prev.label)||''});
+  pushRecent({full:current.full,code:current.code,local:current.local,country:c.id,label});
+}
+function pushRecent(n){
+  const prev=state.recents.find(x=>x.full===n.full);
+  state.recents=state.recents.filter(x=>x.full!==n.full);
+  state.recents.unshift({full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||(prev&&prev.label)||''});
   trimRecents();store.set('qc_recents',state.recents);renderRecents();renderBk();
 }
 
@@ -529,7 +612,7 @@ numIn.addEventListener('paste',e=>{
   const t=(e.clipboardData||window.clipboardData).getData('text');
   if(t&&(/[^\d\s+\-().]/.test(t)||extractNumbers(t).length>1)){e.preventDefault();handleText(t,'paste')}
 });
-$('picks').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)applyNumber($('picks')._found[+b.dataset.i])});
+$('picks').addEventListener('click',e=>{if(e.target.id==='toQueue'){const p=$('picks');if(q&&q.items.some(i=>i.status==='pending')){toast('Finish or end the current queue first');setTab('queue');return}$('qText').value=p._text;p.hidden=true;setTab('queue');qParse();return}const b=e.target.closest('.chip');if(b)applyNumber($('picks')._found[+b.dataset.i])});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 $('copyLink').onclick=()=>{
   if(!current){toast('Enter a valid number first');return}
@@ -538,15 +621,195 @@ $('copyLink').onclick=()=>{
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(()=>toast('Link copied'),fallback)}else fallback();
 };
 $('clear').onclick=()=>{numIn.value='';msgIn.value='';labelIn.value='';state.pending=null;renderVars();$('picks').hidden=true;update();numIn.focus()};
+/* ---------- Tabs ---------- */
+const TABS=['chat','queue','qr'];
+function setTab(t){
+  if(!TABS.includes(t))t='chat';
+  TABS.forEach(x=>{$('tab-'+x).hidden=x!==t;$('tb-'+x).setAttribute('aria-selected',x===t)});
+  try{history.replaceState(null,'',location.pathname+location.search+(t==='chat'?'':'#'+t))}catch(e){}
+  if(t==='qr')drawQR();
+  if(t==='queue'){fillTplSelect();renderQueue()}
+  window.scrollTo(0,0);
+}
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)setTab(b.dataset.tab)});
+window.addEventListener('hashchange',()=>setTab(location.hash.slice(1)));
+
+/* ---------- Follow-up queue ---------- */
+let q=store.get('qc_queue',null);
+const qText=$('qText');
+let qFoundList=[],qExtra={};
+const NOISE=/\b(mob(ile)?|tel|phone|whats ?app|wa|cell|no|number|contact)\b\.?|جوال|واتساب|هاتف|رقم/gi;
+function extractWithNames(text){
+  const out=[],seen=new Set();
+  String(text).split(/\r?\n/).forEach(line=>{
+    const ln=line.replace(/[٠-٩]/g,ch=>String(ch.charCodeAt(0)-0x0660)).replace(/[۰-۹]/g,ch=>String(ch.charCodeAt(0)-0x06f0));
+    const re=/(?:\+|00)?\d[\d\s\-(). ]{6,20}\d/g;let m,nums=[],rest=ln;
+    while((m=re.exec(ln))){const n=normalize(m[0]);if(n){nums.push(n);rest=rest.replace(m[0],' ')}}
+    const name=rest.replace(NOISE,' ').replace(/[:|,;*•\-–—()\[\]#]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40);
+    nums.forEach(n=>{if(!seen.has(n.full)){seen.add(n.full);out.push(Object.assign({},n,{name}))}});
+  });
+  return out;
+}
+function fillTplSelect(){
+  const sel=$('qTpl'),cur=sel.value||store.get('qc_qtpl','');
+  sel.innerHTML='<option value="">No message (just open the chat)</option>'+state.tpls.map(t=>`<option value="${esc(t.id)}">${esc(t.title)}</option>`).join('');
+  sel.value=state.tpls.some(t=>t.id===cur)?cur:'';
+  renderQVars();
+}
+function qTplRaw(){const t=state.tpls.find(x=>x.id===$('qTpl').value);return t?t.body:''}
+function customKeys(raw){const auto=autoVars(raw);return [...new Set([...raw.matchAll(VAR_RE)].map(m=>m[1].toLowerCase()))].filter(k=>!(k in auto)&&k!=='name')}
+function renderQVars(){
+  const v=$('qVars'),keys=customKeys(qTplRaw());
+  if(!keys.length){v.hidden=true;v.innerHTML='';return}
+  v.innerHTML='<p>Same value for everyone in this queue:</p>'+keys.map(k=>`<label class="var"><span>{${esc(k)}}</span><input class="txt" dir="auto" data-k="${esc(k)}" value="${esc(qExtra[k]||'')}"></label>`).join('');
+  v.hidden=false;
+}
+$('qVars').addEventListener('input',e=>{const k=e.target.dataset.k;if(k)qExtra[k]=e.target.value.trim()});
+$('qTpl').addEventListener('change',()=>{store.set('qc_qtpl',$('qTpl').value);renderQVars();qParse()});
+function qParse(){
+  store.set('qc_qdraft',qText.value);
+  qFoundList=extractWithNames(qText.value);
+  const named=qFoundList.filter(x=>x.name).length,el=$('qFound');
+  el.className='hint'+(qFoundList.length?' ok':'');
+  el.textContent=qFoundList.length?`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name.`:'Paste numbers from a sheet, a message or an email.';
+  $('qStart').setAttribute('aria-disabled',!qFoundList.length);
+  $('qStart').textContent=qFoundList.length?`Start queue (${qFoundList.length})`:'Start queue';
+}
+qText.addEventListener('input',qParse);
+function saveQ(){store.set('qc_queue',q)}
+function nextPending(from){
+  const i=q.items.findIndex((x,k)=>k>from&&x.status==='pending');
+  if(i>=0)return i;const j=q.items.findIndex(x=>x.status==='pending');return j>=0?j:null;
+}
+$('qStart').onclick=()=>{
+  if(!qFoundList.length)return;
+  const raw=qTplRaw(),missing=customKeys(raw).filter(k=>!qExtra[k]);
+  if(missing.length){toast('Fill {'+missing.join('}, {')+'} first');return}
+  q={items:qFoundList.map(n=>({full:n.full,code:n.code,local:n.local,country:n.country,name:n.name,status:'pending'})),raw,extra:Object.assign({},qExtra),idx:0,arm:false};
+  saveQ();renderQueue();
+};
+function qMessage(it){return q.raw?fillTpl(q.raw,Object.assign(autoVars(q.raw),q.extra,{name:it.name||''})):''}
+function renderQueue(){
+  const setup=$('qSetup'),run=$('qRun'),list=$('qList');
+  if(!q){setup.hidden=false;run.hidden=true;list.hidden=true;qText.value=qText.value||store.get('qc_qdraft','');qParse();return}
+  setup.hidden=true;run.hidden=false;list.hidden=false;
+  const sent=q.items.filter(x=>x.status==='sent').length,sk=q.items.filter(x=>x.status==='skipped').length,tot=q.items.length;
+  $('qBar').style.width=Math.round((sent+sk)/tot*100)+'%';
+  const via=state.app==='wb'?' · WhatsApp Business':'';
+  $('qEnd').textContent=q.idx===null?'New queue':'End queue';
+  if(q.idx===null){
+    $('qProg').textContent=`Finished${via}`;
+    $('qCur').innerHTML=`<p style="margin:0">${sent} sent, ${sk} skipped. Tap a contact below to open it again.</p>`;
+    $('qActs').hidden=true;
+  }else{
+    const it=q.items[q.idx],c=COUNTRIES.find(x=>x.id===it.country);
+    $('qProg').textContent=`${q.idx+1} of ${tot} · ${sent} sent${via}`;
+    $('qCur').innerHTML=`<div class="field"><label class="lbl" for="qName">Name</label><input id="qName" class="txt" dir="auto" autocomplete="off" value="${esc(it.name||'')}" placeholder="Client name"></div>
+      <div class="rnum">+${it.code?it.code+' '+it.local:it.full} <span class="meta">${c&&c.id!=='ot'?c.name:''}</span></div>
+      ${q.raw?`<div class="qmsg" id="qMsg" dir="auto">${esc(qMessage(it))}</div>`:''}`;
+    $('qActs').hidden=false;
+    $('qName').addEventListener('input',e=>{it.name=e.target.value.trim();saveQ();const m=$('qMsg');if(m)m.textContent=qMessage(it)});
+  }
+  list.innerHTML=q.items.map((x,i)=>`<div class="item${i===q.idx?' cur':''}"><span class="st ${x.status}">${x.status==='sent'?'✓':x.status==='skipped'?'–':i+1}</span><button class="main" data-qi="${i}">${x.name?`<div class="lab" dir="auto">${esc(x.name)}</div>`:''}<div class="rnum">+${x.code?x.code+' '+x.local:x.full}</div></button></div>`).join('');
+}
+$('qList').addEventListener('click',e=>{const b=e.target.closest('[data-qi]');if(!b||!q)return;q.idx=+b.dataset.qi;saveQ();renderQueue();window.scrollTo({top:0,behavior:'smooth'})});
+$('qOpen').onclick=()=>{
+  if(!q||q.idx===null)return;
+  const it=q.items[q.idx],msg=qMessage(it),left=msg.match(VAR_RE);
+  if(left){toast(left.includes('{name}')?'Enter the name first':'Fill '+[...new Set(left)].join(', ')+' first');const n=$('qName');if(n)n.focus();return}
+  it.status='sent';it.at=Date.now();
+  pushRecent({full:it.full,code:it.code,local:it.local,country:it.country,label:it.name});
+  const link=buildLink(it.full,msg);
+  q.idx=nextPending(q.idx);saveQ();renderQueue();
+  location.href=link;
+};
+$('qSkip').onclick=()=>{if(!q||q.idx===null)return;const it=q.items[q.idx];if(it.status==='pending')it.status='skipped';q.idx=nextPending(q.idx);saveQ();renderQueue()};
+$('qPrev').onclick=()=>{if(!q)return;q.idx=Math.max(0,(q.idx===null?q.items.length:q.idx)-1);saveQ();renderQueue()};
+let endTimer;
+$('qEnd').onclick=()=>{
+  if(!q)return;
+  if(q.idx!==null&&!q.arm){q.arm=true;$('qEnd').textContent='Tap again to end';$('qEnd').classList.add('danger');clearTimeout(endTimer);endTimer=setTimeout(()=>{if(q){q.arm=false;$('qEnd').classList.remove('danger');renderQueue()}},3000);return}
+  clearTimeout(endTimer);$('qEnd').classList.remove('danger');
+  q=null;saveQ();qText.value='';qParse();renderQueue();
+};
+
+/* ---------- My QR ---------- */
+const qrNum=$('qrNum'),qrMsg=$('qrMsg'),qrCap=$('qrCap');
+const qrSaved=store.get('qc_qr',{num:'',msg:"Hello, I'd like a quotation.",cap:'Scan to chat on WhatsApp'});
+qrNum.value=qrSaved.num;qrMsg.value=qrSaved.msg;qrCap.value=qrSaved.cap;
+let qrLink=null;
+function drawQR(){
+  const cv=$('qrCanvas'),x=cv.getContext('2d'),W=cv.width,H=cv.height;
+  store.set('qc_qr',{num:qrNum.value,msg:qrMsg.value,cap:qrCap.value});
+  x.fillStyle='#ffffff';x.fillRect(0,0,W,H);x.textAlign='center';
+  const raw=qrNum.value.trim(),n=raw?normalize(raw):null;
+  const h=$('qrHint');
+  if(!n){qrLink=null;h.className='hint'+(raw?' err':'');h.textContent=raw?'Enter the number with country code, e.g. +966 55 123 4567.':'Clients scan the code and land in a chat with you.';
+    x.fillStyle='#5d6b63';x.font='500 26px "IBM Plex Sans", system-ui, sans-serif';x.fillText('Enter your number above',W/2,H/2);return}
+  const m=qrMsg.value.trim();
+  qrLink='https://wa.me/'+n.full+(m?'?text='+encodeURIComponent(m):'');
+  h.className='hint ok';h.textContent='Link: wa.me/'+n.full+(m?' + message':'');
+  if(typeof qrcode!=='function'){x.fillStyle='#b3261e';x.font='500 24px sans-serif';x.fillText('QR library failed to load',W/2,H/2);return}
+  const qr=qrcode(0,'M');qr.addData(qrLink);qr.make();
+  const mc=qr.getModuleCount(),quiet=4,cell=Math.floor(580/(mc+quiet*2)),size=cell*(mc+quiet*2),ox=Math.round((W-size)/2),oy=20;
+  x.fillStyle='#0b1a12';
+  for(let r=0;r<mc;r++)for(let c=0;c<mc;c++)if(qr.isDark(r,c))x.fillRect(ox+(c+quiet)*cell,oy+(r+quiet)*cell,cell,cell);
+  const cap=qrCap.value.trim(),ty=oy+size+44;
+  x.fillStyle='#0b1a12';x.direction=/[؀-ۿ]/.test(cap)?'rtl':'ltr';
+  x.font='700 34px "IBM Plex Sans", system-ui, sans-serif';if(cap)x.fillText(cap,W/2,ty,W-60);
+  x.direction='ltr';x.fillStyle='#12704a';x.font='600 30px "IBM Plex Mono", ui-monospace, monospace';
+  x.fillText('+'+(n.code?n.code+' '+n.local:n.full),W/2,cap?ty+48:ty,W-60);
+}
+[qrNum,qrMsg,qrCap].forEach(el=>el.addEventListener('input',drawQR));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(!$('tab-qr').hidden)drawQR()});
+$('qrSave').onclick=()=>{
+  if(!qrLink){toast('Enter your number first');qrNum.focus();return}
+  $('qrCanvas').toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='whatsapp-qr.png';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Image saved to Downloads')},'image/png');
+};
+$('qrCopy').onclick=()=>{
+  if(!qrLink){toast('Enter your number first');return}
+  navigator.clipboard.writeText(qrLink).then(()=>toast('Link copied'),()=>toast('Copy failed. Long-press to copy: '+qrLink));
+};
+
+/* ---------- Team template packs (shared by link) ---------- */
+function b64uEnc(str){const by=new TextEncoder().encode(str);let bin='';by.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function b64uDec(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const bin=atob(s);return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
+$('shareTpl').onclick=()=>{
+  if(!state.tpls.length){toast('No templates to share');return}
+  const url=location.origin+location.pathname+'?pack='+b64uEnc(JSON.stringify({v:1,t:state.tpls.map(t=>({title:t.title,body:t.body,pinned:!!t.pinned}))}));
+  const text='Open this link to add my QuickChat message templates ('+state.tpls.length+'):';
+  if(navigator.share)navigator.share({title:'QuickChat templates',text,url}).catch(err=>{if(!err||err.name!=='AbortError')copyPack(url)});
+  else copyPack(url);
+};
+function copyPack(url){navigator.clipboard.writeText(url).then(()=>toast('Template link copied'),()=>toast('Could not copy the link'))}
+function showPack(code){
+  let pack;try{pack=JSON.parse(b64uDec(code))}catch(e){pack=null}
+  const b=$('packBanner');
+  if(!pack||!Array.isArray(pack.t)){toast('This template link is broken');return}
+  const items=pack.t.filter(t=>t&&typeof t.body==='string'&&t.body.trim()),fresh=items.filter(t=>!state.tpls.some(x=>x.body===t.body));
+  b.innerHTML=`<p><b>${items.length} shared template${items.length===1?'':'s'}</b>${fresh.length<items.length?` · ${items.length-fresh.length} you already have`:''}</p>`
+    +`<p class="bk" dir="auto">${items.map(t=>esc(t.title||t.body.slice(0,30))).join(' · ')}</p>`
+    +`<div class="row2">${fresh.length?`<button type="button" class="btn small primary" data-pk="add">Add ${fresh.length}</button>`:''}<button type="button" class="btn small" data-pk="no">${fresh.length?'Dismiss':'Close'}</button></div>`;
+  b.hidden=false;b._fresh=fresh;
+  setTimeout(()=>b.scrollIntoView({behavior:'smooth',block:'center'}),100);
+}
+$('packBanner').addEventListener('click',e=>{
+  const a=e.target.closest('[data-pk]');if(!a)return;const b=$('packBanner');
+  if(a.dataset.pk==='add'){b._fresh.forEach((t,k)=>state.tpls.push({id:'t'+Date.now()+'_'+k,title:String(t.title||t.body.slice(0,30)),body:t.body,pinned:!!t.pinned}));store.set('qc_tpls',state.tpls);renderTpls();renderBk();toast('Added '+b._fresh.length+' template'+(b._fresh.length===1?'':'s'))}
+  b.hidden=true;b.innerHTML='';
+});
+
 let tt;function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800)}
 
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();
 // Example state on first open so the tool shows how it works
 const qs=new URLSearchParams(location.search);
 const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
-const action=qs.get('action');
-if(shared||action){try{history.replaceState(null,'',location.pathname)}catch(e){}store.set('qc_seen',true)}
-if(shared){handleText(shared,'share')}
+const action=qs.get('action'),pack=qs.get('pack');
+if(shared||action||pack){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
+setTab(location.hash.slice(1));
+if(pack){setTab('chat');showPack(pack)}
+else if(shared){setTab('chat');handleText(shared,'share')}
 else if(action==='last'){const r=state.recents[0];if(r){loadRecent(r);toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
 else if(action==='paste'){numIn.focus();pasteFromClipboard()}
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
