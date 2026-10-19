@@ -14,16 +14,16 @@
 /* Layout: single narrow column, dialer card on top, templates + recents below as lists */
 :root{
   --bg:#f3f5f2; --surface:#ffffff; --fg:#17201b; --muted:#5d6b63; --line:#dbe2dc;
-  --accent:#12704a; --accent-fg:#ffffff; --accent-soft:#e2f0e8; --danger:#b3261e; --danger-soft:#fbe9e7;
+  --accent:#12704a; --accent-fg:#ffffff; --accent-soft:#e2f0e8; --danger:#b3261e; --danger-soft:#fbe9e7; --warn:#9a5b00; --warn-soft:#fdf0d9;
   --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f1512; --surface:#18201c; --fg:#e6ece8; --muted:#97a69d; --line:#2a3530;
-  --accent:#3fbf86; --accent-fg:#06140d; --accent-soft:#173327; --danger:#ff8a80; --danger-soft:#3a1f1d; color-scheme:dark}}
+  --accent:#3fbf86; --accent-fg:#06140d; --accent-soft:#173327; --danger:#ff8a80; --danger-soft:#3a1f1d; --warn:#f0b45a; --warn-soft:#3a2c14; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1512; --surface:#18201c; --fg:#e6ece8; --muted:#97a69d; --line:#2a3530;
-  --accent:#3fbf86; --accent-fg:#06140d; --accent-soft:#173327; --danger:#ff8a80; --danger-soft:#3a1f1d; color-scheme:dark}
+  --accent:#3fbf86; --accent-fg:#06140d; --accent-soft:#173327; --danger:#ff8a80; --danger-soft:#3a1f1d; --warn:#f0b45a; --warn-soft:#3a2c14; color-scheme:dark}
 *{box-sizing:border-box}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
@@ -69,7 +69,22 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .item .main{flex:1;min-width:0;cursor:pointer;background:none;border:0;padding:0;text-align:left;color:var(--fg);font:inherit}
 .item .t{font-weight:600;font-size:14px}
 .item .b{color:var(--muted);font-size:13px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.item .acts{display:flex;gap:6px;flex-shrink:0}
+.item .acts{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:55%}
+.chipst{border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:4px 10px;font:600 12px var(--sans);cursor:pointer}
+.chipst.st-quoted{border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft)}
+.chipst.st-waiting{border:1px solid var(--warn);color:var(--warn);background:var(--warn-soft)}
+.chipst.st-won{border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg)}
+.chipst.st-lost{border:1px solid var(--line);color:var(--muted);text-decoration:line-through}
+.due{font-weight:600;color:var(--warn)} .due.od{color:var(--danger)} .due.td{color:var(--accent)}
+.fuitem{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fuprompt{border:1.5px solid var(--accent);background:var(--accent-soft)}
+.fuprompt p{margin:0}
+.wrapr{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fuprompt .chip{border:1px solid var(--accent);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 13px var(--sans);cursor:pointer}
+.fuprompt .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.datechip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 12px;font:600 13px var(--sans);background:var(--surface)}
+.datechip input{border:0;background:transparent;color:var(--fg);font:500 13px var(--sans);padding:4px}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px}
 .item.editing{flex-direction:column;align-items:stretch;background:var(--accent-soft)}
 .item.editing .acts{justify-content:flex-end}
 .empty{padding:14px;color:var(--muted);font-size:13px}
@@ -128,6 +143,12 @@ select.txt{appearance:auto}
   </nav>
 
   <div class="tabpane" id="tab-chat">
+  <div class="card fuprompt" id="fuPrompt" hidden></div>
+  <section class="stack" id="fuSec" hidden>
+    <h2>Follow-ups <span class="bk" id="fuCount"></span></h2>
+    <div class="list" id="fuList"></div>
+    <button type="button" class="btn small" id="fuMore" hidden></button>
+  </section>
   <div class="card">
     <div class="field">
       <label class="lbl">Country</label>
@@ -407,7 +428,8 @@ function update(){
   else{go.href='#';go.setAttribute('aria-disabled','true');}
 }
 
-function trimRecents(){let un=0;state.recents=state.recents.filter(r=>r.label||++un<=20).slice(0,500)}
+function keep(r){return r.label||r.due||r.status}
+function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
 function addRecent(){
   if(!current) return;
   const c=country(),label=labelIn.value.trim();
@@ -416,7 +438,7 @@ function addRecent(){
 function pushRecent(n){
   const prev=state.recents.find(x=>x.full===n.full);
   state.recents=state.recents.filter(x=>x.full!==n.full);
-  state.recents.unshift({full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||(prev&&prev.label)||''});
+  state.recents.unshift({full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||(prev&&prev.label)||'',due:prev?prev.due||'':'',status:prev?prev.status||'':''});
   trimRecents();store.set('qc_recents',state.recents);renderRecents();renderBk();
 }
 
@@ -501,15 +523,16 @@ $('addTpl').onclick=()=>{state.editing='new';state.confirmDel=null;renderTpls()}
 
 function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' h ago';const d=Math.round(h/24);return d+' d ago'}
 function renderRecents(){
+  renderFollowups();
   const el=$('recents'),w=$('clearRecentWrap'),sIn=$('search');
   sIn.hidden=state.recents.length<6;
   if(!state.recents.length){el.innerHTML='<div class="empty">Numbers you open will appear here. Add a name to keep a number permanently.</div>';w.innerHTML='';return}
-  const hasUnl=state.recents.some(r=>!r.label);
+  const hasUnl=state.recents.some(r=>!keep(r));
   w.innerHTML=state.confirmClear
-    ?`<span class="confirm">Remove numbers without a name? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
+    ?`<span class="confirm">Remove numbers without a name or follow-up? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
     :(hasUnl?`<button class="btn small" data-act="clearall">Clear unnamed</button>`:'');
   const q=sIn.hidden?'':sIn.value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
-  const list=state.recents.filter(r=>!q||(r.label||'').toLowerCase().includes(q)||(qd&&r.full.includes(qd)));
+  const list=state.recents.filter(r=>!q||(r.label||'').toLowerCase().includes(q)||(qd&&r.full.includes(qd))||(ST_LABEL[r.status]||'').toLowerCase()===q);
   if(!list.length){el.innerHTML='<div class="empty">No numbers match “'+esc(q)+'”.</div>';return}
   el.innerHTML=list.map(r=>{
     const c=COUNTRIES.find(x=>x.id===r.country),f=r.full;
@@ -520,7 +543,7 @@ function renderRecents(){
     const acts=state.confirmRm===f
       ?`<span class="confirm">Delete? <button class="btn small" data-act="normv">No</button><button class="btn small danger solid" data-act="yesrm" data-f="${f}">Yes</button></span>`
       :`<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
-    return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}</div></button><div class="acts">${acts}</div></div>`;
+    return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}${r.due&&r.status!=='won'&&r.status!=='lost'?` · <span class="due">Follow up ${dueLow(r.due)}</span>`:''}</div></button><div class="acts">${state.confirmRm===f?'':stChip(r)}${acts}</div></div>`;
   }).join('');
   const e=$('eLabel');if(e){e.focus();e.onkeydown=ev=>{if(ev.key==='Enter')el.querySelector('[data-act="lsave"]').click()}}
 }
@@ -541,7 +564,8 @@ function recentClick(e){
   if(act==='yesrm'){state.recents=state.recents.filter(x=>x.full!==f);state.confirmRm=null;store.set('qc_recents',state.recents);renderBk();toast('Number deleted')}
   if(act==='clearall')state.confirmClear=true;
   if(act==='noclear')state.confirmClear=false;
-  if(act==='yesclear'){state.recents=state.recents.filter(x=>x.label);state.confirmClear=false;store.set('qc_recents',state.recents)}
+  if(act==='cyc'){cycleStatus(r)}
+  if(act==='yesclear'){state.recents=state.recents.filter(keep);state.confirmClear=false;store.set('qc_recents',state.recents)}
   renderRecents();
 }
 $('search').addEventListener('input',renderRecents);
@@ -577,8 +601,8 @@ $('importFile').onchange=async e=>{
   d.numbers.forEach(r=>{
     if(!r||!/^\d{6,15}$/.test(String(r.full)))return;
     const ex=state.recents.find(x=>x.full===r.full);
-    if(ex){if(!ex.label&&r.label){ex.label=String(r.label);nn++}return}
-    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||'')});nn++;
+    if(ex){let ch=false;if(!ex.label&&r.label){ex.label=String(r.label);ch=true}if(!ex.due&&/^\d{4}-\d\d-\d\d$/.test(r.due||'')){ex.due=r.due;ch=true}if(!ex.status&&STATUSES.includes(r.status)&&r.status){ex.status=r.status;ch=true}if(ch)nn++;return}
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:/^\d{4}-\d\d-\d\d$/.test(r.due||'')?r.due:'',status:STATUSES.includes(r.status)?r.status:''});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
   store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);
@@ -598,7 +622,7 @@ go.addEventListener('click',e=>{
   e.preventDefault();if(!current)return;
   const left=leftoverVars();
   if(left.length){toast('Fill '+[...new Set(left)].join(', ')+' first');const v=$('vars').querySelector('input');if(v)v.focus();else msgIn.focus();return}
-  addRecent();location.href=buildLink(current.full);
+  addRecent();store.set('qc_fuPrompt',current.full);renderFuPrompt();location.href=buildLink(current.full);
 });
 msgIn.addEventListener('input',()=>{if(state.pending){state.pending=null;renderVars()}});
 labelIn.addEventListener('input',()=>{const p=state.pending;if(p&&p.nameAuto&&p.keys.includes('name')){p.vals.name=nameFromLabel();renderVars();applyVars()}});
@@ -621,6 +645,101 @@ $('copyLink').onclick=()=>{
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(()=>toast('Link copied'),fallback)}else fallback();
 };
 $('clear').onclick=()=>{numIn.value='';msgIn.value='';labelIn.value='';state.pending=null;renderVars();$('picks').hidden=true;update();numIn.focus()};
+/* ---------- Follow-up reminders ---------- */
+const STATUSES=['','quoted','waiting','won','lost'],ST_LABEL={quoted:'Quoted',waiting:'Waiting',won:'Won',lost:'Lost'};
+function todayStr(off){const d=new Date();d.setDate(d.getDate()+(off||0));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function parseDay(ds){const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
+function dayDiff(ds){const t=new Date();t.setHours(0,0,0,0);return Math.round((parseDay(ds)-t)/864e5)}
+function dueLabel(ds){const n=dayDiff(ds);if(n<0)return 'Overdue '+(-n)+' d';if(n===0)return 'Today';if(n===1)return 'Tomorrow';return parseDay(ds).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function dueLow(ds){const l=dueLabel(ds);return dayDiff(ds)<=1?l.toLowerCase():'on '+l}
+function stChip(r){return `<button type="button" class="chipst${r.status?' st-'+r.status:''}" data-act="cyc" data-f="${r.full}" aria-label="Status: ${r.status?ST_LABEL[r.status]:'none'}. Tap to change">${r.status?ST_LABEL[r.status]:'+ Status'}</button>`}
+function saveRecents(){store.set('qc_recents',state.recents);renderRecents();renderBk()}
+function cycleStatus(r){
+  if(!r)return;r.status=STATUSES[(STATUSES.indexOf(r.status||'')+1)%STATUSES.length];
+  if(r.status==='won'||r.status==='lost'){if(r.due)toast('Marked '+ST_LABEL[r.status]+'. Follow-up cleared');r.due=''}
+  store.set('qc_recents',state.recents);
+}
+function who(r){return r.label||('+'+(r.code?r.code+' '+r.local:r.full))}
+function findFuTpl(){return state.tpls.find(t=>/follow|متابع/i.test(t.title))||null}
+function renderFollowups(){
+  const sec=$('fuSec'),el=$('fuList'),more=$('fuMore');
+  const all=state.recents.filter(r=>r.due&&r.status!=='won'&&r.status!=='lost').sort((a,b)=>a.due<b.due?-1:a.due>b.due?1:0);
+  const t=todayStr(),due=all.filter(r=>r.due<=t),up=all.filter(r=>r.due>t);
+  $('tb-chat').textContent=due.length?'Chat · '+due.length:'Chat';
+  sec.hidden=!all.length;if(!all.length)return;
+  $('fuCount').textContent=due.length?due.length+' due':'none due today';
+  const show=due.concat(state.showUp?up:[]);
+  el.innerHTML=(show.length?'':`<div class="empty">Nothing due today. Next: ${esc(who(up[0]))}, ${dueLow(up[0].due)}.</div>`)+show.map(r=>{
+    const n=dayDiff(r.due),cls=n<0?'od':n===0?'td':'';
+    return `<div class="item"><div class="fuitem">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div><div class="meta"><span class="due ${cls}">${dueLabel(r.due)}</span></div></div>
+      <div class="acts">${stChip(r)}<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button></div></div>`}).join('');
+  more.hidden=!up.length;more.textContent=state.showUp?'Hide upcoming':'Show upcoming ('+up.length+')';
+}
+$('fuMore').onclick=()=>{state.showUp=!state.showUp;renderFollowups()};
+function startFollowUp(r){
+  setTab('chat');loadRecent(r);
+  const t=findFuTpl();if(t){useTemplate(t)}
+  window.scrollTo({top:0,behavior:'smooth'});
+  toast(t?'Follow-up message ready. Tap Open chat':'Number loaded. Tap Open chat');
+}
+$('fuList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const r=state.recents.find(x=>x.full===b.dataset.f);if(!r)return;
+  const a=b.dataset.act;
+  if(a==='fu'){startFollowUp(r);return}
+  if(a==='fudone'){r.due='';toast('Follow-up done')}
+  if(a==='cyc')cycleStatus(r);
+  saveRecents();
+});
+/* Prompt shown after Open chat: when to follow up */
+function renderFuPrompt(){
+  const el=$('fuPrompt'),f=store.get('qc_fuPrompt',''),r=state.recents.find(x=>x.full===f);
+  if(!r){el.hidden=true;el.innerHTML='';return}
+  const cal=store.get('qc_cal',true);
+  el.innerHTML=`<p><b dir="auto">Follow up with ${esc(who(r))}?</b></p>
+    ${r.label?'':'<input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name (so you recognise it later)">'}
+    <div class="wrapr"><button type="button" class="chip" data-d="1">Tomorrow</button><button type="button" class="chip" data-d="3">3 days</button><button type="button" class="chip" data-d="7">1 week</button>
+      <label class="datechip">Date<input type="date" id="fpDate" min="${todayStr(1)}" aria-label="Pick a follow-up date"></label></div>
+    <div class="wrapr"><span class="bk">Status:</span>${['quoted','waiting','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
+    <label class="chk"><input type="checkbox" id="fpCal" ${cal?'checked':''}> Also add a reminder to my phone calendar</label>
+    <div class="wrapr"><button type="button" class="btn small" data-x="1">Not needed</button></div>`;
+  el.hidden=false;
+}
+function fpName(r){const n=$('fpName');if(n&&n.value.trim())r.label=n.value.trim()}
+function setDue(r,ds){
+  fpName(r);const cal=$('fpCal')?$('fpCal').checked:store.get('qc_cal',true);
+  r.due=ds;if(r.status==='won'||r.status==='lost')r.status='';
+  store.set('qc_fuPrompt','');saveRecents();renderFuPrompt();
+  toast('Follow-up set: '+dueLow(ds));
+  if(cal)location.href=calLink(r);
+}
+$('fuPrompt').addEventListener('change',e=>{
+  if(e.target.id==='fpCal')store.set('qc_cal',e.target.checked);
+  if(e.target.id==='fpDate'&&e.target.value){const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(r)setDue(r,e.target.value)}
+});
+$('fuPrompt').addEventListener('click',e=>{
+  const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(!r)return;
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.d){setDue(r,todayStr(+b.dataset.d));return}
+  if(b.dataset.s){
+    fpName(r);r.status=r.status===b.dataset.s?'':b.dataset.s;
+    if(r.status==='won'||r.status==='lost'){r.due='';store.set('qc_fuPrompt','');toast('Marked '+ST_LABEL[r.status])}
+    saveRecents();renderFuPrompt();return;
+  }
+  if(b.dataset.x){fpName(r);store.set('qc_fuPrompt','');saveRecents();renderFuPrompt()}
+});
+function calLink(r){
+  const s=parseDay(r.due);s.setHours(9,0,0,0);const en=new Date(s.getTime()+15*60000);
+  const fmt=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  const appUrl=location.origin+location.pathname+'?fu='+r.full;
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('WhatsApp follow-up: '+who(r))
+    +'&dates='+fmt(s)+'/'+fmt(en)+'&details='+encodeURIComponent('Number: +'+r.full+(r.status?'\nStatus: '+ST_LABEL[r.status]:'')+'\nOpen in QuickChat: '+appUrl);
+}
+$('qCur').addEventListener('click',e=>{
+  const b=e.target.closest('[data-qfu]');if(!b||!q)return;const ds=todayStr(+b.dataset.qfu);let n=0;
+  q.items.filter(i=>i.status==='sent').forEach(i=>{const r=state.recents.find(x=>x.full===i.full);if(r){r.due=ds;if(!r.status||r.status==='won'||r.status==='lost')r.status='waiting';n++}});
+  saveRecents();toast('Follow-up set for '+n+' contact'+(n===1?'':'s')+': '+dueLow(ds));
+});
+
 /* ---------- Tabs ---------- */
 const TABS=['chat','queue','qr'];
 function setTab(t){
@@ -699,7 +818,7 @@ function renderQueue(){
   $('qEnd').textContent=q.idx===null?'New queue':'End queue';
   if(q.idx===null){
     $('qProg').textContent=`Finished${via}`;
-    $('qCur').innerHTML=`<p style="margin:0">${sent} sent, ${sk} skipped. Tap a contact below to open it again.</p>`;
+    $('qCur').innerHTML=`<p style="margin:0">${sent} sent, ${sk} skipped. Tap a contact below to open it again.</p>`+(sent?`<div class="wrapr"><span class="bk">Follow up with the ${sent} sent:</span><button type="button" class="btn small" data-qfu="3">in 3 days</button><button type="button" class="btn small" data-qfu="7">in 1 week</button></div>`:'');
     $('qActs').hidden=true;
   }else{
     const it=q.items[q.idx],c=COUNTRIES.find(x=>x.id===it.country);
@@ -805,10 +924,12 @@ setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderB
 // Example state on first open so the tool shows how it works
 const qs=new URLSearchParams(location.search);
 const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
-const action=qs.get('action'),pack=qs.get('pack');
-if(shared||action||pack){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
+const action=qs.get('action'),pack=qs.get('pack'),fu=qs.get('fu');
+if(shared||action||pack||fu){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
 setTab(location.hash.slice(1));
-if(pack){setTab('chat');showPack(pack)}
+renderFuPrompt();
+if(fu){const r=state.recents.find(x=>x.full===fu.replace(/\D/g,''));if(r)startFollowUp(r);else{handleText('+'+fu,'');setTab('chat')}}
+else if(pack){setTab('chat');showPack(pack)}
 else if(shared){setTab('chat');handleText(shared,'share')}
 else if(action==='last'){const r=state.recents[0];if(r){loadRecent(r);toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
 else if(action==='paste'){numIn.focus();pasteFromClipboard()}
