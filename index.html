@@ -78,6 +78,17 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .foot{font-size:12px;color:var(--muted)}
+.vars{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent-soft)}
+.vars p{margin:0;font-size:13px}
+.var{display:grid;grid-template-columns:84px 1fr;gap:8px;align-items:center;font:600 13px var(--mono);color:var(--accent)}
+.var input{padding:9px 10px;font-size:15px}
+.lab{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.item .meta{color:var(--muted);font-size:12px}
+.pin{min-width:34px}
+.pin[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.bk{margin:0;font-size:13px;color:var(--muted)}
+.bk.warn{color:var(--danger)}
+.stack{display:flex;flex-direction:column;gap:10px}
 .picks{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent-soft)}
 .picks p{margin:0;font-size:13px;color:var(--fg)}
 .picks .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -112,8 +123,14 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
     </div>
 
     <div class="field">
+      <label class="lbl" for="label">Name / note (optional)</label>
+      <input id="label" class="txt" dir="auto" autocomplete="off" placeholder="e.g. Ahmed - Sabya farm quote">
+    </div>
+
+    <div class="field">
       <label class="lbl" for="msg">Message (optional)</label>
       <textarea id="msg" dir="auto" placeholder="Pick a template below or type here"></textarea>
+      <div class="vars" id="vars" hidden></div>
     </div>
 
     <div class="field">
@@ -137,11 +154,24 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
   </section>
 
   <section style="display:flex;flex-direction:column;gap:10px">
-    <h2>Recent numbers <span id="clearRecentWrap"></span></h2>
+    <h2>Numbers <span id="clearRecentWrap"></span></h2>
+    <input id="search" class="txt" type="search" autocomplete="off" placeholder="Search name or number" hidden>
     <div class="list" id="recents"></div>
   </section>
 
-  <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Templates and recent numbers are stored only on this phone.</p>
+  <section class="stack">
+    <h2>Backup</h2>
+    <div class="card" style="gap:10px">
+      <p class="bk" id="bkInfo"></p>
+      <div class="row2">
+        <button type="button" class="btn" id="exportBk" style="flex:1">Export backup</button>
+        <button type="button" class="btn" id="importBtn" style="flex:1">Import backup</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+  <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so export a backup now and then.</p>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -155,9 +185,9 @@ const COUNTRIES=[
   {id:'ot',name:'Other',code:'',len:0,first:null,ph:'Number without code'}
 ];
 const DEFAULT_TPLS=[
-  {id:'t1',title:'Introduction',body:'Hello, this is Hossam from Al-Wasael Industrial Company. I got your number regarding your irrigation inquiry.'},
-  {id:'t2',title:'Quotation sent',body:'Good day. Please find our quotation attached. Let me know if you have any questions.'},
-  {id:'t3',title:'Follow-up',body:'Hello, just following up on our last conversation. Is there any update from your side?'},
+  {id:'t1',title:'Introduction',pinned:true,body:'{greeting} {name}, this is Hossam from Al-Wasael Industrial Company. I got your number regarding your irrigation inquiry.'},
+  {id:'t2',title:'Quotation sent',pinned:true,body:'{greeting} {name}. Please find our quotation attached. Let me know if you have any questions.'},
+  {id:'t3',title:'Follow-up',body:'{greeting} {name}, just following up on our last conversation. Is there any update from your side?'},
   {id:'t4',title:'Location request',body:'Please share the site location pin so we can arrange the visit.'}
 ];
 const store={
@@ -172,7 +202,7 @@ let state={
   editing:null, confirmDel:null, confirmClear:false
 };
 const $=id=>document.getElementById(id);
-const ccIn=$('cc'),numIn=$('num'),msgIn=$('msg'),hint=$('hint'),go=$('go');
+const ccIn=$('cc'),numIn=$('num'),msgIn=$('msg'),hint=$('hint'),go=$('go'),labelIn=$('label');
 
 function country(){return COUNTRIES.find(c=>c.id===state.country)||COUNTRIES[0]}
 
@@ -297,14 +327,48 @@ function update(){
   else{go.href='#';go.setAttribute('aria-disabled','true');}
 }
 
+function trimRecents(){let un=0;state.recents=state.recents.filter(r=>r.label||++un<=20).slice(0,500)}
 function addRecent(){
   if(!current) return;
-  const c=country();
+  const c=country(),label=labelIn.value.trim();
+  const prev=state.recents.find(x=>x.full===current.full);
   state.recents=state.recents.filter(x=>x.full!==current.full);
-  state.recents.unshift({full:current.full,code:current.code,local:current.local,country:c.id,at:Date.now()});
-  state.recents=state.recents.slice(0,20);
-  store.set('qc_recents',state.recents);renderRecents();
+  state.recents.unshift({full:current.full,code:current.code,local:current.local,country:c.id,at:Date.now(),label:label||(prev&&prev.label)||''});
+  trimRecents();store.set('qc_recents',state.recents);renderRecents();renderBk();
 }
+
+/* ---- Template variables: {name}, {greeting}, {date}, or any {word} ---- */
+const VAR_RE=/\{([A-Za-z_؀-ۿ][\w؀-ۿ]*)\}/g;
+function autoVars(raw){
+  const now=new Date(),h=now.getHours(),ar=/[؀-ۿ]/.test(raw);
+  const greeting=ar?(h<12?'صباح الخير':'مساء الخير'):(h<12?'Good morning':h<17?'Good afternoon':'Good evening');
+  const date=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
+  return {greeting,date};
+}
+function nameFromLabel(){return labelIn.value.trim().split(/\s+[-–—]\s+|[,|]/)[0].trim()}
+function fillTpl(raw,vals){return raw.replace(VAR_RE,(m,k)=>vals[k.toLowerCase()]||m)}
+function useTemplate(t){
+  const auto=autoVars(t.body);
+  const keys=[...new Set([...t.body.matchAll(VAR_RE)].map(m=>m[1].toLowerCase()))].filter(k=>!(k in auto));
+  const vals=Object.assign({},auto);
+  if(keys.includes('name'))vals.name=nameFromLabel();
+  state.pending={raw:t.body,vals,keys,nameAuto:true};
+  renderVars();applyVars();
+}
+function applyVars(){msgIn.value=fillTpl(state.pending.raw,state.pending.vals);update()}
+function renderVars(){
+  const v=$('vars'),p=state.pending;
+  if(!p||!p.keys.length){v.hidden=true;v.innerHTML='';return}
+  v.innerHTML='<p>Fill in the template (updates the message as you type):</p>'+p.keys.map(k=>
+    `<label class="var"><span>{${esc(k)}}</span><input class="txt" dir="auto" data-k="${esc(k)}" value="${esc(p.vals[k]||'')}" placeholder="${k==='name'?'Client name':''}"></label>`).join('');
+  v.hidden=false;
+}
+$('vars').addEventListener('input',e=>{
+  const k=e.target.dataset.k;if(!k||!state.pending)return;
+  if(k==='name')state.pending.nameAuto=false;
+  state.pending.vals[k]=e.target.value.trim();applyVars();
+});
+function leftoverVars(){return (msgIn.value.match(VAR_RE)||[])}
 
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
@@ -315,14 +379,16 @@ function renderTpls(){
   const editor=(t)=>`<div class="item editing">
       <input class="txt" id="eTitle" dir="auto" placeholder="Title" value="${esc(t.title)}">
       <textarea id="eBody" dir="auto" placeholder="Message text">${esc(t.body)}</textarea>
+      <div class="hint">Placeholders: {name}, {greeting} (time-based, Arabic if the message is Arabic), {date}, or any {word} you'll fill in when sending.</div>
       <div class="acts"><button class="btn small" data-act="cancel">Cancel</button><button class="btn small primary" data-act="save" data-id="${t.id}">Save</button></div>
     </div>`;
   if(state.editing==='new') html+=editor({id:'new',title:'',body:''});
-  state.tpls.forEach(t=>{
+  const sorted=state.tpls.filter(t=>t.pinned).concat(state.tpls.filter(t=>!t.pinned));
+  sorted.forEach(t=>{
     if(state.editing===t.id){html+=editor(t);return}
     const acts=state.confirmDel===t.id
       ?`<span class="confirm">Delete? <button class="btn small" data-act="nodel">No</button><button class="btn small danger solid" data-act="yesdel" data-id="${t.id}">Yes</button></span>`
-      :`<button class="btn small" data-act="edit" data-id="${t.id}">Edit</button><button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>`;
+      :`<button class="btn small pin" data-act="pin" data-id="${t.id}" aria-pressed="${!!t.pinned}" aria-label="${t.pinned?'Unpin':'Pin to top'}">${t.pinned?'★':'☆'}</button><button class="btn small" data-act="edit" data-id="${t.id}">Edit</button><button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>`;
     html+=`<div class="item"><button class="main" data-act="use" data-id="${t.id}"><div class="t" dir="auto">${esc(t.title)}</div><div class="b" dir="auto">${esc(t.body)}</div></button><div class="acts">${acts}</div></div>`;
   });
   el.innerHTML=html;
@@ -331,18 +397,20 @@ function renderTpls(){
 $('tpls').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const id=b.dataset.id,act=b.dataset.act;
-  if(act==='use'){const t=state.tpls.find(x=>x.id===id);msgIn.value=t.body;update();toast('Template added to message');window.scrollTo({top:0,behavior:'smooth'});return}
+  if(act==='use'){const t=state.tpls.find(x=>x.id===id);useTemplate(t);toast(state.pending.keys.length?'Fill in the highlighted fields':'Template added to message');$('msg').scrollIntoView({behavior:'smooth',block:'center'});return}
+  if(act==='pin'){state.tpls=state.tpls.map(x=>x.id===id?Object.assign({},x,{pinned:!x.pinned}):x);store.set('qc_tpls',state.tpls)}
   if(act==='edit'){state.editing=id;state.confirmDel=null}
   if(act==='del'){state.confirmDel=id}
   if(act==='nodel'){state.confirmDel=null}
-  if(act==='yesdel'){state.tpls=state.tpls.filter(x=>x.id!==id);state.confirmDel=null;store.set('qc_tpls',state.tpls);toast('Template deleted')}
+  if(act==='yesdel'){state.tpls=state.tpls.filter(x=>x.id!==id);state.confirmDel=null;store.set('qc_tpls',state.tpls);renderBk();toast('Template deleted')}
   if(act==='cancel'){state.editing=null}
   if(act==='save'){
     const title=$('eTitle').value.trim(),body=$('eBody').value.trim();
     if(!body){toast('Message text is required');return}
-    const t={id:id==='new'?'t'+Date.now():id,title:title||body.slice(0,30),body};
+    const old=state.tpls.find(x=>x.id===id);
+    const t={id:id==='new'?'t'+Date.now():id,title:title||body.slice(0,30),body,pinned:!!(old&&old.pinned)};
     if(id==='new')state.tpls.unshift(t);else state.tpls=state.tpls.map(x=>x.id===id?t:x);
-    state.editing=null;store.set('qc_tpls',state.tpls);toast('Template saved');
+    state.editing=null;store.set('qc_tpls',state.tpls);renderBk();toast('Template saved');
   }
   renderTpls();
 });
@@ -350,26 +418,90 @@ $('addTpl').onclick=()=>{state.editing='new';state.confirmDel=null;renderTpls()}
 
 function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' h ago';const d=Math.round(h/24);return d+' d ago'}
 function renderRecents(){
-  const el=$('recents'),w=$('clearRecentWrap');
-  if(!state.recents.length){el.innerHTML='<div class="empty">Numbers you open will appear here.</div>';w.innerHTML='';return}
+  const el=$('recents'),w=$('clearRecentWrap'),sIn=$('search');
+  sIn.hidden=state.recents.length<6;
+  if(!state.recents.length){el.innerHTML='<div class="empty">Numbers you open will appear here. Add a name to keep a number permanently.</div>';w.innerHTML='';return}
+  const hasUnl=state.recents.some(r=>!r.label);
   w.innerHTML=state.confirmClear
-    ?`<span class="confirm">Clear all? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
-    :`<button class="btn small" data-act="clearall">Clear all</button>`;
-  el.innerHTML=state.recents.map((r,i)=>{
-    const c=COUNTRIES.find(x=>x.id===r.country);
-    return `<div class="item"><button class="main" data-act="reuse" data-i="${i}"><div class="rnum">+${r.code} ${r.local}</div><div class="b">${c?c.name:''} · ${ago(r.at)}</div></button><div class="acts"><button class="btn small" data-act="rm" data-i="${i}" aria-label="Remove">✕</button></div></div>`;
+    ?`<span class="confirm">Remove numbers without a name? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
+    :(hasUnl?`<button class="btn small" data-act="clearall">Clear unnamed</button>`:'');
+  const q=sIn.hidden?'':sIn.value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
+  const list=state.recents.filter(r=>!q||(r.label||'').toLowerCase().includes(q)||(qd&&r.full.includes(qd)));
+  if(!list.length){el.innerHTML='<div class="empty">No numbers match “'+esc(q)+'”.</div>';return}
+  el.innerHTML=list.map(r=>{
+    const c=COUNTRIES.find(x=>x.id===r.country),f=r.full;
+    if(state.labelEditing===f)return `<div class="item editing">
+      <div class="rnum">+${r.code} ${r.local}</div>
+      <input class="txt" id="eLabel" dir="auto" placeholder="Name / note" value="${esc(r.label||'')}">
+      <div class="acts"><button class="btn small" data-act="lcancel">Cancel</button><button class="btn small primary" data-act="lsave" data-f="${f}">Save</button></div></div>`;
+    const acts=state.confirmRm===f
+      ?`<span class="confirm">Delete? <button class="btn small" data-act="normv">No</button><button class="btn small danger solid" data-act="yesrm" data-f="${f}">Yes</button></span>`
+      :`<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
+    return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}</div></button><div class="acts">${acts}</div></div>`;
   }).join('');
+  const e=$('eLabel');if(e){e.focus();e.onkeydown=ev=>{if(ev.key==='Enter')el.querySelector('[data-act="lsave"]').click()}}
+}
+function loadRecent(r){
+  setCountry(r.country);if(r.country==='ot')ccIn.value=r.code;numIn.value=r.local;labelIn.value=r.label||'';
+  $('picks').hidden=true;update();
+  if(state.pending&&state.pending.nameAuto&&state.pending.keys.includes('name')){state.pending.vals.name=nameFromLabel();renderVars();applyVars()}
 }
 function recentClick(e){
   const b=e.target.closest('[data-act]');if(!b)return;
-  const act=b.dataset.act,i=+b.dataset.i;
-  if(act==='reuse'){const r=state.recents[i];setCountry(r.country);if(r.country==='ot')ccIn.value=r.code;numIn.value=r.local;update();window.scrollTo({top:0,behavior:'smooth'})}
-  if(act==='rm'){state.recents.splice(i,1);store.set('qc_recents',state.recents)}
+  const act=b.dataset.act,f=b.dataset.f,r=state.recents.find(x=>x.full===f);
+  if(act==='reuse'){loadRecent(r);window.scrollTo({top:0,behavior:'smooth'});return}
+  if(act==='ledit'){state.labelEditing=f;state.confirmRm=null}
+  if(act==='lcancel'){state.labelEditing=null}
+  if(act==='lsave'){r.label=$('eLabel').value.trim();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')}
+  if(act==='rm'){if(r&&r.label)state.confirmRm=f;else{state.recents=state.recents.filter(x=>x.full!==f);store.set('qc_recents',state.recents)}}
+  if(act==='normv')state.confirmRm=null;
+  if(act==='yesrm'){state.recents=state.recents.filter(x=>x.full!==f);state.confirmRm=null;store.set('qc_recents',state.recents);renderBk();toast('Number deleted')}
   if(act==='clearall')state.confirmClear=true;
   if(act==='noclear')state.confirmClear=false;
-  if(act==='yesclear'){state.recents=[];state.confirmClear=false;store.set('qc_recents',[])}
+  if(act==='yesclear'){state.recents=state.recents.filter(x=>x.label);state.confirmClear=false;store.set('qc_recents',state.recents)}
   renderRecents();
 }
+$('search').addEventListener('input',renderRecents);
+
+/* ---- Backup / restore ---- */
+function renderBk(){
+  const last=store.get('qc_lastBackup',0),named=state.recents.filter(r=>r.label).length,el=$('bkInfo');
+  const days=last?Math.floor((Date.now()-last)/864e5):null;
+  const counts=`${state.tpls.length} template${state.tpls.length===1?'':'s'} · ${named} named number${named===1?'':'s'} · ${state.recents.length-named} recent.`;
+  el.textContent=(last?`Last backup ${days===0?'today':days+' day'+(days>1?'s':'')+' ago'}. `:'No backup yet. ')+counts;
+  el.className='bk'+((!last&&named)||(days!==null&&days>30&&named)?' warn':'');
+}
+$('exportBk').onclick=()=>{
+  const data={app:'quickchat',version:2,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents};
+  const name='quickchat-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+  store.set('qc_lastBackup',Date.now());renderBk();toast('Backup saved to Downloads');
+};
+$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{
+  const file=e.target.files[0];e.target.value='';if(!file)return;
+  let d;try{d=JSON.parse(await file.text())}catch(err){d=null}
+  if(!d||d.app!=='quickchat'||!Array.isArray(d.templates)||!Array.isArray(d.numbers)){toast('This file is not a QuickChat backup');return}
+  let nt=0,nn=0;
+  d.templates.forEach((t,k)=>{
+    if(!t||typeof t.body!=='string'||!t.body.trim()||state.tpls.some(x=>x.body===t.body))return;
+    let id=String(t.id||'');if(!id||state.tpls.some(x=>x.id===id))id='t'+Date.now()+'_'+k;
+    state.tpls.push({id,title:String(t.title||t.body.slice(0,30)),body:t.body,pinned:!!t.pinned});nt++;
+  });
+  d.numbers.forEach(r=>{
+    if(!r||!/^\d{6,15}$/.test(String(r.full)))return;
+    const ex=state.recents.find(x=>x.full===r.full);
+    if(ex){if(!ex.label&&r.label){ex.label=String(r.label);nn++}return}
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||'')});nn++;
+  });
+  state.recents.sort((a,b)=>b.at-a.at);trimRecents();
+  store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);
+  renderTpls();renderRecents();renderBk();
+  toast(`Imported ${nt} template${nt===1?'':'s'} and ${nn} number${nn===1?'':'s'}`);
+};
 $('recents').addEventListener('click',recentClick);
 $('clearRecentWrap').addEventListener('click',recentClick);
 
@@ -379,7 +511,14 @@ ccIn.addEventListener('input',update);
 msgIn.addEventListener('input',update);
 function setApp(a){state.app=a;store.set('qc_app',a);$('appWa').setAttribute('aria-pressed',a==='wa');$('appWb').setAttribute('aria-pressed',a==='wb');update()}
 $('appWa').onclick=()=>setApp('wa');$('appWb').onclick=()=>setApp('wb');
-go.addEventListener('click',e=>{e.preventDefault();if(!current)return;addRecent();location.href=buildLink(current.full)});
+go.addEventListener('click',e=>{
+  e.preventDefault();if(!current)return;
+  const left=leftoverVars();
+  if(left.length){toast('Fill '+[...new Set(left)].join(', ')+' first');const v=$('vars').querySelector('input');if(v)v.focus();else msgIn.focus();return}
+  addRecent();location.href=buildLink(current.full);
+});
+msgIn.addEventListener('input',()=>{if(state.pending){state.pending=null;renderVars()}});
+labelIn.addEventListener('input',()=>{const p=state.pending;if(p&&p.nameAuto&&p.keys.includes('name')){p.vals.name=nameFromLabel();renderVars();applyVars()}});
 async function pasteFromClipboard(){
   try{const t=await navigator.clipboard.readText();if(t&&t.trim())return handleText(t,'paste');toast('Clipboard is empty')}
   catch(err){toast('Allow clipboard access, or long-press the field to paste');numIn.focus()}
@@ -398,17 +537,17 @@ $('copyLink').onclick=()=>{
   const fallback=()=>{numIn.value=link;numIn.select();toast('Select and copy the link')};
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(()=>toast('Link copied'),fallback)}else fallback();
 };
-$('clear').onclick=()=>{numIn.value='';msgIn.value='';update();numIn.focus()};
+$('clear').onclick=()=>{numIn.value='';msgIn.value='';labelIn.value='';state.pending=null;renderVars();$('picks').hidden=true;update();numIn.focus()};
 let tt;function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800)}
 
-setCountry(state.country);setApp(state.app);renderTpls();renderRecents();
+setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();
 // Example state on first open so the tool shows how it works
 const qs=new URLSearchParams(location.search);
 const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
 const action=qs.get('action');
 if(shared||action){try{history.replaceState(null,'',location.pathname)}catch(e){}store.set('qc_seen',true)}
 if(shared){handleText(shared,'share')}
-else if(action==='last'){const r=state.recents[0];if(r){applyNumber({country:r.country,code:r.code,local:r.local,full:r.full,intl:r.country==='ot'});if(r.country==='ot'){ccIn.value=r.code;numIn.value=r.local;update()}toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
+else if(action==='last'){const r=state.recents[0];if(r){loadRecent(r);toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
 else if(action==='paste'){numIn.focus();pasteFromClipboard()}
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
 })();
