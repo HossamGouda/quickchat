@@ -44,9 +44,9 @@
       ]
     },
     {
-      "name": "Last number",
-      "short_name": "Last",
-      "url": "./?action=last",
+      "name": "Follow-ups due",
+      "short_name": "Follow-ups",
+      "url": "./#fu",
       "icons": [
         {
           "src": "icon-192.png",
