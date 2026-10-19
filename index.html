@@ -78,6 +78,11 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .foot{font-size:12px;color:var(--muted)}
+.picks{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent-soft)}
+.picks p{margin:0;font-size:13px;color:var(--fg)}
+.picks .chips{display:flex;flex-wrap:wrap;gap:6px}
+.picks .chip{border:1px solid var(--accent);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 14px var(--mono);font-variant-numeric:tabular-nums;cursor:pointer}
+.picks .chip small{font:500 11px var(--sans);color:var(--muted);margin-left:4px}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 
@@ -103,11 +108,12 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
         <button type="button" class="btn" id="paste">Paste</button>
       </div>
       <div class="hint" id="hint">Paste or type a number. Local or international format both work.</div>
+      <div class="picks" id="picks" hidden></div>
     </div>
 
     <div class="field">
       <label class="lbl" for="msg">Message (optional)</label>
-      <textarea id="msg" placeholder="Pick a template below or type here"></textarea>
+      <textarea id="msg" dir="auto" placeholder="Pick a template below or type here"></textarea>
     </div>
 
     <div class="field">
@@ -135,7 +141,7 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
     <div class="list" id="recents"></div>
   </section>
 
-  <p class="foot">Templates and recent numbers are stored only on this phone.</p>
+  <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Templates and recent numbers are stored only on this phone.</p>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -217,6 +223,55 @@ function parse(){
   const warn=c.first&&!c.first.test(d)?`This doesn't look like a ${c.name} mobile number. Check it before sending.`:'';
   return {code,local:d,full:code+d,warn};
 }
+/* Pure: turn one raw number string into {country, local, code, full} or null */
+function normalize(raw){
+  const intl=/^\s*(\+|00)/.test(raw);
+  let d=raw.replace(/\D/g,'');
+  if(intl){
+    if(d.startsWith('00'))d=d.slice(2);
+    const c=COUNTRIES.find(c=>c.code&&d.startsWith(c.code)&&d.length===c.code.length+c.len);
+    if(c)return {country:c.id,code:c.code,local:d.slice(c.code.length),full:d};
+    if(d.length>=8&&d.length<=15)return {country:'ot',code:'',local:d,full:d,intl:true};
+    return null;
+  }
+  for(const c of COUNTRIES){
+    if(c.code&&d.startsWith(c.code)&&d.length===c.code.length+c.len&&c.first.test(d.slice(c.code.length)))
+      return {country:c.id,code:c.code,local:d.slice(c.code.length),full:d};
+  }
+  const l=d.replace(/^0+/,'');
+  const order=[country(),...COUNTRIES.filter(c=>c.id!==state.country)].filter(c=>c.code);
+  const c=order.find(c=>l.length===c.len&&c.first.test(l));
+  if(c)return {country:c.id,code:c.code,local:l,full:c.code+l};
+  return null;
+}
+/* Pure: find every phone number in free text (SMS, email signature, PDF) */
+function extractNumbers(text){
+  const out=[],seen=new Set();
+  const re=/(?:\+|00)?\d[\d\s\-(). ]{6,20}\d/g;
+  const norm=String(text).replace(/[٠-٩]/g,ch=>String(ch.charCodeAt(0)-0x0660)).replace(/[۰-۹]/g,ch=>String(ch.charCodeAt(0)-0x06f0));
+  let m;
+  while((m=re.exec(norm))){
+    const n=normalize(m[0]);
+    if(n&&!seen.has(n.full)){seen.add(n.full);out.push(n)}
+  }
+  return out;
+}
+function applyNumber(n){
+  setCountry(n.country);
+  if(n.intl){numIn.value='+'+n.full}else{numIn.value=n.local}
+  $('picks').hidden=true;update();
+}
+function handleText(text,source){
+  const found=extractNumbers(text||'');
+  const p=$('picks');
+  if(!found.length){p.hidden=true;toast(source==='share'?'No phone number found in shared text':'No phone number found');return false}
+  if(found.length===1){applyNumber(found[0]);if(source)toast('Number added');return true}
+  p.innerHTML='<p>'+found.length+' numbers found. Tap the one to message:</p><div class="chips">'+found.map((n,i)=>{
+    const c=COUNTRIES.find(x=>x.id===n.country);
+    return `<button type="button" class="chip" data-i="${i}">+${n.code?n.code+' '+n.local:n.full}<small>${c.id==='ot'?'':c.name}</small></button>`}).join('')+'</div>';
+  p.hidden=false;p._found=found;
+  return true;
+}
 function buildLink(full){
   const t=msgIn.value.trim();
   const p='phone='+full+(t?'&text='+encodeURIComponent(t):'');
@@ -258,8 +313,8 @@ function renderTpls(){
   if(!state.tpls.length&&state.editing!=='new'){el.innerHTML='<div class="empty">No templates yet. Tap “+ New” to add one.</div>';return}
   let html='';
   const editor=(t)=>`<div class="item editing">
-      <input class="txt" id="eTitle" placeholder="Title" value="${esc(t.title)}">
-      <textarea id="eBody" placeholder="Message text">${esc(t.body)}</textarea>
+      <input class="txt" id="eTitle" dir="auto" placeholder="Title" value="${esc(t.title)}">
+      <textarea id="eBody" dir="auto" placeholder="Message text">${esc(t.body)}</textarea>
       <div class="acts"><button class="btn small" data-act="cancel">Cancel</button><button class="btn small primary" data-act="save" data-id="${t.id}">Save</button></div>
     </div>`;
   if(state.editing==='new') html+=editor({id:'new',title:'',body:''});
@@ -268,7 +323,7 @@ function renderTpls(){
     const acts=state.confirmDel===t.id
       ?`<span class="confirm">Delete? <button class="btn small" data-act="nodel">No</button><button class="btn small danger solid" data-act="yesdel" data-id="${t.id}">Yes</button></span>`
       :`<button class="btn small" data-act="edit" data-id="${t.id}">Edit</button><button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>`;
-    html+=`<div class="item"><button class="main" data-act="use" data-id="${t.id}"><div class="t">${esc(t.title)}</div><div class="b">${esc(t.body)}</div></button><div class="acts">${acts}</div></div>`;
+    html+=`<div class="item"><button class="main" data-act="use" data-id="${t.id}"><div class="t" dir="auto">${esc(t.title)}</div><div class="b" dir="auto">${esc(t.body)}</div></button><div class="acts">${acts}</div></div>`;
   });
   el.innerHTML=html;
   const f=$('eTitle');if(f&&!f.value)f.focus();
@@ -325,7 +380,17 @@ msgIn.addEventListener('input',update);
 function setApp(a){state.app=a;store.set('qc_app',a);$('appWa').setAttribute('aria-pressed',a==='wa');$('appWb').setAttribute('aria-pressed',a==='wb');update()}
 $('appWa').onclick=()=>setApp('wa');$('appWb').onclick=()=>setApp('wb');
 go.addEventListener('click',e=>{e.preventDefault();if(!current)return;addRecent();location.href=buildLink(current.full)});
-$('paste').onclick=async()=>{try{const t=await navigator.clipboard.readText();if(t){numIn.value=t.trim();update()}else toast('Clipboard is empty')}catch(err){toast('Allow clipboard access, or long-press the field to paste');numIn.focus()}};
+async function pasteFromClipboard(){
+  try{const t=await navigator.clipboard.readText();if(t&&t.trim())return handleText(t,'paste');toast('Clipboard is empty')}
+  catch(err){toast('Allow clipboard access, or long-press the field to paste');numIn.focus()}
+  return false;
+}
+$('paste').onclick=pasteFromClipboard;
+numIn.addEventListener('paste',e=>{
+  const t=(e.clipboardData||window.clipboardData).getData('text');
+  if(t&&(/[^\d\s+\-().]/.test(t)||extractNumbers(t).length>1)){e.preventDefault();handleText(t,'paste')}
+});
+$('picks').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)applyNumber($('picks')._found[+b.dataset.i])});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 $('copyLink').onclick=()=>{
   if(!current){toast('Enter a valid number first');return}
@@ -338,6 +403,13 @@ let tt;function toast(s){const t=$('toast');t.textContent=s;t.classList.add('sho
 
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();
 // Example state on first open so the tool shows how it works
+const qs=new URLSearchParams(location.search);
+const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
+const action=qs.get('action');
+if(shared||action){try{history.replaceState(null,'',location.pathname)}catch(e){}store.set('qc_seen',true)}
+if(shared){handleText(shared,'share')}
+else if(action==='last'){const r=state.recents[0];if(r){applyNumber({country:r.country,code:r.code,local:r.local,full:r.full,intl:r.country==='ot'});if(r.country==='ot'){ccIn.value=r.code;numIn.value=r.local;update()}toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
+else if(action==='paste'){numIn.focus();pasteFromClipboard()}
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
 })();
 </script>
