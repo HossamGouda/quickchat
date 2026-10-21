@@ -490,7 +490,7 @@ function update(){
   else{go.href='#';go.setAttribute('aria-disabled','true');}
 }
 
-function keep(r){return r.label||r.due||r.status||r.note||r.value}
+function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg}
 function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
 function addRecent(){
   if(!current) return;
@@ -663,11 +663,11 @@ $('nudgeGo').onclick=shareBackup;
 $('nudgeLater').onclick=()=>{store.set('qc_nudgeSnooze',Date.now()+864e5);renderBk()};
 $('csvBk').onclick=()=>{
   const cell=v=>{v=String(v==null?'':v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-  const head=['Name','Number','Country','Status','Quote value (SAR)','Note','Follow-up date','Last contact'];
+  const head=['Name','Number','Country','Status','Quote value (SAR)','Note','Follow-up date','Follow-up time','Message to send','Last contact'];
   const order={quoted:0,waiting:1,won:2,lost:3,'':4};
   const rows=state.recents.slice().sort((a,b)=>(order[a.status||'']-order[b.status||''])||(a.label||'').localeCompare(b.label||'')).map(r=>{
     const c=COUNTRIES.find(x=>x.id===r.country);
-    return [r.label||'','+'+r.full,c&&c.id!=='ot'?c.name:'',r.status?ST_LABEL[r.status]:'',r.value||'',r.note||'',r.due||'',new Date(r.at).toISOString().slice(0,10)];
+    return [r.label||'','+'+r.full,c&&c.id!=='ot'?c.name:'',r.status?ST_LABEL[r.status]:'',r.value||'',r.note||'',r.due||'',r.due?dueTime(r):'',r.fuMsg||'',new Date(r.at).toISOString().slice(0,10)];
   });
   dl(new Blob(['﻿'+[head].concat(rows).map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'quickchat-contacts-'+stamp()+'.csv');
   toast('Excel file saved to Downloads');
@@ -700,10 +700,12 @@ $('importFile').onchange=async e=>{
       if(!ex.due&&okDay(r.due)){ex.due=r.due;ch=true}
       if(!ex.status&&STATUSES.includes(r.status)&&r.status){ex.status=r.status;ch=true}
       if(!ex.note&&r.note){ex.note=String(r.note).slice(0,500);ch=true}
+      if(!ex.fuMsg&&r.fuMsg){ex.fuMsg=String(r.fuMsg).slice(0,2000);ch=true}
+      if(!ex.dueTime&&/^\d\d:\d\d$/.test(r.dueTime||'')){ex.dueTime=r.dueTime;ch=true}
       if(!ex.value&&+r.value){ex.value=Math.round(+r.value);ch=true}
       if(!(ex.log&&ex.log.length)&&r.log){ex.log=okLog(r.log);ch=true}
       if(ch)nn++;return}
-    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),value:Math.round(+r.value||0),log:okLog(r.log)});nn++;
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log)});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
   store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);
@@ -724,7 +726,7 @@ go.addEventListener('click',e=>{
   const left=leftoverVars();
   if(left.length){toast('Fill '+[...new Set(left)].join(', ')+' first');const v=$('vars').querySelector('input');if(v)v.focus();else msgIn.focus();return}
   addRecent();
-  if(state.fuActive===current.full){const r=state.recents.find(x=>x.full===current.full);if(r)setDueVal(r,'');state.fuActive=null;store.set('qc_recents',state.recents)}
+  if(state.fuActive===current.full){const r=state.recents.find(x=>x.full===current.full);if(r){setDueVal(r,'');r.fuMsg=''}state.fuActive=null;store.set('qc_recents',state.recents)}
   store.set('qc_fuPrompt',current.full);state.cardMode='just';renderFuPrompt();renderFollowups();location.href=buildLink(current.full);
 });
 msgIn.addEventListener('input',()=>{if(state.pending){state.pending=null;renderVars()}});
@@ -756,6 +758,8 @@ function dayDiff(ds){const t=new Date();t.setHours(0,0,0,0);return Math.round((p
 function loc(){return state.lang==='ar'?'ar-u-ca-gregory-nu-latn':'en-GB'}
 function fmtDay(ds){return parseDay(ds).toLocaleDateString(loc(),{weekday:'short',day:'numeric',month:'short'})}
 function fmtShort(ts){return new Date(ts).toLocaleDateString(loc(),{day:'numeric',month:'short'})}
+function dueTime(r){return /^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'09:00'}
+function dueWhen(r){return dueLabel(r.due)+(dueTime(r)!=='09:00'?' · '+dueTime(r):'')}
 function dueLabel(ds){const n=dayDiff(ds);if(n<0)return 'Overdue '+(-n)+' d';if(n===0)return 'Today';if(n===1)return 'Tomorrow';return fmtDay(ds)}
 function dueLow(ds){const l=dueLabel(ds);return dayDiff(ds)<=1?l.toLowerCase():'on '+l}
 function sar(v){return 'SAR '+Math.round(Number(v)||0).toLocaleString('en-US')}
@@ -780,10 +784,10 @@ function fuRow(r,kind){
     meta=`<span>Messaged ${ago(r.at)}</span>`;
     acts=`<button type="button" class="btn small" data-act="q3" data-f="${r.full}">3 days</button><button type="button" class="btn small" data-act="q7" data-f="${r.full}">1 week</button>`;
   }else if(kind==='list'){
-    meta=r.due&&isOpen(r)?`<span class="due ${dayDiff(r.due)<0?'od':dayDiff(r.due)===0?'td':''}">${dueLabel(r.due)}</span>`:`<span>Last contact ${ago(r.at)}</span>`;
+    meta=r.due&&isOpen(r)?`<span class="due ${dayDiff(r.due)<0?'od':dayDiff(r.due)===0?'td':''}">${dueWhen(r)}</span>`:`<span>Last contact ${ago(r.at)}</span>`;
     acts=stChip(r);
   }else{
-    const n=dayDiff(r.due);meta=`<span class="due ${n<0?'od':n===0?'td':''}">${dueLabel(r.due)}</span>`;
+    const n=dayDiff(r.due);meta=`<span class="due ${n<0?'od':n===0?'td':''}">${dueWhen(r)}</span>`+(r.fuMsg?' · <span>Message ready</span>':'');
     acts=stChip(r)+(kind==='due'?`<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button>`:'');
   }
   return `<div class="item"><button type="button" class="main fuitem" data-act="open" data-f="${r.full}" aria-label="Open details">${lab}${num}<div class="meta">${meta}</div>${extra?`<div class="xtra">${extra}</div>`:''}</button><div class="acts">${acts}</div></div>`;
@@ -808,7 +812,7 @@ function renderFilters(){
 $('fuFilters').addEventListener('click',e=>{const b=e.target.closest('[data-flt]');if(!b)return;state.fuFilter=b.dataset.flt;$('fltSearch').value='';renderFollowups()});
 $('fltSearch').addEventListener('input',()=>renderFollowups());
 function renderFollowups(){
-  const all=state.recents.filter(r=>r.due&&isOpen(r)).sort((a,b)=>a.due<b.due?-1:a.due>b.due?1:0);
+  const key=r=>r.due+' '+dueTime(r),all=state.recents.filter(r=>r.due&&isOpen(r)).sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
   const t=todayStr(),due=all.filter(r=>r.due<=t),up=all.filter(r=>r.due>t);
   $('tb-fu').innerHTML='<span>Follow-ups</span>'+(due.length?`<span class="badge" aria-label="${due.length} due">${due.length}</span>`:'');
   renderPipeline();renderFilters();
@@ -835,9 +839,9 @@ function renderFollowups(){
 }
 function startFollowUp(r){
   state.fuActive=r.full;setTab('chat');loadRecent(r);
-  const t=findFuTpl();if(t){useTemplate(t)}
+  const t=r.fuMsg?{body:r.fuMsg}:findFuTpl();if(t){useTemplate(t)}
   window.scrollTo({top:0,behavior:'smooth'});
-  toast(t?'Follow-up message ready. Tap Open chat':'Number loaded. Tap Open chat');
+  toast(r.fuMsg?'Saved message ready. Tap Open chat':t?'Follow-up message ready. Tap Open chat':'Number loaded. Tap Open chat');
 }
 function openCard(r,mode){store.set('qc_fuPrompt',r.full);state.cardMode=mode||'contact';renderFuPrompt();renderFollowups();setTimeout(()=>$('fuPrompt').scrollIntoView({behavior:'smooth',block:'start'}),50)}
 function fuListClick(e){
@@ -862,11 +866,13 @@ function renderFuPrompt(){
     <input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name" value="${esc(r.label||'')}" aria-label="Name">
     <div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div>
     <div class="wrapr"><span class="bk">Status</span>${['quoted','waiting','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
-    <div class="wrapr"><span class="bk">Follow-up date</span>${r.due&&isOpen(r)?`<b class="due">${dueLabel(r.due)}</b><button type="button" class="btn small danger" data-x="clear">Remove</button>`:''}</div>
+    <div class="wrapr"><span class="bk">Follow-up date</span>${r.due&&isOpen(r)?`<b class="due">${dueWhen(r)}</b><button type="button" class="btn small danger" data-x="clear">Remove</button>`:''}</div>
     <div class="wrapr"><button type="button" class="chip" data-d="1">Tomorrow</button><button type="button" class="chip" data-d="3">3 days</button><button type="button" class="chip" data-d="7">1 week</button>
-      <label class="datechip"><span>Date</span><input type="date" id="fpDate" min="${todayStr(1)}" aria-label="Pick a follow-up date"></label></div>
+      <label class="datechip"><span>Date</span><input type="date" id="fpDate" min="${todayStr(1)}" aria-label="Pick a follow-up date"></label>
+      <label class="datechip"><span>Time</span><input type="time" id="fpTime" dir="ltr" value="${dueTime(r)}" aria-label="Follow-up time"></label></div>
     <label class="chk"><input type="checkbox" id="fpCal" ${cal?'checked':''}> <span>Also add a reminder to my phone calendar</span></label>
     <div class="two"><label class="field"><span class="lbl">Quote value (SAR)</span><input class="txt" id="fpVal" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="0" value="${r.value?Math.round(r.value):''}"></label></div>
+    <label class="field"><span class="lbl">Message to send (optional)</span><textarea id="fpMsg" dir="auto" rows="3" placeholder="Leave empty to use your Follow-up template">${esc(r.fuMsg||'')}</textarea></label>
     <label class="field"><span class="lbl">Note</span><textarea id="fpNote" dir="auto" rows="2" placeholder="What was quoted, site, products">${esc(r.note||'')}</textarea></label>
     ${log.length?`<details class="tl"><summary>History (${log.length})</summary><ol>${log.map(x=>`<li><span class="d">${fmtShort(x.t)}</span> <span>${(EV_TXT[x.e]||(()=>x.e))(x.v)}</span></li>`).join('')}</ol></details>`:''}
     <button type="button" class="btn primary" data-x="go">Follow up now</button>`;
@@ -878,6 +884,9 @@ function saveCardFields(r){
   const val=Math.round(parseFloat(String(v.value).replace(/[^\d.]/g,''))||0);
   if(val!==(+r.value||0)){r.value=val;if(val)logEv(r,'value',val)}
   r.note=no.value.trim().slice(0,500);
+  const tm=$('fpTime'),fm=$('fpMsg');
+  if(tm&&/^\d\d:\d\d$/.test(tm.value))r.dueTime=tm.value;
+  if(fm)r.fuMsg=fm.value.trim().slice(0,2000);
 }
 function closeCard(){store.set('qc_fuPrompt','');state.cardMode=null;renderFuPrompt()}
 function setDue(r,ds){
@@ -890,6 +899,7 @@ $('fuPrompt').addEventListener('change',e=>{
   const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(!r)return;
   if(e.target.id==='fpCal'){store.set('qc_cal',e.target.checked);return}
   if(e.target.id==='fpDate'){if(e.target.value)setDue(r,e.target.value);return}
+  if(e.target.id==='fpTime'){saveCardFields(r);store.set('qc_recents',state.recents);renderFollowups();if(r.due)toast('Follow-up time: '+dueTime(r));return}
   saveCardFields(r);store.set('qc_recents',state.recents);renderFollowups();renderBk();
 });
 $('fuPrompt').addEventListener('click',e=>{
@@ -903,11 +913,11 @@ $('fuPrompt').addEventListener('click',e=>{
   if(b.dataset.x){saveRecents();closeCard()}
 });
 function calLink(r){
-  const s=parseDay(r.due);s.setHours(9,0,0,0);const en=new Date(s.getTime()+15*60000);
+  const s=parseDay(r.due),hm=dueTime(r).split(':');s.setHours(+hm[0],+hm[1],0,0);const en=new Date(s.getTime()+15*60000);
   const fmt=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
   const appUrl=location.origin+location.pathname+'?fu='+r.full;
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(tr('WhatsApp follow-up:')+' '+who(r))
-    +'&dates='+fmt(s)+'/'+fmt(en)+'&details='+encodeURIComponent('Number: +'+r.full+(r.status?'\nStatus: '+ST_LABEL[r.status]:'')+(r.value?'\nQuote: '+sar(r.value):'')+(r.note?'\nNote: '+r.note:'')+'\nOpen in QuickChat: '+appUrl);
+    +'&dates='+fmt(s)+'/'+fmt(en)+'&details='+encodeURIComponent('Number: +'+r.full+(r.status?'\nStatus: '+ST_LABEL[r.status]:'')+(r.value?'\nQuote: '+sar(r.value):'')+(r.note?'\nNote: '+r.note:'')+(r.fuMsg?'\nMessage: '+r.fuMsg:'')+'\nOpen in QuickChat: '+appUrl);
 }
 $('qCur').addEventListener('click',e=>{
   const b=e.target.closest('[data-qfu]');if(!b||!q)return;const ds=todayStr(+b.dataset.qfu);let n=0;
@@ -945,12 +955,12 @@ $('attach').addEventListener('click',e=>{
 });
 
 /* ---------- Version / what's new ---------- */
-const APP_VERSION='3.0';
-const WHATS_NEW=['Follow-ups: quote value, notes and history for each contact','Pipeline totals: open quotes, won this month, win rate','Filter contacts by status, and search notes','Back up to Google Drive in one tap, and export contacts to Excel','Share a PDF quotation into QuickChat and pass it to the chat','Arabic interface (tap العربية at the top)'];
+const APP_VERSION='3.1';
+const WHATS_NEW=['Follow-ups: pick the exact time, and write the message to send in advance','Follow-ups: quote value, notes and history for each contact','Pipeline totals: open quotes, won this month, win rate','Filter contacts by status, and search notes','Back up to Google Drive in one tap, and export contacts to Excel','Share a PDF quotation into QuickChat and pass it to the chat','Arabic interface (tap العربية at the top)'];
 function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}
-  el.innerHTML=`<div class="qhead"><span><b>Updated to version ${APP_VERSION}</b></span><button type="button" class="btn small" id="wnOk">OK</button></div><ul class="steps">${WHATS_NEW.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  el.innerHTML=`<div class="qhead"><span><b>Updated to version ${APP_VERSION}</b></span><button type="button" class="btn small" id="wnOk">OK</button></div><ul class="steps">${(seen==='3.0'?WHATS_NEW.slice(0,1):WHATS_NEW).map(x=>`<li>${x}</li>`).join('')}</ul>`;
   el.hidden=false;
   $('wnOk').onclick=()=>{store.set('qc_ver',APP_VERSION);el.hidden=true};
 }
@@ -1021,7 +1031,7 @@ const AR={
 'This template link is broken':'رابط القوالب هذا تالف','Enter the name first':'أدخل الاسم أولًا','Name saved':'تم حفظ الاسم','Name removed':'تم حذف الاسم',
 'No phone number found in shared text':'لم يُعثر على رقم هاتف في النص المشترك','No phone number found':'لم يُعثر على رقم هاتف','Template added to message':'تمت إضافة القالب إلى الرسالة',
 'Follow-up message ready. Tap Open chat':'رسالة المتابعة جاهزة. اضغط «افتح المحادثة»','Number loaded. Tap Open chat':'تم تحميل الرقم. اضغط «افتح المحادثة»',
-'just now':'الآن','Hello, I\'d like a quotation.':'مرحبًا، أريد عرض سعر.','No backup yet.':'لا توجد نسخة احتياطية بعد.','WhatsApp follow-up:':'متابعة واتساب:'
+'just now':'الآن','Time':'الوقت','Follow-up time':'وقت المتابعة','Message to send (optional)':'الرسالة المراد إرسالها (اختياري)','Leave empty to use your Follow-up template':'اتركها فارغة لاستخدام قالب المتابعة','Message ready':'رسالة جاهزة','Saved message ready. Tap Open chat':'الرسالة المحفوظة جاهزة. اضغط «افتح المحادثة»','Hello, I\'d like a quotation.':'مرحبًا، أريد عرض سعر.','No backup yet.':'لا توجد نسخة احتياطية بعد.','WhatsApp follow-up:':'متابعة واتساب:'
 };
 const AR_RE=[
  [/^(\d+) min ago$/,(m,a)=>'قبل '+a+' د'],[/^(\d+) h ago$/,(m,a)=>'قبل '+a+' س'],[/^(\d+) d ago$/,(m,a)=>'قبل '+a+' يوم'],
@@ -1040,6 +1050,7 @@ const AR_RE=[
  [/^No numbers match “(.*)”\.$/,(m,a)=>'لا توجد أرقام مطابقة لـ «'+a+'».'],
  [/^QuickChat version (.+)$/,(m,a)=>'QuickChat الإصدار '+a],[/^Updated to version (.+)$/,(m,a)=>'تم التحديث إلى الإصدار '+a],
  [/^Status: (.+)$/,(m,a)=>'الحالة: '+trCore(a)],[/^Quote value: (.+)$/,(m,a)=>'قيمة العرض: '+trCore(a)],[/^Follow-up set for (.+)$/,(m,a)=>'ضُبطت المتابعة ليوم '+a],
+ [/^Follow-up time: (.+)$/,(m,a)=>'وقت المتابعة: '+a],
  [/^Follow-up set: (.+)$/,(m,a)=>'ضُبطت المتابعة: '+trCore(a)],[/^Follow-up set for (\d+) contacts?: (.+)$/,(m,a,b)=>'ضُبطت المتابعة لـ '+a+' جهة اتصال: '+trCore(b)],
  [/^Marked (\w+)\. Follow-up cleared$/,(m,a)=>'الحالة: '+trCore(a)+'. أُلغيت المتابعة'],[/^Marked (\w+)$/,(m,a)=>'الحالة: '+trCore(a)],
  [/^Fill (.+) first$/,(m,a)=>'املأ '+a+' أولًا'],[/^Copy failed\. Long-press to copy: (.+)$/,(m,a)=>'فشل النسخ. اضغط مطولًا للنسخ: '+a],
