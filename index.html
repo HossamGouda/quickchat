@@ -9,13 +9,13 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>QuickChat Dialer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: single narrow column, dialer card on top, templates + recents below as lists */
 :root{
   --bg:#f3f5f2; --surface:#ffffff; --fg:#17201b; --muted:#5d6b63; --line:#dbe2dc;
   --accent:#12704a; --accent-fg:#ffffff; --accent-soft:#e2f0e8; --danger:#b3261e; --danger-soft:#fbe9e7; --warn:#9a5b00; --warn-soft:#fdf0d9;
-  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --sans:"IBM Plex Sans","IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -66,7 +66,7 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
 .item{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-top:1px solid var(--line)}
 .item:first-child{border-top:0}
-.item .main{flex:1;min-width:0;cursor:pointer;background:none;border:0;padding:0;text-align:left;color:var(--fg);font:inherit}
+.item .main{flex:1;min-width:0;cursor:pointer;background:none;border:0;padding:0;text-align:start;color:var(--fg);font:inherit}
 .item .t{font-weight:600;font-size:14px}
 .item .b{color:var(--muted);font-size:13px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .item .acts{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:55%}
@@ -82,7 +82,7 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .wrapr{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .fuprompt .chip{border:1px solid var(--accent);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 13px var(--sans);cursor:pointer}
 .fuprompt .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
-.datechip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 12px;font:600 13px var(--sans);background:var(--surface)}
+.datechip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding-block:3px;padding-inline:12px 4px;font:600 13px var(--sans);background:var(--surface)}
 .datechip input{border:0;background:transparent;color:var(--fg);font:500 13px var(--sans);padding:4px}
 .chk{display:flex;gap:8px;align-items:center;font-size:13px}
 .item.editing{flex-direction:column;align-items:stretch;background:var(--accent-soft)}
@@ -104,14 +104,42 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .bk{margin:0;font-size:13px;color:var(--muted)}
 .bk.warn{color:var(--danger)}
 .stack{display:flex;flex-direction:column;gap:10px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+#langBtn{font-family:"IBM Plex Sans Arabic",var(--sans);flex-shrink:0}
+.numrow{direction:ltr}
+.cc small,.prefix{direction:ltr;unicode-bidi:isolate}
+.rnum,.preview{direction:ltr;unicode-bidi:isolate}
+[dir="rtl"] .rnum{text-align:right}
+[dir="rtl"] .item .main,[dir="rtl"] .fuitem{text-align:right}
+.notice{gap:10px}.notice p{margin:0}.warnc{border-color:var(--warn);background:var(--warn-soft)}
+.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.attn{font-weight:600;overflow-wrap:anywhere}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .k{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.stat b{font:700 22px var(--sans);font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.filters button{flex-shrink:0;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 13px var(--sans);cursor:pointer}
+.filters button small{color:var(--muted);font-weight:500}
+.filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.filters button[aria-pressed="true"] small{color:var(--bg)}
+.xtra{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;margin-top:2px}
+.xtra .val{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
+.xtra .nt{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.two{display:grid;grid-template-columns:1fr;gap:8px}
+.tl summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.tl ol{margin:8px 0 0;padding-inline-start:18px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.tl .d{color:var(--muted);font-variant-numeric:tabular-nums}
+.bk.okc{color:var(--accent)}
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .tabs button{border:0;background:transparent;color:var(--muted);font:600 13px var(--sans);padding:9px 2px;display:flex;align-items:center;justify-content:center;gap:4px;border-radius:9px;cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg)}
 .tabs button{position:relative;white-space:nowrap}
-.badge{position:absolute;top:-4px;right:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--danger);color:#fff;font:700 11px/18px var(--sans);box-shadow:0 0 0 2px var(--surface)}
+.badge{position:absolute;top:-4px;inset-inline-end:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--danger);color:#fff;font:700 11px/18px var(--sans);box-shadow:0 0 0 2px var(--surface)}
 .tabpane{display:flex;flex-direction:column;gap:20px}
 select.txt{appearance:auto}
-.note{margin:0;font-size:12px;color:var(--muted);border-left:3px solid var(--danger);padding-left:10px}
+.note{margin:0;font-size:12px;color:var(--muted);border-inline-start:3px solid var(--danger);padding-inline-start:10px}
 .qhead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;font-weight:600}
 .bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
@@ -126,16 +154,17 @@ select.txt{appearance:auto}
 .picks p{margin:0;font-size:13px;color:var(--fg)}
 .picks .chips{display:flex;flex-wrap:wrap;gap:6px}
 .picks .chip{border:1px solid var(--accent);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 14px var(--mono);font-variant-numeric:tabular-nums;cursor:pointer}
-.picks .chip small{font:500 11px var(--sans);color:var(--muted);margin-left:4px}
+.picks .chip small{font:500 11px var(--sans);color:var(--muted);margin-inline-start:4px}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>QuickChat</h1>
-    <p>Message any WhatsApp number without saving it.</p>
+  <header class="hdr">
+    <div><h1 translate="no">QuickChat</h1>
+    <p>Message any WhatsApp number without saving it.</p></div>
+    <button type="button" class="btn small" id="langBtn" translate="no" lang="ar">العربية</button>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
@@ -146,6 +175,13 @@ select.txt{appearance:auto}
   </nav>
 
   <div class="tabpane" id="tab-chat">
+  <div class="card notice" id="whatsNew" hidden></div>
+  <div class="card notice warnc" id="bkNudge" hidden>
+    <p><b>Back up your contacts</b></p>
+    <p class="bk" id="nudgeTxt"></p>
+    <div class="row2"><button type="button" class="btn primary" id="nudgeGo" style="flex:1">Back up now</button><button type="button" class="btn" id="nudgeLater" style="flex:1">Later</button></div>
+  </div>
+  <div class="card notice" id="attach" hidden></div>
   <div class="card">
     <div class="field">
       <label class="lbl">Country</label>
@@ -155,8 +191,8 @@ select.txt{appearance:auto}
     <div class="field">
       <label class="lbl" for="num">Phone number</label>
       <div class="numrow">
-        <div class="prefix">+<input id="cc" inputmode="numeric" maxlength="4" aria-label="Country code"></div>
-        <input id="num" class="num" inputmode="tel" autocomplete="off" placeholder="05X XXX XXXX">
+        <div class="prefix">+<input id="cc" dir="ltr" inputmode="numeric" maxlength="4" aria-label="Country code"></div>
+        <input id="num" dir="ltr" class="num" inputmode="tel" autocomplete="off" placeholder="05X XXX XXXX">
         <button type="button" class="btn" id="paste">Paste</button>
       </div>
       <div class="hint" id="hint">Paste or type a number. Local or international format both work.</div>
@@ -205,19 +241,31 @@ select.txt{appearance:auto}
     <h2>Backup</h2>
     <div class="card" style="gap:10px">
       <p class="bk" id="bkInfo"></p>
+      <p class="bk" id="bkStore"></p>
+      <button type="button" class="btn primary" id="shareBk">Back up to Drive or share</button>
       <div class="row2">
-        <button type="button" class="btn" id="exportBk" style="flex:1">Export backup</button>
+        <button type="button" class="btn" id="exportBk" style="flex:1">Download backup</button>
         <button type="button" class="btn" id="importBtn" style="flex:1">Import backup</button>
       </div>
-      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <button type="button" class="btn" id="csvBk">Export contacts to Excel (CSV)</button>
+      <input type="file" id="importFile" accept="application/json,text/plain,.json,.txt" hidden>
     </div>
   </section>
 
-  <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so export a backup now and then.</p>
+  <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so back it up now and then.</p>
+  <p class="foot" id="ver"></p>
   </div>
 
   <div class="tabpane" id="tab-fu" hidden>
     <div class="card fuprompt" id="fuPrompt" hidden></div>
+    <div class="stats" id="pipe" hidden></div>
+    <div class="filters" id="fuFilters" role="group" aria-label="Filter by status"></div>
+    <section class="stack" id="fltSec" hidden>
+      <h2 id="fltTitle"></h2>
+      <input id="fltSearch" class="txt" type="search" autocomplete="off" placeholder="Search name, note or number">
+      <div class="list" id="fltList"></div>
+    </section>
+    <div class="tabpane" id="activeView">
     <section class="stack">
       <h2>Due <span class="bk" id="fuCount"></span></h2>
       <div class="list" id="fuList"></div>
@@ -230,6 +278,7 @@ select.txt{appearance:auto}
       <h2>Messaged, no reminder yet</h2>
       <div class="list" id="noList"></div>
     </section>
+    </div>
   </div>
 
   <div class="tabpane" id="tab-queue" hidden>
@@ -263,7 +312,7 @@ select.txt{appearance:auto}
     <div class="card">
       <div class="field">
         <label class="lbl" for="qrNum">Your WhatsApp number</label>
-        <input id="qrNum" class="txt" inputmode="tel" autocomplete="off" placeholder="+966 5X XXX XXXX">
+        <input id="qrNum" dir="ltr" class="txt" inputmode="tel" autocomplete="off" placeholder="+966 5X XXX XXXX">
         <div class="hint" id="qrHint">Clients scan the code and land in a chat with you.</div>
       </div>
       <div class="field">
@@ -307,7 +356,7 @@ const store={
   get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 };
-let state={
+let state={lang:store.get('qc_lang','en'),
   country:store.get('qc_country','sa'),
   app:store.get('qc_app','wa'),
   tpls:store.get('qc_tpls',null)||DEFAULT_TPLS.slice(),
@@ -441,7 +490,7 @@ function update(){
   else{go.href='#';go.setAttribute('aria-disabled','true');}
 }
 
-function keep(r){return r.label||r.due||r.status}
+function keep(r){return r.label||r.due||r.status||r.note||r.value}
 function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
 function addRecent(){
   if(!current) return;
@@ -449,9 +498,10 @@ function addRecent(){
   pushRecent({full:current.full,code:current.code,local:current.local,country:c.id,label});
 }
 function pushRecent(n){
-  const prev=state.recents.find(x=>x.full===n.full);
+  const prev=state.recents.find(x=>x.full===n.full)||{};
   state.recents=state.recents.filter(x=>x.full!==n.full);
-  state.recents.unshift({full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||(prev&&prev.label)||'',due:prev?prev.due||'':'',status:prev?prev.status||'':''});
+  const r=Object.assign({},prev,{full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||prev.label||''});
+  logEv(r,'msg');state.recents.unshift(r);
   trimRecents();store.set('qc_recents',state.recents);renderRecents();renderBk();
 }
 
@@ -583,29 +633,60 @@ function recentClick(e){
 }
 $('search').addEventListener('input',renderRecents);
 
-/* ---- Backup / restore ---- */
+/* ---- Backup / restore / export ---- */
+function tracked(){return state.recents.filter(keep).length}
 function renderBk(){
-  const last=store.get('qc_lastBackup',0),named=state.recents.filter(r=>r.label).length,el=$('bkInfo');
+  const last=store.get('qc_lastBackup',0),tr=tracked(),el=$('bkInfo');
   const days=last?Math.floor((Date.now()-last)/864e5):null;
-  const counts=`${state.tpls.length} template${state.tpls.length===1?'':'s'} · ${named} named number${named===1?'':'s'} · ${state.recents.length-named} recent.`;
+  const counts=`${state.tpls.length} template${state.tpls.length===1?'':'s'} · ${tr} saved contact${tr===1?'':'s'} · ${state.recents.length-tr} recent.`;
   el.textContent=(last?`Last backup ${days===0?'today':days+' day'+(days>1?'s':'')+' ago'}. `:'No backup yet. ')+counts;
-  el.className='bk'+((!last&&named)||(days!==null&&days>30&&named)?' warn':'');
+  const stale=tr&&(!last||days>7);
+  el.className='bk'+(stale?' warn':'');
+  const n=$('bkNudge');
+  n.hidden=!(stale&&Date.now()>store.get('qc_nudgeSnooze',0));
+  if(!n.hidden)$('nudgeTxt').textContent=last?`Last backup ${days} days ago. You have ${tr} saved contact${tr===1?'':'s'} on this phone only.`:`You have ${tr} saved contact${tr===1?'':'s'} and no backup yet.`;
 }
-$('exportBk').onclick=()=>{
-  const data={app:'quickchat',version:2,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents};
-  const name='quickchat-backup-'+new Date().toISOString().slice(0,10)+'.json';
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-  a.download=name;document.body.appendChild(a);a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
-  store.set('qc_lastBackup',Date.now());renderBk();toast('Backup saved to Downloads');
+function backupJson(){return JSON.stringify({app:'quickchat',version:3,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents},null,2)}
+function stamp(){return todayStr()}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+function backupDone(){store.set('qc_lastBackup',Date.now());renderBk()}
+function downloadBackup(){dl(new Blob([backupJson()],{type:'application/json'}),'quickchat-backup-'+stamp()+'.json');backupDone();toast('Backup saved to Downloads')}
+function shareBackup(){
+  let file;try{file=new File([backupJson()],'quickchat-backup-'+stamp()+'.txt',{type:'text/plain'})}catch(e){file=null}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:'QuickChat backup'}).then(()=>{backupDone();toast('Backup shared. Pick Drive to keep it safe')}).catch(err=>{if(!err||err.name!=='AbortError')downloadBackup()});
+  }else downloadBackup();
+}
+$('shareBk').onclick=shareBackup;
+$('exportBk').onclick=downloadBackup;
+$('nudgeGo').onclick=shareBackup;
+$('nudgeLater').onclick=()=>{store.set('qc_nudgeSnooze',Date.now()+864e5);renderBk()};
+$('csvBk').onclick=()=>{
+  const cell=v=>{v=String(v==null?'':v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const head=['Name','Number','Country','Status','Quote value (SAR)','Note','Follow-up date','Last contact'];
+  const order={quoted:0,waiting:1,won:2,lost:3,'':4};
+  const rows=state.recents.slice().sort((a,b)=>(order[a.status||'']-order[b.status||''])||(a.label||'').localeCompare(b.label||'')).map(r=>{
+    const c=COUNTRIES.find(x=>x.id===r.country);
+    return [r.label||'','+'+r.full,c&&c.id!=='ot'?c.name:'',r.status?ST_LABEL[r.status]:'',r.value||'',r.note||'',r.due||'',new Date(r.at).toISOString().slice(0,10)];
+  });
+  dl(new Blob(['﻿'+[head].concat(rows).map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'quickchat-contacts-'+stamp()+'.csv');
+  toast('Excel file saved to Downloads');
 };
+function checkStorage(){
+  const el=$('bkStore');
+  if(!navigator.storage||!navigator.storage.persisted){el.textContent='';return}
+  navigator.storage.persisted().then(p=>p||(navigator.storage.persist?navigator.storage.persist():false)).then(p=>{
+    el.textContent=p?'Storage protected from automatic clean-up.':'Chrome may clear app data if the phone runs low on space. Keep backups.';
+    el.className='bk'+(p?' okc':' warn');
+  }).catch(()=>{el.textContent=''});
+}
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{
   const file=e.target.files[0];e.target.value='';if(!file)return;
   let d;try{d=JSON.parse(await file.text())}catch(err){d=null}
   if(!d||d.app!=='quickchat'||!Array.isArray(d.templates)||!Array.isArray(d.numbers)){toast('This file is not a QuickChat backup');return}
   let nt=0,nn=0;
+  const okDay=v=>/^\d{4}-\d\d-\d\d$/.test(v||''),okLog=l=>Array.isArray(l)?l.filter(x=>x&&+x.t&&typeof x.e==='string').slice(-40).map(x=>({t:+x.t,e:String(x.e),v:x.v==null?'':x.v})):[];
   d.templates.forEach((t,k)=>{
     if(!t||typeof t.body!=='string'||!t.body.trim()||state.tpls.some(x=>x.body===t.body))return;
     let id=String(t.id||'');if(!id||state.tpls.some(x=>x.id===id))id='t'+Date.now()+'_'+k;
@@ -614,8 +695,15 @@ $('importFile').onchange=async e=>{
   d.numbers.forEach(r=>{
     if(!r||!/^\d{6,15}$/.test(String(r.full)))return;
     const ex=state.recents.find(x=>x.full===r.full);
-    if(ex){let ch=false;if(!ex.label&&r.label){ex.label=String(r.label);ch=true}if(!ex.due&&/^\d{4}-\d\d-\d\d$/.test(r.due||'')){ex.due=r.due;ch=true}if(!ex.status&&STATUSES.includes(r.status)&&r.status){ex.status=r.status;ch=true}if(ch)nn++;return}
-    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:/^\d{4}-\d\d-\d\d$/.test(r.due||'')?r.due:'',status:STATUSES.includes(r.status)?r.status:''});nn++;
+    if(ex){let ch=false;
+      if(!ex.label&&r.label){ex.label=String(r.label);ch=true}
+      if(!ex.due&&okDay(r.due)){ex.due=r.due;ch=true}
+      if(!ex.status&&STATUSES.includes(r.status)&&r.status){ex.status=r.status;ch=true}
+      if(!ex.note&&r.note){ex.note=String(r.note).slice(0,500);ch=true}
+      if(!ex.value&&+r.value){ex.value=Math.round(+r.value);ch=true}
+      if(!(ex.log&&ex.log.length)&&r.log){ex.log=okLog(r.log);ch=true}
+      if(ch)nn++;return}
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),value:Math.round(+r.value||0),log:okLog(r.log)});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
   store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);
@@ -636,8 +724,8 @@ go.addEventListener('click',e=>{
   const left=leftoverVars();
   if(left.length){toast('Fill '+[...new Set(left)].join(', ')+' first');const v=$('vars').querySelector('input');if(v)v.focus();else msgIn.focus();return}
   addRecent();
-  if(state.fuActive===current.full){const r=state.recents.find(x=>x.full===current.full);if(r)r.due='';state.fuActive=null;store.set('qc_recents',state.recents)}
-  store.set('qc_fuPrompt',current.full);renderFuPrompt();renderFollowups();location.href=buildLink(current.full);
+  if(state.fuActive===current.full){const r=state.recents.find(x=>x.full===current.full);if(r)setDueVal(r,'');state.fuActive=null;store.set('qc_recents',state.recents)}
+  store.set('qc_fuPrompt',current.full);state.cardMode='just';renderFuPrompt();renderFollowups();location.href=buildLink(current.full);
 });
 msgIn.addEventListener('input',()=>{if(state.pending){state.pending=null;renderVars()}});
 labelIn.addEventListener('input',()=>{const p=state.pending;if(p&&p.nameAuto&&p.keys.includes('name')){p.vals.name=nameFromLabel();renderVars();applyVars()}});
@@ -660,42 +748,90 @@ $('copyLink').onclick=()=>{
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(()=>toast('Link copied'),fallback)}else fallback();
 };
 $('clear').onclick=()=>{numIn.value='';msgIn.value='';labelIn.value='';state.pending=null;renderVars();$('picks').hidden=true;update();numIn.focus()};
-/* ---------- Follow-up reminders ---------- */
+/* ---------- Follow-ups & deal tracking ---------- */
 const STATUSES=['','quoted','waiting','won','lost'],ST_LABEL={quoted:'Quoted',waiting:'Waiting',won:'Won',lost:'Lost'};
 function todayStr(off){const d=new Date();d.setDate(d.getDate()+(off||0));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function parseDay(ds){const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
 function dayDiff(ds){const t=new Date();t.setHours(0,0,0,0);return Math.round((parseDay(ds)-t)/864e5)}
-function dueLabel(ds){const n=dayDiff(ds);if(n<0)return 'Overdue '+(-n)+' d';if(n===0)return 'Today';if(n===1)return 'Tomorrow';return parseDay(ds).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function loc(){return state.lang==='ar'?'ar-u-ca-gregory-nu-latn':'en-GB'}
+function fmtDay(ds){return parseDay(ds).toLocaleDateString(loc(),{weekday:'short',day:'numeric',month:'short'})}
+function fmtShort(ts){return new Date(ts).toLocaleDateString(loc(),{day:'numeric',month:'short'})}
+function dueLabel(ds){const n=dayDiff(ds);if(n<0)return 'Overdue '+(-n)+' d';if(n===0)return 'Today';if(n===1)return 'Tomorrow';return fmtDay(ds)}
 function dueLow(ds){const l=dueLabel(ds);return dayDiff(ds)<=1?l.toLowerCase():'on '+l}
-function stChip(r){return `<button type="button" class="chipst${r.status?' st-'+r.status:''}" data-act="cyc" data-f="${r.full}" aria-label="Status: ${r.status?ST_LABEL[r.status]:'none'}. Tap to change">${r.status?ST_LABEL[r.status]:'+ Status'}</button>`}
-function saveRecents(){store.set('qc_recents',state.recents);renderRecents();renderBk()}
-function cycleStatus(r){
-  if(!r)return;r.status=STATUSES[(STATUSES.indexOf(r.status||'')+1)%STATUSES.length];
-  if(r.status==='won'||r.status==='lost'){if(r.due)toast('Marked '+ST_LABEL[r.status]+'. Follow-up cleared');r.due=''}
-  store.set('qc_recents',state.recents);
+function sar(v){return 'SAR '+Math.round(Number(v)||0).toLocaleString('en-US')}
+function logEv(r,e,v){(r.log=r.log||[]).push({t:Date.now(),e,v:v===undefined?'':v});if(r.log.length>40)r.log.splice(0,r.log.length-40)}
+function setStatus(r,s){
+  if((r.status||'')===s)return;r.status=s;logEv(r,'status',s);
+  if((s==='won'||s==='lost')&&r.due){r.due='';toast('Marked '+ST_LABEL[s]+'. Follow-up cleared')}
 }
+function setDueVal(r,ds){if((r.due||'')===ds)return;r.due=ds;logEv(r,ds?'due':'done',ds)}
+function stChip(r){return `<button type="button" class="chipst${r.status?' st-'+r.status:''}" data-act="cyc" data-f="${r.full}" aria-label="Change status">${r.status?ST_LABEL[r.status]:'+ Status'}</button>`}
+function saveRecents(){store.set('qc_recents',state.recents);renderRecents();renderBk()}
+function cycleStatus(r){if(!r)return;setStatus(r,STATUSES[(STATUSES.indexOf(r.status||'')+1)%STATUSES.length]);store.set('qc_recents',state.recents)}
 function who(r){return r.label||('+'+(r.code?r.code+' '+r.local:r.full))}
 function findFuTpl(){return state.tpls.find(t=>/follow|متابع/i.test(t.title))||null}
+function isOpen(r){return r.status!=='won'&&r.status!=='lost'}
+function lastStatusTime(r,s){const l=(r.log||[]).filter(x=>x.e==='status'&&x.v===s).pop();return l?l.t:r.at}
 function fuRow(r,kind){
   const num=`<div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div>`,lab=r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:'';
-  if(kind==='no')return `<div class="item"><div class="fuitem">${lab}${num}<div class="meta">Messaged ${ago(r.at)}</div></div>
-    <div class="acts"><button type="button" class="btn small" data-act="q3" data-f="${r.full}">3 days</button><button type="button" class="btn small" data-act="q7" data-f="${r.full}">1 week</button><button type="button" class="btn small" data-act="sched" data-f="${r.full}" aria-label="More options">…</button></div></div>`;
-  const n=dayDiff(r.due),cls=n<0?'od':n===0?'td':'';
-  return `<div class="item"><div class="fuitem">${lab}${num}<div class="meta"><span class="due ${cls}">${dueLabel(r.due)}</span></div></div>
-    <div class="acts">${stChip(r)}${kind==='due'?`<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button>`:`<button type="button" class="btn small" data-act="sched" data-f="${r.full}">Change</button>`}</div></div>`;
+  const extra=(r.value?`<span class="val">${sar(r.value)}</span>`:'')+(r.note?`<span class="nt" dir="auto">${esc(r.note)}</span>`:'');
+  let meta,acts;
+  if(kind==='no'){
+    meta=`<span>Messaged ${ago(r.at)}</span>`;
+    acts=`<button type="button" class="btn small" data-act="q3" data-f="${r.full}">3 days</button><button type="button" class="btn small" data-act="q7" data-f="${r.full}">1 week</button>`;
+  }else if(kind==='list'){
+    meta=r.due&&isOpen(r)?`<span class="due ${dayDiff(r.due)<0?'od':dayDiff(r.due)===0?'td':''}">${dueLabel(r.due)}</span>`:`<span>Last contact ${ago(r.at)}</span>`;
+    acts=stChip(r);
+  }else{
+    const n=dayDiff(r.due);meta=`<span class="due ${n<0?'od':n===0?'td':''}">${dueLabel(r.due)}</span>`;
+    acts=stChip(r)+(kind==='due'?`<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button>`:'');
+  }
+  return `<div class="item"><button type="button" class="main fuitem" data-act="open" data-f="${r.full}" aria-label="Open details">${lab}${num}<div class="meta">${meta}</div>${extra?`<div class="xtra">${extra}</div>`:''}</button><div class="acts">${acts}</div></div>`;
 }
+function renderPipeline(){
+  const el=$('pipe'),tracked=state.recents.some(r=>r.status);
+  if(!tracked){el.hidden=true;return}
+  const open=state.recents.filter(r=>r.status==='quoted'||r.status==='waiting'),openSum=open.reduce((a,r)=>a+(+r.value||0),0);
+  const now=new Date(),m0=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const won=state.recents.filter(r=>r.status==='won'),wonM=won.filter(r=>lastStatusTime(r,'won')>=m0),wonSum=wonM.reduce((a,r)=>a+(+r.value||0),0);
+  const lost=state.recents.filter(r=>r.status==='lost').length,rate=won.length+lost?Math.round(won.length/(won.length+lost)*100):null;
+  el.innerHTML=`<div class="stat"><span class="k">Open quotes</span><b>${open.length}</b><span class="s">${sar(openSum)}</span></div>
+    <div class="stat"><span class="k">Won this month</span><b>${wonM.length}</b><span class="s">${sar(wonSum)}</span></div>
+    <div class="stat"><span class="k">Win rate</span><b>${rate===null?'–':rate+'%'}</b><span class="s">${won.length} won · ${lost} lost</span></div>`;
+  el.hidden=false;
+}
+const FILTERS=['active','quoted','waiting','won','lost','all'],F_LABEL={active:'Active',quoted:'Quoted',waiting:'Waiting',won:'Won',lost:'Lost',all:'All'};
+function renderFilters(){
+  const f=state.fuFilter||'active',cnt=k=>k==='active'||k==='all'?'':` <small>${state.recents.filter(r=>r.status===k).length}</small>`;
+  $('fuFilters').innerHTML=FILTERS.map(k=>`<button type="button" data-flt="${k}" aria-pressed="${f===k}">${F_LABEL[k]}${cnt(k)}</button>`).join('');
+}
+$('fuFilters').addEventListener('click',e=>{const b=e.target.closest('[data-flt]');if(!b)return;state.fuFilter=b.dataset.flt;$('fltSearch').value='';renderFollowups()});
+$('fltSearch').addEventListener('input',()=>renderFollowups());
 function renderFollowups(){
-  const open=r=>r.status!=='won'&&r.status!=='lost';
-  const all=state.recents.filter(r=>r.due&&open(r)).sort((a,b)=>a.due<b.due?-1:a.due>b.due?1:0);
+  const all=state.recents.filter(r=>r.due&&isOpen(r)).sort((a,b)=>a.due<b.due?-1:a.due>b.due?1:0);
   const t=todayStr(),due=all.filter(r=>r.due<=t),up=all.filter(r=>r.due>t);
-  const pf=store.get('qc_fuPrompt','');
-  const no=state.recents.filter(r=>!r.due&&open(r)&&r.full!==pf).slice(0,15);
-  $('tb-fu').innerHTML='Follow-ups'+(due.length?`<span class="badge" aria-label="${due.length} due">${due.length}</span>`:'');
-  $('fuCount').textContent=due.length?due.length+' today or overdue':'';
-  $('fuList').innerHTML=due.length?due.map(r=>fuRow(r,'due')).join('')
-    :`<div class="empty">${all.length||no.length?'Nothing due. You are up to date.':'No follow-ups yet. After you message someone, set a reminder here.'}</div>`;
-  $('upSec').hidden=!up.length;$('upList').innerHTML=up.map(r=>fuRow(r,'up')).join('');
-  $('noSec').hidden=!no.length;$('noList').innerHTML=no.map(r=>fuRow(r,'no')).join('');
+  $('tb-fu').innerHTML='<span>Follow-ups</span>'+(due.length?`<span class="badge" aria-label="${due.length} due">${due.length}</span>`:'');
+  renderPipeline();renderFilters();
+  const f=state.fuFilter||'active';
+  $('activeView').hidden=f!=='active';$('fltSec').hidden=f==='active';
+  {
+    const pf=store.get('qc_fuPrompt','');
+    const no=state.recents.filter(r=>!r.due&&isOpen(r)&&r.full!==pf).slice(0,15);
+    $('fuCount').textContent=due.length?due.length+' today or overdue':'';
+    $('fuList').innerHTML=due.length?due.map(r=>fuRow(r,'due')).join('')
+      :`<div class="empty">${all.length||no.length?'Nothing due. You are up to date.':'No follow-ups yet. After you message someone, set a reminder here.'}</div>`;
+    $('upSec').hidden=!up.length;$('upList').innerHTML=up.map(r=>fuRow(r,'up')).join('');
+    $('noSec').hidden=!no.length;$('noList').innerHTML=no.map(r=>fuRow(r,'no')).join('');
+  }
+  if(f!=='active'){
+    const s=$('fltSearch').value.trim().toLowerCase(),sd=s.replace(/\D/g,'');
+    let list=state.recents.filter(r=>f==='all'||r.status===f);
+    if(s)list=list.filter(r=>(r.label||'').toLowerCase().includes(s)||(r.note||'').toLowerCase().includes(s)||(sd&&r.full.includes(sd)));
+    list.sort((a,b)=>b.at-a.at);
+    const sum=list.reduce((a,r)=>a+(+r.value||0),0);
+    $('fltTitle').textContent=F_LABEL[f]+' ('+list.length+')'+(sum?' · '+sar(sum):'');
+    $('fltList').innerHTML=list.length?list.map(r=>fuRow(r,'list')).join(''):'<div class="empty">No contacts here yet.</div>';
+  }
 }
 function startFollowUp(r){
   state.fuActive=r.full;setTab('chat');loadRecent(r);
@@ -703,66 +839,257 @@ function startFollowUp(r){
   window.scrollTo({top:0,behavior:'smooth'});
   toast(t?'Follow-up message ready. Tap Open chat':'Number loaded. Tap Open chat');
 }
+function openCard(r,mode){store.set('qc_fuPrompt',r.full);state.cardMode=mode||'contact';renderFuPrompt();renderFollowups();setTimeout(()=>$('fuPrompt').scrollIntoView({behavior:'smooth',block:'start'}),50)}
 function fuListClick(e){
   const b=e.target.closest('[data-act]');if(!b)return;const r=state.recents.find(x=>x.full===b.dataset.f);if(!r)return;
   const a=b.dataset.act;
+  if(a==='open'){openCard(r);return}
   if(a==='fu'){startFollowUp(r);return}
-  if(a==='sched'){store.set('qc_fuPrompt',r.full);renderFuPrompt();renderFollowups();window.scrollTo({top:0,behavior:'smooth'});return}
-  if(a==='q3'||a==='q7'){r.due=todayStr(a==='q3'?3:7);saveRecents();toast('Follow-up set: '+dueLow(r.due));if(store.get('qc_cal',true))location.href=calLink(r);return}
-  if(a==='fudone'){r.due='';toast('Follow-up done')}
+  if(a==='q3'||a==='q7'){setDueVal(r,todayStr(a==='q3'?3:7));saveRecents();toast('Follow-up set: '+dueLow(r.due));if(store.get('qc_cal',true))location.href=calLink(r);return}
+  if(a==='fudone'){setDueVal(r,'');toast('Follow-up done')}
   if(a==='cyc')cycleStatus(r);
   saveRecents();
 }
-['fuList','upList','noList'].forEach(id=>$(id).addEventListener('click',fuListClick));
-/* Prompt shown after Open chat: when to follow up */
+['fuList','upList','noList','fltList'].forEach(id=>$(id).addEventListener('click',fuListClick));
+/* Contact card: status, follow-up date, quote value, note, history */
+const EV_TXT={msg:()=>'Messaged',status:v=>v?'Status: '+ST_LABEL[v]:'Status cleared',due:v=>'Follow-up set for '+fmtDay(v),done:()=>'Follow-up cleared',value:v=>'Quote value: '+sar(v)};
 function renderFuPrompt(){
   const el=$('fuPrompt'),f=store.get('qc_fuPrompt',''),r=state.recents.find(x=>x.full===f);
   if(!r){el.hidden=true;el.innerHTML='';return}
-  const cal=store.get('qc_cal',true);
-  el.innerHTML=`<p class="bk">${r.due?'Change follow-up':'Just messaged'}</p><p><b dir="auto">Follow up with ${esc(who(r))}?</b></p>
-    ${r.label?'':'<input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name (so you recognise it later)">'}
+  const cal=store.get('qc_cal',true),log=(r.log||[]).slice().reverse();
+  const head=state.cardMode==='just'?'Just messaged':'Contact';
+  el.innerHTML=`<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>
+    <input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name" value="${esc(r.label||'')}" aria-label="Name">
+    <div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div>
+    <div class="wrapr"><span class="bk">Status</span>${['quoted','waiting','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
+    <div class="wrapr"><span class="bk">Follow-up date</span>${r.due&&isOpen(r)?`<b class="due">${dueLabel(r.due)}</b><button type="button" class="btn small danger" data-x="clear">Remove</button>`:''}</div>
     <div class="wrapr"><button type="button" class="chip" data-d="1">Tomorrow</button><button type="button" class="chip" data-d="3">3 days</button><button type="button" class="chip" data-d="7">1 week</button>
-      <label class="datechip">Date<input type="date" id="fpDate" min="${todayStr(1)}" aria-label="Pick a follow-up date"></label></div>
-    <div class="wrapr"><span class="bk">Status:</span>${['quoted','waiting','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
-    <label class="chk"><input type="checkbox" id="fpCal" ${cal?'checked':''}> Also add a reminder to my phone calendar</label>
-    <div class="wrapr"><button type="button" class="btn small" data-x="1">${r.due?'Close':'Not needed'}</button>${r.due?'<button type="button" class="btn small danger" data-x="clear">Remove reminder</button>':''}</div>`;
+      <label class="datechip"><span>Date</span><input type="date" id="fpDate" min="${todayStr(1)}" aria-label="Pick a follow-up date"></label></div>
+    <label class="chk"><input type="checkbox" id="fpCal" ${cal?'checked':''}> <span>Also add a reminder to my phone calendar</span></label>
+    <div class="two"><label class="field"><span class="lbl">Quote value (SAR)</span><input class="txt" id="fpVal" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="0" value="${r.value?Math.round(r.value):''}"></label></div>
+    <label class="field"><span class="lbl">Note</span><textarea id="fpNote" dir="auto" rows="2" placeholder="What was quoted, site, products">${esc(r.note||'')}</textarea></label>
+    ${log.length?`<details class="tl"><summary>History (${log.length})</summary><ol>${log.map(x=>`<li><span class="d">${fmtShort(x.t)}</span> <span>${(EV_TXT[x.e]||(()=>x.e))(x.v)}</span></li>`).join('')}</ol></details>`:''}
+    <button type="button" class="btn primary" data-x="go">Follow up now</button>`;
   el.hidden=false;
 }
-function fpName(r){const n=$('fpName');if(n&&n.value.trim())r.label=n.value.trim()}
+function saveCardFields(r){
+  const n=$('fpName'),v=$('fpVal'),no=$('fpNote');if(!n)return;
+  r.label=n.value.trim();
+  const val=Math.round(parseFloat(String(v.value).replace(/[^\d.]/g,''))||0);
+  if(val!==(+r.value||0)){r.value=val;if(val)logEv(r,'value',val)}
+  r.note=no.value.trim().slice(0,500);
+}
+function closeCard(){store.set('qc_fuPrompt','');state.cardMode=null;renderFuPrompt()}
 function setDue(r,ds){
-  fpName(r);const cal=$('fpCal')?$('fpCal').checked:store.get('qc_cal',true);
-  r.due=ds;if(r.status==='won'||r.status==='lost')r.status='';
-  store.set('qc_fuPrompt','');saveRecents();renderFuPrompt();
-  toast('Follow-up set: '+dueLow(ds));
+  saveCardFields(r);const cal=$('fpCal')?$('fpCal').checked:store.get('qc_cal',true);
+  setDueVal(r,ds);if(r.status==='won'||r.status==='lost')setStatus(r,'waiting');
+  closeCard();saveRecents();toast('Follow-up set: '+dueLow(ds));
   if(cal)location.href=calLink(r);
 }
 $('fuPrompt').addEventListener('change',e=>{
-  if(e.target.id==='fpCal')store.set('qc_cal',e.target.checked);
-  if(e.target.id==='fpDate'&&e.target.value){const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(r)setDue(r,e.target.value)}
+  const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(!r)return;
+  if(e.target.id==='fpCal'){store.set('qc_cal',e.target.checked);return}
+  if(e.target.id==='fpDate'){if(e.target.value)setDue(r,e.target.value);return}
+  saveCardFields(r);store.set('qc_recents',state.recents);renderFollowups();renderBk();
 });
 $('fuPrompt').addEventListener('click',e=>{
   const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(!r)return;
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.d){setDue(r,todayStr(+b.dataset.d));return}
-  if(b.dataset.s){
-    fpName(r);r.status=r.status===b.dataset.s?'':b.dataset.s;
-    if(r.status==='won'||r.status==='lost'){r.due='';store.set('qc_fuPrompt','');toast('Marked '+ST_LABEL[r.status])}
-    saveRecents();renderFuPrompt();return;
-  }
-  if(b.dataset.x){fpName(r);if(b.dataset.x==='clear'){r.due='';toast('Reminder removed')}store.set('qc_fuPrompt','');saveRecents();renderFuPrompt()}
+  saveCardFields(r);
+  if(b.dataset.s){setStatus(r,r.status===b.dataset.s?'':b.dataset.s);saveRecents();renderFuPrompt();return}
+  if(b.dataset.x==='clear'){setDueVal(r,'');toast('Reminder removed');saveRecents();renderFuPrompt();return}
+  if(b.dataset.x==='go'){saveRecents();closeCard();startFollowUp(r);return}
+  if(b.dataset.x){saveRecents();closeCard()}
 });
 function calLink(r){
   const s=parseDay(r.due);s.setHours(9,0,0,0);const en=new Date(s.getTime()+15*60000);
   const fmt=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
   const appUrl=location.origin+location.pathname+'?fu='+r.full;
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('WhatsApp follow-up: '+who(r))
-    +'&dates='+fmt(s)+'/'+fmt(en)+'&details='+encodeURIComponent('Number: +'+r.full+(r.status?'\nStatus: '+ST_LABEL[r.status]:'')+'\nOpen in QuickChat: '+appUrl);
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(tr('WhatsApp follow-up:')+' '+who(r))
+    +'&dates='+fmt(s)+'/'+fmt(en)+'&details='+encodeURIComponent('Number: +'+r.full+(r.status?'\nStatus: '+ST_LABEL[r.status]:'')+(r.value?'\nQuote: '+sar(r.value):'')+(r.note?'\nNote: '+r.note:'')+'\nOpen in QuickChat: '+appUrl);
 }
 $('qCur').addEventListener('click',e=>{
   const b=e.target.closest('[data-qfu]');if(!b||!q)return;const ds=todayStr(+b.dataset.qfu);let n=0;
-  q.items.filter(i=>i.status==='sent').forEach(i=>{const r=state.recents.find(x=>x.full===i.full);if(r){r.due=ds;if(!r.status||r.status==='won'||r.status==='lost')r.status='waiting';n++}});
+  q.items.filter(i=>i.status==='sent').forEach(i=>{const r=state.recents.find(x=>x.full===i.full);if(r){setDueVal(r,ds);if(!isOpen(r)||!r.status)setStatus(r,'waiting');n++}});
   saveRecents();toast('Follow-up set for '+n+' contact'+(n===1?'':'s')+': '+dueLow(ds));
 });
+
+/* ---------- Shared file (PDF / image) hand-off to WhatsApp ---------- */
+let attFile=null;
+function fmtSize(n){return n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'}
+function renderAttach(){
+  const el=$('attach');
+  if(!attFile){el.hidden=true;el.innerHTML='';return}
+  el.innerHTML=`<div class="qhead"><span class="bk">Attachment ready</span><button type="button" class="btn small" data-a="rm">Remove</button></div>
+    <p class="attn" dir="auto">${esc(attFile.name)} <span class="bk">${fmtSize(attFile.size)}</span></p>
+    <ol class="steps"><li>Enter the number below and tap Open chat. This creates the chat in WhatsApp.</li><li>Come back here and tap Send file, then pick WhatsApp and that chat. It is at the top of the list.</li></ol>
+    <button type="button" class="btn primary" data-a="send">Send file</button>`;
+  el.hidden=false;
+}
+async function loadSharedFile(){
+  try{
+    const c=await caches.open('qc-share'),res=await c.match('shared-file');if(!res)return;
+    const blob=await res.blob(),name=decodeURIComponent(res.headers.get('X-Name')||'file');
+    attFile=new File([blob],name,{type:blob.type||res.headers.get('Content-Type')||'application/octet-stream'});
+    renderAttach();
+  }catch(e){}
+}
+async function clearSharedFile(){attFile=null;renderAttach();try{const c=await caches.open('qc-share');await c.delete('shared-file')}catch(e){}}
+$('attach').addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;
+  if(b.dataset.a==='rm'){clearSharedFile();return}
+  if(!attFile)return;
+  if(!(navigator.canShare&&navigator.canShare({files:[attFile]}))){toast('This phone cannot share this file type from the app');return}
+  navigator.share({files:[attFile]}).then(()=>{toast('File passed to the app you picked');clearSharedFile()}).catch(err=>{if(!err||err.name!=='AbortError')toast('Sharing failed. Try again')});
+});
+
+/* ---------- Version / what's new ---------- */
+const APP_VERSION='3.0';
+const WHATS_NEW=['Follow-ups: quote value, notes and history for each contact','Pipeline totals: open quotes, won this month, win rate','Filter contacts by status, and search notes','Back up to Google Drive in one tap, and export contacts to Excel','Share a PDF quotation into QuickChat and pass it to the chat','Arabic interface (tap العربية at the top)'];
+function renderWhatsNew(){
+  const el=$('whatsNew'),seen=store.get('qc_ver','');
+  if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}
+  el.innerHTML=`<div class="qhead"><span><b>Updated to version ${APP_VERSION}</b></span><button type="button" class="btn small" id="wnOk">OK</button></div><ul class="steps">${WHATS_NEW.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  el.hidden=false;
+  $('wnOk').onclick=()=>{store.set('qc_ver',APP_VERSION);el.hidden=true};
+}
+
+/* ---------- Arabic interface (translation layer; user data is never translated) ---------- */
+const AR={
+'(example)':'(مثال)','+ New':'+ جديد','+ Status':'+ الحالة','1 week':'أسبوع','3 days':'3 أيام','in 1 week':'بعد أسبوع','in 3 days':'بعد 3 أيام',
+'Active':'النشطة','All':'الكل','History':'السجل',
+'Also add a reminder to my phone calendar':'أضف تذكيرًا إلى تقويم الهاتف أيضًا',
+'Back':'رجوع','Back up now':'انسخ احتياطيًا الآن','Back up to Drive or share':'نسخ احتياطي إلى Drive أو مشاركة','Back up your contacts':'انسخ جهات الاتصال احتياطيًا','Backup':'النسخ الاحتياطي',
+'Cancel':'إلغاء','Caption under the code':'النص أسفل الرمز','Change status':'تغيير الحالة','Chat':'محادثة',
+'Chrome may clear app data if the phone runs low on space. Keep backups.':'قد يحذف Chrome بيانات التطبيق إذا امتلأت ذاكرة الهاتف. احتفظ بنسخ احتياطية.',
+'Storage protected from automatic clean-up.':'التخزين محمي من الحذف التلقائي.',
+'Clear':'مسح','Clear unnamed':'حذف غير المسمّاة','Client name':'اسم العميل','Clients scan the code and land in a chat with you.':'يمسح العميل الرمز فتُفتح محادثة معك مباشرة.',
+'Close':'إغلاق','Contact':'جهة الاتصال','Contacts to follow up':'جهات الاتصال للمتابعة','Copy link':'نسخ الرابط','Country':'الدولة','Country code':'رمز الدولة',
+'Date':'تاريخ','Delete':'حذف','Delete?':'حذف؟','Done':'تم','Download backup':'تنزيل نسخة احتياطية','Due':'المستحقة','Edit':'تعديل','Dismiss':'تجاهل',
+'KSA':'السعودية','Yemen':'اليمن','Egypt':'مصر','Oman':'عُمان','Other':'أخرى',
+'End queue':'إنهاء القائمة','Tap again to end':'اضغط مرة أخرى للإنهاء','New queue':'قائمة جديدة','Finished':'انتهت',
+'Enter a valid number first':'أدخل رقمًا صحيحًا أولًا','Enter the country code for "Other".':'أدخل رمز الدولة عند اختيار «أخرى».',
+'Export contacts to Excel (CSV)':'تصدير جهات الاتصال إلى Excel (CSV)',
+'Fill in the highlighted fields':'املأ الحقول المحددة','Fill in the template (updates the message as you type):':'املأ القالب (تتحدث الرسالة أثناء الكتابة):',
+'Same value for everyone in this queue:':'نفس القيمة لكل من في القائمة:',
+'Filter by status':'تصفية حسب الحالة','Follow up':'تابِع','Follow up now':'تابِع الآن','Follow-up date':'موعد المتابعة',
+'Follow-up cleared':'أُلغيت المتابعة','Follow-up done':'تمت المتابعة','Follow-ups':'المتابعات',
+'Import backup':'استيراد نسخة احتياطية','Later':'لاحقًا','Just messaged':'تمت مراسلته للتو','Not needed':'غير مطلوب',
+'Quoted':'عرض سعر','Waiting':'بانتظار الرد','Won':'تم البيع','Lost':'لم تتم','Status':'الحالة','Status cleared':'أُلغيت الحالة',
+'Message':'الرسالة','Message (optional)':'الرسالة (اختياري)','Message any WhatsApp number without saving it.':'راسل أي رقم واتساب دون حفظه.',
+'Message templates':'قوالب الرسائل','Message text':'نص الرسالة','Message text is required':'نص الرسالة مطلوب','Message the client sends you':'الرسالة التي يرسلها العميل إليك',
+'Messaged':'تمت المراسلة','Messaged, no reminder yet':'تمت مراسلتهم دون تذكير','My QR':'رمز QR','Name':'الاسم','Name / note':'الاسم / ملاحظة','Name / note (optional)':'الاسم / ملاحظة (اختياري)',
+'No':'لا','Yes':'نعم','OK':'حسنًا','No contacts here yet.':'لا توجد جهات اتصال هنا بعد.',
+'No follow-ups yet. After you message someone, set a reminder here.':'لا توجد متابعات بعد. بعد مراسلة أي شخص، اضبط التذكير هنا.',
+'No message (just open the chat)':'بدون رسالة (فتح المحادثة فقط)','Note':'ملاحظة','Nothing due. You are up to date.':'لا شيء مستحق. أنت على اطلاع بكل شيء.',
+'Number without code':'الرقم بدون رمز الدولة','Numbers':'الأرقام','Numbers you open will appear here. Add a name to keep a number permanently.':'ستظهر هنا الأرقام التي تفتحها. أضف اسمًا للاحتفاظ بالرقم دائمًا.',
+'Open chat':'افتح المحادثة','Open details':'عرض التفاصيل','Open in':'الفتح في','Open quotes':'عروض مفتوحة','Paste':'لصق',
+'Paste a list, one contact per line. Names on the same line are picked up.':'الصق قائمة، جهة اتصال في كل سطر. يُلتقط الاسم المكتوب في نفس السطر.',
+'Paste numbers from a sheet, a message or an email.':'الصق الأرقام من جدول أو رسالة أو بريد إلكتروني.',
+'Paste or type a number. Local or international format both work.':'الصق الرقم أو اكتبه. الصيغة المحلية والدولية كلاهما يعمل.',
+'Phone number':'رقم الهاتف','Pick a follow-up date':'اختر تاريخ المتابعة','Pick a template below or type here':'اختر قالبًا من الأسفل أو اكتب هنا',
+'Pin to top':'تثبيت في الأعلى','Unpin':'إلغاء التثبيت',
+'Placeholders: {name}, {greeting} (time-based, Arabic if the message is Arabic), {date}, or any {word} you\'ll fill in when sending.':'المتغيرات: {name} للاسم، و{greeting} للتحية حسب الوقت (بالعربية إذا كانت الرسالة عربية)، و{date} للتاريخ، أو أي {كلمة} تملؤها عند الإرسال.',
+'QR code for your WhatsApp chat link':'رمز QR لرابط محادثتك على واتساب','Queue':'القائمة','Quote value (SAR)':'قيمة العرض (ريال)',
+'Reminder removed':'تم حذف التذكير','Remove':'إزالة','Remove numbers without a name or follow-up?':'حذف الأرقام التي بلا اسم أو متابعة؟','Rename':'إعادة تسمية',
+'Save':'حفظ','Save image':'حفظ الصورة','Scan to chat on WhatsApp':'امسح الرمز للمحادثة على واتساب','Search name or number':'ابحث بالاسم أو الرقم','Search name, note or number':'ابحث بالاسم أو الملاحظة أو الرقم',
+'Sections':'الأقسام','Share':'مشاركة','Skip':'تخطٍّ','Start queue':'ابدأ القائمة','Title':'العنوان','Today':'اليوم','Tomorrow':'غدًا','today':'اليوم','tomorrow':'غدًا',
+'Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so back it up now and then.':'نصيحة: حدّد نصًا فيه رقم في أي تطبيق، واضغط مشاركة ثم QuickChat. بياناتك محفوظة على هذا الهاتف فقط، فاحرص على النسخ الاحتياطي من وقت لآخر.',
+'Unknown country code. Number used as typed.':'رمز دولة غير معروف. سيُستخدم الرقم كما كُتب.','Upcoming':'القادمة',
+'Use it on quotations, invoices, business cards or a site board.':'استخدمه في عروض الأسعار والفواتير وبطاقات العمل ولوحات المواقع.',
+'What was quoted, site, products':'ما الذي تم تسعيره، الموقع، المنتجات','WhatsApp':'واتساب','WhatsApp Business':'واتساب للأعمال','Will open:':'سيفتح:',
+'Win rate':'نسبة النجاح','Won this month':'مبيعات هذا الشهر','Your WhatsApp number':'رقم واتساب الخاص بك','e.g. Ahmed - Sabya farm quote':'مثال: أحمد - عرض مزرعة صبيا',
+'You still tap send in WhatsApp for every message. WhatsApp may restrict accounts that message many people who haven\'t saved their number, so keep batches small and message people who expect to hear from you.':'ستضغط زر الإرسال في واتساب لكل رسالة. قد يقيّد واتساب الحسابات التي تراسل كثيرًا من الأشخاص الذين لم يحفظوا رقمها، لذا اجعل الدفعات صغيرة وراسل من ينتظرون رسالتك.',
+'Attachment ready':'المرفق جاهز','Send file':'إرسال الملف',
+'Enter the number below and tap Open chat. This creates the chat in WhatsApp.':'أدخل الرقم بالأسفل واضغط «افتح المحادثة»، فتُنشأ المحادثة في واتساب.',
+'Come back here and tap Send file, then pick WhatsApp and that chat. It is at the top of the list.':'عُد إلى هنا واضغط «إرسال الملف»، ثم اختر واتساب وتلك المحادثة، وستجدها أعلى القائمة.',
+'Follow-ups: quote value, notes and history for each contact':'المتابعات: قيمة العرض والملاحظات والسجل لكل جهة اتصال',
+'Pipeline totals: open quotes, won this month, win rate':'ملخص الصفقات: العروض المفتوحة، مبيعات الشهر، نسبة النجاح',
+'Filter contacts by status, and search notes':'تصفية جهات الاتصال حسب الحالة والبحث في الملاحظات',
+'Back up to Google Drive in one tap, and export contacts to Excel':'نسخ احتياطي إلى Google Drive بلمسة واحدة، وتصدير جهات الاتصال إلى Excel',
+'Share a PDF quotation into QuickChat and pass it to the chat':'شارك عرض سعر PDF إلى QuickChat ثم أرسله إلى المحادثة',
+'Arabic interface (tap العربية at the top)':'واجهة عربية (اضغط English في الأعلى للعودة)',
+'Enter the number with country code, e.g. +966 55 123 4567.':'أدخل الرقم مع رمز الدولة، مثل ‎+966 55 123 4567.','Enter your number above':'أدخل رقمك في الأعلى',
+'Allow clipboard access, or long-press the field to paste':'اسمح بالوصول إلى الحافظة، أو اضغط مطولًا على الحقل للصق','Backup saved to Downloads':'حُفظت النسخة الاحتياطية في التنزيلات',
+'Backup shared. Pick Drive to keep it safe':'تمت مشاركة النسخة. اختر Drive لحفظها بأمان','Clipboard is empty':'الحافظة فارغة','Enter your number first':'أدخل رقمك أولًا',
+'Excel file saved to Downloads':'حُفظ ملف Excel في التنزيلات','File passed to the app you picked':'تم تمرير الملف إلى التطبيق الذي اخترته','Finish or end the current queue first':'أكمل القائمة الحالية أو أنهِها أولًا',
+'Image saved to Downloads':'حُفظت الصورة في التنزيلات','Last number loaded. Tap Open chat':'تم تحميل آخر رقم. اضغط «افتح المحادثة»','No recent numbers yet':'لا توجد أرقام حديثة بعد',
+'Link copied':'تم نسخ الرابط','No templates to share':'لا توجد قوالب للمشاركة','Number added':'تمت إضافة الرقم','Number deleted':'تم حذف الرقم','Select and copy the link':'حدّد الرابط وانسخه',
+'Sharing failed. Try again':'فشلت المشاركة. حاول مرة أخرى','Template deleted':'تم حذف القالب','Template link copied':'تم نسخ رابط القوالب','Could not copy the link':'تعذّر نسخ الرابط','Template saved':'تم حفظ القالب',
+'This file is not a QuickChat backup':'هذا الملف ليس نسخة احتياطية من QuickChat','This phone cannot share this file type from the app':'لا يستطيع هذا الهاتف مشاركة هذا النوع من الملفات من التطبيق',
+'This template link is broken':'رابط القوالب هذا تالف','Enter the name first':'أدخل الاسم أولًا','Name saved':'تم حفظ الاسم','Name removed':'تم حذف الاسم',
+'No phone number found in shared text':'لم يُعثر على رقم هاتف في النص المشترك','No phone number found':'لم يُعثر على رقم هاتف','Template added to message':'تمت إضافة القالب إلى الرسالة',
+'Follow-up message ready. Tap Open chat':'رسالة المتابعة جاهزة. اضغط «افتح المحادثة»','Number loaded. Tap Open chat':'تم تحميل الرقم. اضغط «افتح المحادثة»',
+'just now':'الآن','Hello, I\'d like a quotation.':'مرحبًا، أريد عرض سعر.','No backup yet.':'لا توجد نسخة احتياطية بعد.','WhatsApp follow-up:':'متابعة واتساب:'
+};
+const AR_RE=[
+ [/^(\d+) min ago$/,(m,a)=>'قبل '+a+' د'],[/^(\d+) h ago$/,(m,a)=>'قبل '+a+' س'],[/^(\d+) d ago$/,(m,a)=>'قبل '+a+' يوم'],
+ [/^Overdue (\d+) d$/,(m,a)=>'متأخرة '+a+' يوم'],[/^on (.+)$/,(m,a)=>'يوم '+a],
+ [/^Messaged (.+)$/,(m,a)=>'رُوسل '+trCore(a)],[/^Last contact (.+)$/,(m,a)=>'آخر تواصل '+trCore(a)],
+ [/^SAR ([\d,]+)$/,(m,a)=>a+' ريال'],[/^(\d+) won$/,(m,a)=>'تم البيع '+a],[/^(\d+) lost$/,(m,a)=>'لم تتم '+a],
+ [/^(\d+) of (\d+)$/,(m,a,b)=>a+' من '+b],[/^(\d+) sent$/,(m,a)=>'أُرسل '+a],
+ [/^(\d+) sent, (\d+) skipped\. Tap a contact below to open it again\.$/,(m,a,b)=>'أُرسل '+a+'، وتم تخطي '+b+'. اضغط جهة اتصال بالأسفل لفتحها مجددًا.'],
+ [/^Follow up with the (\d+) sent:$/,(m,a)=>'متابعة من أُرسل إليهم ('+a+'):'],
+ [/^(\d+) today or overdue$/,(m,a)=>a+' اليوم أو متأخرة'],[/^(\d+) due$/,(m,a)=>a+' مستحقة'],
+ [/^(\d+) numbers? found, (\d+) with a name\.$/,(m,a,b)=>'تم العثور على '+a+' رقم، '+b+' منها باسم.'],
+ [/^(\d+) numbers found\. Tap the one to message:$/,(m,a)=>'تم العثور على '+a+' أرقام. اضغط الرقم الذي تريد مراسلته:'],
+ [/^Add all (\d+) to follow-up queue$/,(m,a)=>'أضف الكل ('+a+') إلى قائمة المتابعة'],[/^Start queue \((\d+)\)$/,(m,a)=>'ابدأ القائمة ('+a+')'],
+ [/^(\d+) shared templates?$/,(m,a)=>'قوالب مشتركة: '+a],[/^· (\d+) you already have$/,(m,a)=>'· لديك منها '+a],[/^Add (\d+)$/,(m,a)=>'أضف '+a],
+ [/^Added (\d+) templates?$/,(m,a)=>'تمت إضافة '+a+' قالب'],
+ [/^No numbers match “(.*)”\.$/,(m,a)=>'لا توجد أرقام مطابقة لـ «'+a+'».'],
+ [/^QuickChat version (.+)$/,(m,a)=>'QuickChat الإصدار '+a],[/^Updated to version (.+)$/,(m,a)=>'تم التحديث إلى الإصدار '+a],
+ [/^Status: (.+)$/,(m,a)=>'الحالة: '+trCore(a)],[/^Quote value: (.+)$/,(m,a)=>'قيمة العرض: '+trCore(a)],[/^Follow-up set for (.+)$/,(m,a)=>'ضُبطت المتابعة ليوم '+a],
+ [/^Follow-up set: (.+)$/,(m,a)=>'ضُبطت المتابعة: '+trCore(a)],[/^Follow-up set for (\d+) contacts?: (.+)$/,(m,a,b)=>'ضُبطت المتابعة لـ '+a+' جهة اتصال: '+trCore(b)],
+ [/^Marked (\w+)\. Follow-up cleared$/,(m,a)=>'الحالة: '+trCore(a)+'. أُلغيت المتابعة'],[/^Marked (\w+)$/,(m,a)=>'الحالة: '+trCore(a)],
+ [/^Fill (.+) first$/,(m,a)=>'املأ '+a+' أولًا'],[/^Copy failed\. Long-press to copy: (.+)$/,(m,a)=>'فشل النسخ. اضغط مطولًا للنسخ: '+a],
+ [/^Imported (\d+) templates? and (\d+) numbers?$/,(m,a,b)=>'تم استيراد '+a+' قالب و'+b+' رقم'],
+ [/^Link: (\S+)( \+ message)?$/,(m,a,b)=>'الرابط: '+a+(b?' + رسالة':'')],
+ [/^(Too short|Too long)\. (.+) mobile numbers have (\d+) digits after the code\.$/,(m,a,c,n)=>(a==='Too short'?'الرقم قصير':'الرقم طويل')+'. أرقام الجوال في '+trCore(c)+' تتكون من '+n+' أرقام بعد رمز الدولة.'],
+ [/^This doesn't look like a (.+) mobile number\. Check it before sending\.$/,(m,c)=>'لا يبدو هذا رقم جوال في '+trCore(c)+'. تحقق منه قبل الإرسال.'],
+ [/^You have (\d+) saved contacts? and no backup yet\.$/,(m,a)=>'لديك '+a+' جهة اتصال محفوظة ولا توجد نسخة احتياطية بعد.'],
+ [/^Last backup (\d+) days ago\. You have (\d+) saved contacts? on this phone only\.$/,(m,a,b)=>'آخر نسخة احتياطية قبل '+a+' يوم. لديك '+b+' جهة اتصال محفوظة على هذا الهاتف فقط.'],
+ [/^(No backup yet\.|Last backup (today|\d+ days?) ago\.|Last backup today\.) (\d+) templates? · (\d+) saved contacts? · (\d+) recent\.$/,(m,h,x,t,c,r)=>
+   (h==='No backup yet.'?'لا توجد نسخة احتياطية بعد.':'آخر نسخة احتياطية: '+(/today/.test(h)?'اليوم':'قبل '+parseInt(h.replace(/\D+/g,''))+' يوم')+'.')+' القوالب: '+t+' · جهات محفوظة: '+c+' · حديثة: '+r+'.'],
+ [/^(.+) \((\d+)\)$/,(m,a,b)=>{const t=trCore(a);return t===a?m:t+' ('+b+')'}]
+];
+function trCore(k){
+  if(Object.prototype.hasOwnProperty.call(AR,k))return AR[k];
+  for(const [re,fn] of AR_RE){const m=k.match(re);if(m)return fn(...m)}
+  if(k.includes(' · ')){const p=k.split(' · '),t=p.map(trCore);if(t.some((x,i)=>x!==p[i]))return t.join(' · ')}
+  return k;
+}
+function tr(s){return state.lang==='ar'&&s?trCore(s):s}
+const I18N_SKIP='[dir="auto"],.rnum,.preview,canvas,[translate="no"],script,style,textarea';
+function i18nText(n){
+  const el=n.parentElement;if(!el||el.closest(I18N_SKIP))return;const v=n.nodeValue;
+  if(state.lang==='ar'){
+    if(n.__ar===v)return;const k=v.trim();if(!k)return;const t=trCore(k);
+    if(t!==k){n.__en=v;n.__ar=v.replace(k,t);n.nodeValue=n.__ar}else n.__ar=undefined;
+  }else if(n.__ar!==undefined){if(n.__ar===v)n.nodeValue=n.__en;n.__ar=undefined}
+}
+function i18nAttr(el,a){
+  const v=el.getAttribute(a);if(v==null)return;el.__i=el.__i||{};const st=el.__i[a]||(el.__i[a]={});
+  if(state.lang==='ar'){
+    if(st.ar===v)return;const t=v.split('\n').map(l=>{const k=l.trim();return k?l.replace(k,trCore(k)):l}).join('\n');
+    if(t!==v){st.en=v;st.ar=t;el.setAttribute(a,t)}else st.ar=undefined;
+  }else if(st.ar!==undefined){if(st.ar===v)el.setAttribute(a,st.en);st.ar=undefined}
+}
+const i18nObs=new MutationObserver(()=>{if(!i18nObs._q){i18nObs._q=true;queueMicrotask(()=>{i18nObs._q=false;i18nAll()})}});
+function i18nAll(){
+  i18nObs.disconnect();
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))i18nText(n);
+  document.querySelectorAll('[placeholder],[aria-label]').forEach(el=>{if(el.closest('[translate="no"]'))return;i18nAttr(el,'placeholder');i18nAttr(el,'aria-label')});
+  if(state.lang==='ar')i18nObs.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label']});
+}
+function setLang(l,quiet){
+  state.lang=l;store.set('qc_lang',l);
+  document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';
+  $('langBtn').textContent=l==='ar'?'English':'العربية';
+  if(!quiet){renderTpls();renderRecents();renderFuPrompt();renderBk();update();renderAttach();if(!$('tab-queue').hidden)renderQueue();if(!$('tab-qr').hidden)drawQR()}
+  i18nAll();
+}
+$('langBtn').onclick=()=>setLang(state.lang==='ar'?'en':'ar');
 
 /* ---------- Tabs ---------- */
 const TABS=['chat','fu','queue','qr'];
@@ -889,7 +1216,7 @@ function drawQR(){
   const raw=qrNum.value.trim(),n=raw?normalize(raw):null;
   const h=$('qrHint');
   if(!n){qrLink=null;h.className='hint'+(raw?' err':'');h.textContent=raw?'Enter the number with country code, e.g. +966 55 123 4567.':'Clients scan the code and land in a chat with you.';
-    x.fillStyle='#5d6b63';x.font='500 26px "IBM Plex Sans", system-ui, sans-serif';x.fillText('Enter your number above',W/2,H/2);return}
+    x.fillStyle='#5d6b63';x.font='500 26px "IBM Plex Sans", system-ui, sans-serif';x.fillText(tr('Enter your number above'),W/2,H/2);return}
   const m=qrMsg.value.trim();
   qrLink='https://wa.me/'+n.full+(m?'?text='+encodeURIComponent(m):'');
   h.className='hint ok';h.textContent='Link: wa.me/'+n.full+(m?' + message':'');
@@ -945,19 +1272,23 @@ $('packBanner').addEventListener('click',e=>{
 
 let tt;function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800)}
 
-setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();
+setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
+$('ver').textContent='QuickChat version '+APP_VERSION;
 // Example state on first open so the tool shows how it works
 const qs=new URLSearchParams(location.search);
 const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
-const action=qs.get('action'),pack=qs.get('pack'),fu=qs.get('fu');
-if(shared||action||pack||fu){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
+const action=qs.get('action'),pack=qs.get('pack'),fu=qs.get('fu'),sf=qs.get('file');
+if(shared||action||pack||fu||sf){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
 setTab(location.hash.slice(1));
 renderFuPrompt();
+if(sf){setTab('chat');loadSharedFile()}else loadSharedFile();
 if(fu){const r=state.recents.find(x=>x.full===fu.replace(/\D/g,''));if(r)startFollowUp(r);else{handleText('+'+fu,'');setTab('chat')}}
 else if(pack){setTab('chat');showPack(pack)}
-else if(shared){setTab('chat');handleText(shared,'share')}
+else if(shared){setTab('chat');if(!sf||extractNumbers(shared).length)handleText(shared,'share')}
 else if(action==='last'){const r=state.recents[0];if(r){loadRecent(r);toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
 else if(action==='paste'){numIn.focus();pasteFromClipboard()}
+renderWhatsNew();
+setLang(state.lang,true);
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
 })();
 </script>
