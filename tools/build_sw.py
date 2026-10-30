@@ -6,7 +6,6 @@ SHELL = [
     "./",
     "index.html",
     "styles.css",
-    "app.js",
     "qrcode.js",
     "assets/fonts.css",
     "manifest.webmanifest",
@@ -15,7 +14,8 @@ SHELL = [
     "icon-maskable-192.png",
     "icon-maskable-512.png",
     "apple-touch-icon.png",
-] + [f"assets/fonts/{p.name}" for p in sorted(pathlib.Path("assets/fonts").glob("*.woff2"))]
+] + [f"js/{p.name}" for p in sorted(pathlib.Path("js").glob("*.js"))] \
+  + [f"assets/fonts/{p.name}" for p in sorted(pathlib.Path("assets/fonts").glob("*.woff2"))]
 
 def sha(path):
     p = path[2:] if path.startswith("./") else path

@@ -1,0 +1,46 @@
+/* main.js — boot orchestration: initial render, deep links / share intents,
+   language switching, and service worker registration. */
+import {$, store, state, toast, extractNumbers} from './core.js';
+import {i18nAll} from './i18n.js';
+import {setCountry, setApp, update, handleText, pasteFromClipboard, numIn, hint} from './dialer.js';
+import {renderTpls, showPack} from './templates.js';
+import {renderRecents, loadRecent} from './recents.js';
+import {renderBk, checkStorage} from './backup.js';
+import {renderFuPrompt, startFollowUp} from './followups.js';
+import {renderAttach, loadSharedFile} from './share.js';
+import {APP_VERSION, renderWhatsNew} from './version.js';
+import {setTab} from './tabs.js';
+import {renderQueue} from './queue.js';
+import {drawQR} from './qr.js';
+
+/* Language switch re-renders every visible surface, then re-walks the DOM for translation. */
+function setLang(l,quiet){
+  state.lang=l;store.set('qc_lang',l);
+  document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';
+  $('langBtn').textContent=l==='ar'?'English':'العربية';
+  if(!quiet){renderTpls();renderRecents();renderFuPrompt();renderBk();update();renderAttach();if(!$('tab-queue').hidden)renderQueue();if(!$('tab-qr').hidden)drawQR()}
+  i18nAll();
+}
+$('langBtn').onclick=()=>setLang(state.lang==='ar'?'en':'ar');
+
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+
+/* ---- Boot ---- */
+setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
+$('ver').textContent='QuickChat version '+APP_VERSION;
+// Example state on first open so the tool shows how it works
+const qs=new URLSearchParams(location.search);
+const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
+const action=qs.get('action'),pack=qs.get('pack'),fu=qs.get('fu'),sf=qs.get('file');
+if(shared||action||pack||fu||sf){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
+setTab(location.hash.slice(1));
+renderFuPrompt();
+if(sf){setTab('chat');loadSharedFile()}else loadSharedFile();
+if(fu){const r=state.recents.find(x=>x.full===fu.replace(/\D/g,''));if(r)startFollowUp(r);else{handleText('+'+fu,'');setTab('chat')}}
+else if(pack){setTab('chat');showPack(pack)}
+else if(shared){setTab('chat');if(!sf||extractNumbers(shared).length)handleText(shared,'share')}
+else if(action==='last'){const r=state.recents[0];if(r){loadRecent(r);toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
+else if(action==='paste'){numIn.focus();pasteFromClipboard()}
+renderWhatsNew();
+setLang(state.lang,true);
+if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
