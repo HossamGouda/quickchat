@@ -86,6 +86,18 @@ export function buildLink(full,txt){
   return web;
 }
 
+/* Navigate to a chat link. In the Capacitor native shell the WebView cannot
+   resolve intent:// URLs (Bridge.launchIntent would ACTION_VIEW the raw string),
+   so a tiny native plugin (QCOpen) parses the intent URI properly. */
+export function openChat(url,full){
+  const cap=window.Capacitor;
+  if(cap&&cap.isNativePlatform&&cap.isNativePlatform()&&cap.Plugins&&cap.Plugins.QCOpen){
+    cap.Plugins.QCOpen.open({url}).catch(()=>{location.href='https://wa.me/'+full});
+    return;
+  }
+  location.href=url;
+}
+
 let current=null;
 export function currentNumber(){return current}
 export function update(){
@@ -111,7 +123,7 @@ go.addEventListener('click',e=>{
   if(left.length){toast('Fill '+[...new Set(left)].join(', ')+' first');const v=$('vars').querySelector('input');if(v)v.focus();else msgIn.focus();return}
   addRecent();
   if(state.fuActive===current.full){const r=state.recents.find(x=>x.full===current.full);if(r){setDueVal(r,'');r.fuMsg=''}state.fuActive=null;store.set('qc_recents',state.recents)}
-  store.set('qc_fuPrompt',current.full);state.cardMode='just';renderFuPrompt();renderFollowups();location.href=buildLink(current.full);
+  store.set('qc_fuPrompt',current.full);state.cardMode='just';renderFuPrompt();renderFollowups();openChat(buildLink(current.full),current.full);
 });
 msgIn.addEventListener('input',()=>{if(state.pending){state.pending=null;renderVars()}});
 labelIn.addEventListener('input',()=>{const p=state.pending;if(p&&p.nameAuto&&p.keys.includes('name')){p.vals.name=nameFromLabel();renderVars();applyVars()}});
@@ -137,6 +149,8 @@ $('copyLink').onclick=()=>{
 $('clear').onclick=()=>{numIn.value='';msgIn.value='';labelIn.value='';state.pending=null;renderVars();$('picks').hidden=true;update();numIn.focus()};
 
 $('countries').addEventListener('click',e=>{const b=e.target.closest('.cc');if(b)setCountry(b.dataset.id)});
+$('appWa').onclick=()=>setApp('wa');
+$('appWb').onclick=()=>setApp('wb');
 numIn.addEventListener('input',update);
 ccIn.addEventListener('input',update);
 msgIn.addEventListener('input',update);

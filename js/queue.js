@@ -1,7 +1,7 @@
 /* queue.js — batch follow-up queue: paste a list, message one by one. */
 import {$, store, state, COUNTRIES, esc, toast, normalize,
   VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow} from './core.js';
-import {buildLink} from './dialer.js';
+import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
 import {setDueVal, setStatus, isOpen} from './followups.js';
 
@@ -94,7 +94,7 @@ $('qOpen').onclick=()=>{
   pushRecent({full:it.full,code:it.code,local:it.local,country:it.country,label:it.name});
   const link=buildLink(it.full,msg);
   q.idx=nextPending(q.idx);saveQ();renderQueue();
-  location.href=link;
+  openChat(link,it.full);
 };
 $('qSkip').onclick=()=>{if(!q||q.idx===null)return;const it=q.items[q.idx];if(it.status==='pending')it.status='skipped';q.idx=nextPending(q.idx);saveQ();renderQueue()};
 $('qPrev').onclick=()=>{if(!q)return;q.idx=Math.max(0,(q.idx===null?q.items.length:q.idx)-1);saveQ();renderQueue()};
