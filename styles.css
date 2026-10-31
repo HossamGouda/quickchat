@@ -144,3 +144,17 @@ select.txt{appearance:auto}
 .picks .chip{border:1px solid var(--accent);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 14px var(--mono);font-variant-numeric:tabular-nums;cursor:pointer}
 .picks .chip small{font:500 11px var(--sans);color:var(--muted);margin-inline-start:4px}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* ---- PIN lock ---- */
+.lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.lockbox{display:flex;flex-direction:column;align-items:center;gap:16px;width:min(320px,100%)}
+.lockbox h2{margin:0;font-size:22px}
+.lockbox .bk{margin:0;text-align:center}
+.dots{display:flex;gap:14px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);transition:background .15s}
+.dots i.on{background:var(--accent);border-color:var(--accent)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center}
+.padkey{height:64px;border-radius:50%;font:600 22px var(--mono);display:flex;align-items:center;justify-content:center;padding:0}
+.pad span{width:72px;height:64px}
+@media (max-width:360px){.pad{grid-template-columns:repeat(3,64px)}.padkey{height:56px}}
+@media (prefers-reduced-motion:reduce){.dots i{transition:none}}

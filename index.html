@@ -116,6 +116,8 @@
       <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:2px 0">
       <label class="chk"><input type="checkbox" id="ntfToggle"> <span>Notify me when follow-ups are due</span></label>
       <p class="bk" id="ntfInfo"></p>
+      <label class="chk"><input type="checkbox" id="lockToggle"> <span>Require a PIN to open the app</span></label>
+      <p class="bk" id="lockInfo">The app locks itself when you leave it.</p>
     </div>
   </section>
 
@@ -202,6 +204,16 @@
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
+
+<div class="lock" id="lockScreen" hidden>
+  <div class="lockbox">
+    <h2 translate="no">QuickChat</h2>
+    <p class="bk" id="lockMsg"></p>
+    <div class="dots" id="lockDots" aria-hidden="true"></div>
+    <div class="pad" id="lockPad"></div>
+    <button type="button" class="btn small" id="lockForgot" hidden>Forgot PIN? Disable lock</button>
+  </div>
+</div>
 
 <script src="qrcode.js" defer></script>
 <script type="module" src="js/main.js"></script>

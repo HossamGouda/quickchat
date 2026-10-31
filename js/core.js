@@ -114,7 +114,12 @@ export function country(){return COUNTRIES.find(c=>c.id===state.country)||COUNTR
 export function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
 let toastTimer;
-export function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
+/* Translator hook: i18n.js registers itself here so toast() (and any other
+   non-DOM string) can be translated without a module cycle. */
+let _tr=s=>s;
+export function setTranslator(fn){_tr=fn}
+export function t(s){return _tr(s)}
+export function toast(s){const t=$('toast');t.textContent=_tr(s);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
 
 /* ---- Dates and formatting ---- */
 export function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' h ago';const d=Math.round(h/24);return d+' d ago'}

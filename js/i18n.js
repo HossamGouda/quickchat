@@ -1,6 +1,6 @@
 /* i18n.js — Arabic interface (translation layer; user data is never translated).
    Depends only on core. The UI refresh after a language switch lives in main.js. */
-import {state} from './core.js';
+import {state, setTranslator} from './core.js';
 
 const AR={
 '(example)':'(مثال)','+ New':'+ جديد','+ Status':'+ الحالة','1 week':'أسبوع','3 days':'3 أيام','in 1 week':'بعد أسبوع','in 3 days':'بعد 3 أيام',
@@ -72,7 +72,20 @@ const AR={
 'Notification permission denied. Enable it in browser settings.':'تم رفض إذن الإشعارات. فعّله من إعدادات المتصفح.',
 'Notifications on while the app is open.':'الإشعارات تعمل أثناء فتح التطبيق.',
 'Notifications on, even when the app is closed (Android).':'الإشعارات تعمل حتى عند إغلاق التطبيق (أندرويد).',
-'This browser does not support notifications':'هذا المتصفح لا يدعم الإشعارات','QuickChat follow-up':'متابعة QuickChat'
+'This browser does not support notifications':'هذا المتصفح لا يدعم الإشعارات','QuickChat follow-up':'متابعة QuickChat',
+'Enter your PIN':'أدخل رمز PIN','Choose a 4-digit PIN':'اختر رمزًا من 4 أرقام','Confirm your PIN':'أكّد رمز PIN',
+'Wrong PIN. Try again.':'الرمز خاطئ. حاول مرة أخرى.','PINs do not match. Start again.':'الرمزان غير متطابقين. ابدأ من جديد.',
+'PIN set. The app locks when you leave it.':'تم ضبط الرمز. يُقفل التطبيق عند مغادرته.','Lock disabled':'تم إيقاف القفل',
+'Require a PIN to open the app':'اطلب رمز PIN لفتح التطبيق','Forgot PIN? Disable lock':'نسيت الرمز؟ أوقف القفل',
+'The app locks itself when you leave it.':'يُقفل التطبيق تلقائيًا عند مغادرته.','PIN lock needs a secure connection (HTTPS).':'القفل يتطلب اتصالًا آمنًا (HTTPS).','Welcome back':'مرحبًا بعودتك',
+'Add your Teable token in the Backup section first':'أضف رمز Teable في قسم النسخ الاحتياطي أولًا',
+'You are offline. Sync will run when you are back.':'أنت غير متصل. ستعمل المزامنة عند عودة الاتصال.',
+'Teable rejected the token. Check it in Settings.':'رفض Teable الرمز. تحقق منه في الإعدادات.',
+'Cloud sync (Teable) is off. Add a token to sync contacts and templates.':'المزامنة السحابية (Teable) متوقفة. أضف رمزًا لمزامنة جهات الاتصال والقوالب.',
+'Paste your Teable token first':'الصق رمز Teable أولًا',
+'Cloud sync disabled. Data stays on this phone.':'تم إيقاف المزامنة. تبقى البيانات على هذا الهاتف.',
+'PIN lock: require a 4-digit code to open the app — it locks itself when you leave it (enable in Backup)':'القفل برمز من 4 أرقام: يُطلب الرمز عند فتح التطبيق ويُقفل تلقائيًا عند مغادرته (فعّله من النسخ الاحتياطي)',
+'Arabic is now complete for sync, notifications, the PIN lock and every pop-up message':'اكتملت الواجهة العربية للمزامنة والإشعارات والقفل وكل الرسائل المنبثقة'
 };
 
 const AR_RE=[
@@ -104,7 +117,15 @@ const AR_RE=[
  [/^Last backup (\d+) days ago\. You have (\d+) saved contacts? on this phone only\.$/,(m,a,b)=>'آخر نسخة احتياطية قبل '+a+' يوم. لديك '+b+' جهة اتصال محفوظة على هذا الهاتف فقط.'],
  [/^(No backup yet\.|Last backup (today|\d+ days?) ago\.|Last backup today\.) (\d+) templates? · (\d+) saved contacts? · (\d+) recent\.$/,(m,h,x,t,c,r)=>
    (h==='No backup yet.'?'لا توجد نسخة احتياطية بعد.':'آخر نسخة احتياطية: '+(/today/.test(h)?'اليوم':'قبل '+parseInt(h.replace(/\D+/g,''))+' يوم')+'.')+' القوالب: '+t+' · جهات محفوظة: '+c+' · حديثة: '+r+'.'],
- [/^(.+) \((\d+)\)$/,(m,a,b)=>{const t=trCore(a);return t===a?m:t+' ('+b+')'}]
+ [/^(.+) \((\d+)\)$/,(m,a,b)=>{const t=trCore(a);return t===a?m:t+' ('+b+')'}],
+ [/^Synced with Teable: (\d+) sent, (\d+) received$/,(m,a,b)=>'تمت المزامنة مع Teable: أُرسل '+a+'، واستُلم '+b+'.'],
+ [/^Sync failed: (.+)$/,(m,a)=>'فشلت المزامنة: '+a],
+ [/^Teable error (\d+)$/,(m,a)=>'خطأ في Teable ('+a+')'],
+ [/^Cloud sync on · Last sync (.+)$/,(m,a)=>'المزامنة السحابية تعمل · آخر مزامنة '+a],
+ [/^Cloud sync on \(auto-sync disabled\) · Last sync (.+)$/,(m,a)=>'المزامنة السحابية تعمل (تلقائيًا معطّل) · آخر مزامنة '+a],
+ [/^Cloud sync on · Not synced yet$/,'المزامنة السحابية تعمل · لم تتم المزامنة بعد'],
+ [/^Cloud sync on \(auto-sync disabled\) · Not synced yet$/,'المزامنة السحابية تعمل (تلقائيًا معطّل) · لم تتم المزامنة بعد'],
+ [/^Sync protocol mismatch: this device v(\d+), cloud v(\d+)\. Update the app on all devices\.$/,(m,a,b)=>'تعارض في إصدار المزامنة: هذا الجهاز v'+a+' والسحابة v'+b+'. حدّث التطبيق على جميع الأجهزة.']
 ];
 
 function trCore(k){
@@ -115,6 +136,7 @@ function trCore(k){
 }
 
 export function tr(s){return state.lang==='ar'&&s?trCore(s):s}
+setTranslator(tr);
 
 const I18N_SKIP='[dir="auto"],.rnum,.preview,canvas,[translate="no"],script,style,textarea';
 function i18nText(n){
