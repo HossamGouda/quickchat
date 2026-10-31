@@ -7,9 +7,11 @@
    3. Other browsers: notifications while the app is open. */
 import {$, store, state, todayStr, parseDay, dueTime, dueWhen, sar, toast} from './core.js';
 import {tr} from './i18n.js';
-import {isOpen, who} from './followups.js';
+import {isOpen, who, setDueVal} from './followups.js';
 
 const NTF_KEY='qc_notify', NTF_SEEN='qc_notified', CAP_IDS='qc_cap_ntf_ids';
+const NTF_LEAD='qc_ntf_lead', SNOOZE='qc_snoozed', NTF_NOTE='qc_ntf_note';
+const ACT_TYPE='qc-followup';
 const timers=new Map(); /* r.full -> timeout id for exact-time reminders */
 let capDenied=false; /* native: OS-level notification access is blocked */
 
@@ -19,6 +21,17 @@ export function dueNow(){
     .sort((a,b)=>(a.due+dueTime(a)).localeCompare(b.due+dueTime(b)));
 }
 function dueAt(r){const d=parseDay(r.due),hm=dueTime(r).split(':');d.setHours(+hm[0],+hm[1],0,0);return d}
+
+/* ---- Reminder lead time: when the OS should alert relative to the follow-up ---- */
+function leadMs(){const v=store.get(NTF_LEAD,'exact');return v==='m30'?18e4:v==='h1'?36e5:0}
+/* Absolute alert time for a follow-up; never claims the past. */
+function notifyTimeRaw(r){
+  const d=parseDay(r.due);
+  if(store.get(NTF_LEAD,'exact')==='morning'){d.setHours(9,0,0,0);if(d.getTime()>Date.now())return d.getTime()}
+  return dueAt(r).getTime()-leadMs();
+}
+function snoozed(){return store.get(SNOOZE,{})}
+function snid(full){return 10000000+(nid(full)-100000)} /* separate id for the snooze one-off */
 
 /* Capacitor bridge: present only inside the native app. */
 function capLN(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications)||null}
@@ -44,26 +57,74 @@ async function capCancelAll(){
   try{await ln.cancel({notifications:ids.map(id=>({id}))})}catch(e){}
   store.set(CAP_IDS,[]);
 }
+function capNtf(r,at,extra){
+  const note=(r.note||'').slice(0,80);
+  return {id:nid(r.full),title:tr('Follow-up due')+': '+who(r),
+    body:(r.value?sar(r.value)+' · ':'')+dueWhen(r)+(note?' · '+note:''),
+    schedule:{at:new Date(at)},extra:Object.assign({full:r.full},extra),
+    actionTypeId:ACT_TYPE,channelId:'followups',smallIcon:'ic_stat_notify'};
+}
+async function capRegisterActions(){
+  const ln=capLN();if(!ln||!ln.registerActionTypes)return;
+  try{await ln.registerActionTypes({types:[{id:ACT_TYPE,actions:[
+    {id:'done',title:tr('Mark done')},
+    {id:'snooze',title:tr('Snooze 1 hour')}]}]})}catch(e){}
+}
+/* Our notifications declare channelId 'followups'; Android drops them if the
+   channel was never created. Idempotent — safe to call before every schedule. */
+async function capEnsureChannel(){
+  const ln=capLN();if(!ln||!ln.createChannel)return;
+  try{await ln.createChannel({id:'followups',name:tr('Follow-ups'),
+    importance:4,visibility:1,vibration:true,lights:true})}catch(e){}
+}
 async function capSchedule(){
   const ln=capLN();if(!ln)return;
   await capCancelAll();
   if(store.get(NTF_KEY,0)!==1)return;
-  const now=Date.now(),items=[];
+  const now=Date.now(),items=[],sz=snoozed();
   for(const r of dueNow()){
-    const at=dueAt(r).getTime();
-    if(at<=now){items.push({r,at:now+1500});markSeen(r.full,r.due)} /* overdue: alert shortly after opening */
-    else if(at-now<31*864e5)items.push({r,at});
+    if(sz[r.full]>now)continue; /* snoozed: its own one-off is scheduled separately */
+    let at=notifyTimeRaw(r);
+    if(at<=now){at=now+1500;markSeen(r.full,r.due)} /* overdue: alert shortly after opening */
+    if(at-now<31*864e5)items.push({r,at});
   }
   if(!items.length)return;
   const ids=[];
   try{
+    await capRegisterActions();
+    await capEnsureChannel();
     await ln.schedule({notifications:items.map(({r,at})=>{
-      const id=nid(r.full);ids.push(id);
-      return {id,title:tr('Follow-up due'),body:who(r)+(r.value?' · '+sar(r.value):'')+' · '+dueWhen(r),
-        schedule:{at:new Date(at)},extra:{full:r.full}};
+      const n=capNtf(r,at);ids.push(n.id);return n;
     })});
     store.set(CAP_IDS,ids);
   }catch(e){/* scheduling failed; badge still updates */}
+}
+/* Notification action: mark the follow-up done without opening the app. */
+export function capDone(full){
+  const r=state.recents.find(x=>x.full===full);if(!r)return;
+  setDueVal(r,'');store.set('qc_recents',state.recents);
+  const ln=capLN();if(ln){const id=nid(full);ln.cancel({notifications:[{id},{id:snid(full)}]}).catch(()=>{})}
+  const sz=snoozed();if(sz[full]){delete sz[full];store.set(SNOOZE,sz)}
+  store.set(NTF_NOTE,tr('Follow-up done'));
+  refreshDue();
+}
+/* Notification action: re-alert one hour from now. */
+async function capSnooze(full){
+  const r=state.recents.find(x=>x.full===full);if(!r)return;
+  const ln=capLN();if(!ln)return;
+  const until=Date.now()+36e5;
+  const sz=snoozed();sz[r.full]=until;store.set(SNOOZE,sz);
+  try{
+    await capRegisterActions();
+    await capEnsureChannel();
+    await ln.cancel({notifications:[{id:nid(r.full)}]});
+    await ln.schedule({notifications:[{id:snid(r.full),
+      title:tr('Follow-up due')+': '+who(r),
+      body:tr('Snoozed')+' · '+(r.value?sar(r.value)+' · ':'')+dueWhen(r),
+      schedule:{at:new Date(until)},extra:{full:r.full},
+      actionTypeId:ACT_TYPE,channelId:'followups',smallIcon:'ic_stat_notify'}]});
+  }catch(e){}
+  store.set(NTF_NOTE,tr('Follow-up snoozed for 1 hour'));
 }
 
 /* ---- Web path ---- */
@@ -81,7 +142,7 @@ function checkMissed(){
   if(store.get(NTF_KEY,0)!==1)return;
   const now=Date.now(),s=seen();
   for(const r of dueNow()){
-    if(dueAt(r).getTime()<=now&&s[r.full]!==r.due){showNotif(r);markSeen(r.full,r.due)}
+    if(notifyTimeRaw(r)<=now&&s[r.full]!==r.due){showNotif(r);markSeen(r.full,r.due)}
   }
 }
 
@@ -92,7 +153,7 @@ function scheduleUpcoming(){
   if(store.get(NTF_KEY,0)!==1)return;
   const now=Date.now();
   for(const r of dueNow()){
-    const at=dueAt(r).getTime(),wait=at-now;
+    const wait=notifyTimeRaw(r)-now;
     if(wait>0&&wait<7*864e5)timers.set(r.full,setTimeout(()=>{markSeen(r.full,r.due);if(document.hidden)showNotif(r)},wait));
   }
 }
@@ -164,11 +225,41 @@ export async function syncNotifyToggle(){
 export function initNotify(){
   const el=$('ntfToggle');if(!el)return;
   el.onchange=()=>syncNotifyToggle();
+  const lead=$('ntfLead');
+  if(lead){
+    lead.value=store.get(NTF_LEAD,'exact');
+    lead.onchange=()=>{store.set(NTF_LEAD,lead.value);refreshDue()};
+  }
   $('ntfSettings').onclick=()=>{
     const cap=window.Capacitor;
     if(cap&&cap.isNativePlatform&&cap.isNativePlatform()&&cap.Plugins&&cap.Plugins.QCOpen)
       cap.Plugins.QCOpen.openNotificationSettings().catch(()=>{});
   };
+  /* Native: handle notification action buttons (works even if the OS started the app cold). */
+  const ln=capLN();
+  if(ln&&ln.addListener){
+    try{
+      ln.addListener('localNotificationActionPerformed',a=>{
+        const full=a.notification&&a.notification.extra&&a.notification.extra.full;if(!full)return;
+        if(a.actionId==='done')capDone(full);
+        else if(a.actionId==='snooze')capSnooze(full);
+      });
+    }catch(e){}
+    /* Surface the result of an action taken while the app was closed. */
+    const note=store.get(NTF_NOTE,'');
+    if(note){store.set(NTF_NOTE,'');setTimeout(()=>toast(note),800)}
+    /* Without the exact-alarm special access, reminders only fire loosely and
+       the OS may refuse them entirely. Ask once, then leave it to Settings. */
+    try{
+      ln.checkExactNotificationSetting&&ln.checkExactNotificationSetting().then(e=>{
+        if(e&&e.exact_alarm&&e.exact_alarm!=='granted'&&!store.get('qc_exact_prompted')){
+          store.set('qc_exact_prompted',1);
+          toast(tr('For reminders at the exact time, allow alarms for QuickChat in phone settings.'));
+          setTimeout(()=>{try{ln.changeExactNotificationSetting&&ln.changeExactNotificationSetting()}catch(_){}},1200);
+        }
+      });
+    }catch(_){}
+  }
   /* Reflect the real permission state (e.g. revoked in OS settings). */
   permState().then(p=>{
     if(p==='granted'){el.checked=store.get(NTF_KEY,0)===1;capDenied=false}

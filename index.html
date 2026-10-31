@@ -218,6 +218,15 @@
       <label class="chk"><input type="checkbox" id="ntfToggle"> <span>Notify me when follow-ups are due</span></label>
       <p class="bk" id="ntfInfo"></p>
       <button type="button" class="btn small" id="ntfSettings" hidden>Open notification settings</button>
+      <div class="field">
+        <label class="lbl" for="ntfLead">Remind me</label>
+        <select id="ntfLead" class="txt">
+          <option value="exact">At the exact time</option>
+          <option value="m30">30 minutes before</option>
+          <option value="h1">1 hour before</option>
+          <option value="morning">That morning (9:00)</option>
+        </select>
+      </div>
     </div>
   </section>
 

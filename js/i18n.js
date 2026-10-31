@@ -96,9 +96,12 @@ const AR={
 'For reminders at the exact time, allow alarms for QuickChat in phone settings.':'للتذكير في الوقت الدقيق، اسمح بالمنبهات لـ QuickChat من إعدادات الهاتف.',
 'Cloud sync is smarter: it tells you when another device changed your data, syncs your settings (QR text, country, app, queue drafts), and a Restore button rebuilds this phone from Teable':'المزامنة أذكى الآن: تُعلمك عندما يغيّر جهاز آخر بياناتك، وتزامن إعداداتك (نص QR والدولة والتطبيق ومسودات القائمة)، وزر الاستعادة يعيد بناء هذا الهاتف من Teable',
 'A 6-month win-rate trend now sits under the pipeline stats':'توجد الآن نسبة نجاح لآخر 6 أشهر أسفل إحصاءات الصفقات',
+'Remind me':'ذكّرني','At the exact time':'في الوقت الدقيق','30 minutes before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','That morning (9:00)':'صباح ذلك اليوم (9:00)',
+'Mark done':'تمّت المتابعة','Snooze 1 hour':'تأجيل ساعة','Snoozed':'مؤجّلة','Follow-up snoozed for 1 hour':'أُجلت المتابعة ساعة',
 'A dedicated Settings screen now holds backup, Teable sync, reminders and the PIN lock — tap the gear at the top':'شاشة إعدادات مخصصة تجمع النسخ الاحتياطي والمزامنة والتذكيرات والقفل برمز PIN — اضغط رمز الترس في الأعلى',
 'PIN lock: require a 4-digit code to open the app — it locks itself when you leave it (enable in Settings)':'القفل برمز من 4 أرقام يُطلب عند فتح التطبيق ويُقفل تلقائيًا عند مغادرته (فعّله من الإعدادات)',
-'Due reminders: notifications at the follow-up time, a due-count badge on the icon, and background checks on Android — enable in Settings':'تذكيرات الاستحقاق: إشعارات في وقت المتابعة وشارة بعدد المستحق على الأيقونة وتحقق تلقائي على أندرويد — فعّلها من الإعدادات'
+'Due reminders: notifications at the follow-up time, a due-count badge on the icon, and background checks on Android — enable in Settings':'تذكيرات الاستحقاق: إشعارات في وقت المتابعة وشارة بعدد المستحق على الأيقونة وتحقق تلقائي على أندرويد — فعّلها من الإعدادات',
+'Notifications are actionable now: Mark done or Snooze 1 hour straight from the reminder, plus choose a lead time (exact, 30 min, 1 hour, or that morning)':'أصبحت الإشعارات تفاعلية: تمّت المتابعة أو تأجيل ساعة من الإشعار مباشرة، مع خيار توقيت التذكير (الوقت الدقيق، قبل 30 دقيقة، قبل ساعة، أو صباح ذلك اليوم)'
 };
 
 const AR_RE=[
