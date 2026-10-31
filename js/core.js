@@ -113,13 +113,114 @@ export function country(){return COUNTRIES.find(c=>c.id===state.country)||COUNTR
 
 export function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
-let toastTimer;
 /* Translator hook: i18n.js registers itself here so toast() (and any other
    non-DOM string) can be translated without a module cycle. */
 let _tr=s=>s;
 export function setTranslator(fn){_tr=fn}
 export function t(s){return _tr(s)}
-export function toast(s){const t=$('toast');t.textContent=_tr(s);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
+
+/* ---- Toast stack: typed, actionable, auto-dismissing ----
+   toast(text, {type:'ok'|'err'|'info', action:{label, fn}, dur:ms})
+   Up to 3 toasts stack; each has an icon, optional action, close button and a
+   progress bar counting down to auto-dismiss. Plain toast(text) keeps the old
+   look-and-feel defaults so the 60+ call sites need no changes. */
+const TOAST_META={ok:{dur:2600},err:{dur:4200},info:{dur:2200}};
+const KIND_SVG={
+  ok:'<path d="M20 6 9 17l-5-5"/>',
+  err:'<path d="M18 6 6 18M6 6l12 12"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  due:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  sync:'<path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/>'};
+export function kindSvg(kind){
+  return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(KIND_SVG[kind]||KIND_SVG.info)+'</svg>';
+}
+export function toast(s,opts){
+  opts=opts||{};
+  const type=opts.type||'info';
+  const host=$('toasts');
+  if(!host)return; /* markup missing: no-op rather than crash */
+  while(host.children.length>=3)host.firstChild.remove();
+  const el=document.createElement('div');
+  el.className='toast t-'+type;
+  el.setAttribute('role',type==='err'?'alert':'status');
+  const ic=document.createElement('span');ic.className='toast-ic';ic.innerHTML=kindSvg(type);el.appendChild(ic);
+  const txt=document.createElement('span');txt.className='toast-txt';txt.textContent=_tr(s);el.appendChild(txt);
+  let dead=false;
+  const dismiss=()=>{if(dead)return;dead=true;el.classList.remove('show');setTimeout(()=>el.remove(),240)};
+  if(opts.action){
+    const b=document.createElement('button');b.type='button';b.className='toast-act';b.textContent=_tr(opts.action.label);
+    b.onclick=e=>{e.stopPropagation();dismiss();try{opts.action.fn()}catch(_){}};el.appendChild(b);
+  }
+  const x=document.createElement('button');x.type='button';x.className='toast-x';x.setAttribute('aria-label',_tr('Dismiss'));x.textContent='✕';
+  x.onclick=e=>{e.stopPropagation();clearTimeout(tm);dismiss()};el.appendChild(x);
+  const bar=document.createElement('i');bar.className='toast-bar';el.appendChild(bar);
+  host.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  const dur=opts.dur||TOAST_META[type].dur;
+  bar.style.animationDuration=dur+'ms';
+  const tm=setTimeout(dismiss,dur);
+  el.addEventListener('click',e=>{if(e.target===el||e.target===txt||e.target===ic){clearTimeout(tm);dismiss()}});
+}
+
+/* ---- In-app notification center (bell) ----
+   Callers log user-relevant events with notifyEvent(); the bell in the header
+   shows unread count and a panel with history. opts.tab makes tapping the item
+   navigate there (main.js listens for qc:nav). */
+const EV_KEY='qc_events';
+export function events(){return store.get(EV_KEY,[])}
+export function notifyEvent(kind,text,opts){
+  opts=opts||{};
+  const evs=events();
+  evs.unshift({id:Date.now()+'-'+Math.floor(Math.random()*999),ts:Date.now(),kind,
+    text,tab:opts.tab||'',read:!!opts.read});
+  while(evs.length>20)evs.pop();
+  store.set(EV_KEY,evs);
+  renderBell();
+}
+export function renderBell(){
+  const b=$('bellBadge');if(!b)return;
+  const n=events().filter(e=>!e.read).length;
+  b.hidden=!n;b.textContent=n>9?'9+':''+n;
+}
+export function initBell(){
+  const btn=$('bellBtn'),panel=$('bellPanel'),list=$('bellList');
+  if(!btn||!panel||!list)return;
+  const close=()=>{panel.hidden=true};
+  btn.onclick=e=>{
+    e.stopPropagation();
+    if(!panel.hidden){close();return}
+    const evs=events();
+    list.innerHTML='';
+    if(!evs.length){
+      const p=document.createElement('p');p.className='bp-empty';p.textContent=_tr('No notifications yet');list.appendChild(p);
+    }else{
+      for(const ev of evs){
+        const it=document.createElement('div');it.className='bp-item k-'+ev.kind;
+        if(ev.tab)it.classList.add('lnk');
+        const ic=document.createElement('span');ic.className='bp-ic';ic.innerHTML=kindSvg(ev.kind);it.appendChild(ic);
+        const body=document.createElement('div');body.className='bp-body';
+        const tx=document.createElement('p');tx.className='bp-txt';tx.textContent=_tr(ev.text);body.appendChild(tx);
+        const tm=document.createElement('span');tm.className='bp-time';tm.textContent=ago(ev.ts);body.appendChild(tm);
+        it.appendChild(body);
+        const rm=document.createElement('button');rm.type='button';rm.className='bp-rm';rm.setAttribute('aria-label',_tr('Dismiss'));rm.textContent='✕';
+        rm.onclick=ev2=>{ev2.stopPropagation();store.set(EV_KEY,events().filter(x=>x.id!==ev.id));renderPanel();renderBell()};
+        it.appendChild(rm);
+        if(ev.tab)it.onclick=()=>{close();document.dispatchEvent(new CustomEvent('qc:nav',{detail:ev.tab}))};
+        list.appendChild(it);
+      }
+    }
+    panel.hidden=false;
+    /* Opening the panel counts as reading. */
+    const unread=events().some(e=>!e.read);
+    if(unread){store.set(EV_KEY,events().map(e=>Object.assign({},e,{read:true})));renderBell()}
+  };
+  function renderPanel(){btn.onclick()}
+  $('bellClear').onclick=e=>{
+    e.stopPropagation();store.set(EV_KEY,[]);renderBell();
+    list.innerHTML='';const p=document.createElement('p');p.className='bp-empty';p.textContent=_tr('No notifications yet');list.appendChild(p);
+  };
+  document.addEventListener('click',e=>{if(!panel.hidden&&!panel.contains(e.target)&&e.target!==btn&&!btn.contains(e.target))close()});
+}
 
 /* ---- Dates and formatting ---- */
 export function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' h ago';const d=Math.round(h/24);return d+' d ago'}

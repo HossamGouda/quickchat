@@ -1,5 +1,5 @@
 /* queue.js — batch follow-up queue: paste a list, message one by one. */
-import {$, store, state, COUNTRIES, esc, toast, normalize,
+import {$, store, state, COUNTRIES, esc, toast, notifyEvent, normalize,
   VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow} from './core.js';
 import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
@@ -109,5 +109,5 @@ $('qEnd').onclick=()=>{
 $('qCur').addEventListener('click',e=>{
   const b=e.target.closest('[data-qfu]');if(!b||!q)return;const ds=todayStr(+b.dataset.qfu);let n=0;
   q.items.filter(i=>i.status==='sent').forEach(i=>{const r=state.recents.find(x=>x.full===i.full);if(r){setDueVal(r,ds);if(!isOpen(r)||!r.status)setStatus(r,'waiting');n++}});
-  saveRecents();toast('Follow-up set for '+n+' contact'+(n===1?'':'s')+': '+dueLow(ds));
+  saveRecents();const msg='Follow-up set for '+n+' contact'+(n===1?'':'s')+': '+dueLow(ds);toast(msg,{type:'ok'});notifyEvent('due',msg,{tab:'fu'});
 });

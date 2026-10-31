@@ -1,6 +1,6 @@
 /* main.js — boot orchestration: initial render, deep links / share intents,
    language switching, and service worker registration. */
-import {$, store, state, hydrateState, toast, extractNumbers} from './core.js';
+import {$, store, state, hydrateState, toast, extractNumbers, initBell, renderBell} from './core.js';
 import {i18nAll} from './i18n.js';
 import {setCountry, setApp, update, handleText, pasteFromClipboard, numIn, hint} from './dialer.js';
 import {renderTpls, showPack} from './templates.js';
@@ -15,7 +15,7 @@ import {drawQR, initQR} from './qr.js';
 import {initSync} from './sync.js';
 import {initNotify} from './notify.js';
 import {initLock} from './lock.js';
-import {initSettings} from './settings.js';
+import {initSettings, openSettings} from './settings.js';
 
 /* Language switch re-renders every visible surface, then re-walks the DOM for translation. */
 function setLang(l,quiet){
@@ -32,7 +32,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 /* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
 async function boot(){
 await store.ready;
-hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();
+hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();
+document.addEventListener('qc:nav',e=>{e.detail==='settings'?openSettings():setTab(e.detail)});
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
 $('ver').textContent='QuickChat version '+APP_VERSION;
 // Example state on first open so the tool shows how it works

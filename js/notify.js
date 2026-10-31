@@ -5,7 +5,7 @@
    2. Browser PWA on Android: exact-time notifications while open, plus
       Periodic Background Sync checks while closed.
    3. Other browsers: notifications while the app is open. */
-import {$, store, state, todayStr, parseDay, dueTime, dueWhen, sar, toast} from './core.js';
+import {$, store, state, todayStr, parseDay, dueTime, dueWhen, sar, toast, notifyEvent} from './core.js';
 import {tr} from './i18n.js';
 import {isOpen, who, setDueVal} from './followups.js';
 
@@ -106,6 +106,7 @@ export function capDone(full){
   const ln=capLN();if(ln){const id=nid(full);ln.cancel({notifications:[{id},{id:snid(full)}]}).catch(()=>{})}
   const sz=snoozed();if(sz[full]){delete sz[full];store.set(SNOOZE,sz)}
   store.set(NTF_NOTE,tr('Follow-up done'));
+  notifyEvent('ok',tr('Follow-up done')+': '+who(r),{tab:'fu'});
   refreshDue();
 }
 /* Notification action: re-alert one hour from now. */
@@ -125,6 +126,7 @@ async function capSnooze(full){
       actionTypeId:ACT_TYPE,channelId:'followups',smallIcon:'ic_stat_notify'}]});
   }catch(e){}
   store.set(NTF_NOTE,tr('Follow-up snoozed for 1 hour'));
+  notifyEvent('due',tr('Follow-up snoozed for 1 hour')+': '+who(r),{tab:'fu'});
 }
 
 /* ---- Web path ---- */
@@ -142,7 +144,10 @@ function checkMissed(){
   if(store.get(NTF_KEY,0)!==1)return;
   const now=Date.now(),s=seen();
   for(const r of dueNow()){
-    if(notifyTimeRaw(r)<=now&&s[r.full]!==r.due){showNotif(r);markSeen(r.full,r.due)}
+    if(notifyTimeRaw(r)<=now&&s[r.full]!==r.due){
+      showNotif(r);markSeen(r.full,r.due);
+      notifyEvent('due',tr('Follow-up due')+': '+who(r),{tab:'fu'});
+    }
   }
 }
 
@@ -247,7 +252,7 @@ export function initNotify(){
     }catch(e){}
     /* Surface the result of an action taken while the app was closed. */
     const note=store.get(NTF_NOTE,'');
-    if(note){store.set(NTF_NOTE,'');setTimeout(()=>toast(note),800)}
+    if(note){store.set(NTF_NOTE,'');setTimeout(()=>toast(note,{type:'ok'}),800)}
     /* Without the exact-alarm special access, reminders only fire loosely and
        the OS may refuse them entirely. Ask once, then leave it to Settings. */
     try{

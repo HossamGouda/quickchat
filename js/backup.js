@@ -1,5 +1,5 @@
 /* backup.js — backup / restore / CSV export, backup nudges, storage persistence. */
-import {$, store, state, COUNTRIES, STATUSES, ST_LABEL, dl, toast, dueTime, todayStr} from './core.js';
+import {$, store, state, COUNTRIES, STATUSES, ST_LABEL, dl, toast, dueTime, todayStr, notifyEvent} from './core.js';
 import {renderRecents, keep, trimRecents} from './recents.js';
 import {renderTpls} from './templates.js';
 import {tombstones, addTombstone} from './tombstones.js';
@@ -20,11 +20,11 @@ export function renderBk(){
 function backupJson(){return JSON.stringify({app:'quickchat',version:4,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents,deleted:tombstones()},null,2)}
 function stamp(){return todayStr()}
 function backupDone(){store.set('qc_lastBackup',Date.now());renderBk()}
-function downloadBackup(){dl(new Blob([backupJson()],{type:'application/json'}),'quickchat-backup-'+stamp()+'.json');backupDone();toast('Backup saved to Downloads')}
+function downloadBackup(){dl(new Blob([backupJson()],{type:'application/json'}),'quickchat-backup-'+stamp()+'.json');backupDone();toast('Backup saved to Downloads',{type:'ok'});notifyEvent('ok','Backup saved',{tab:'settings'})}
 function shareBackup(){
   let file;try{file=new File([backupJson()],'quickchat-backup-'+stamp()+'.txt',{type:'text/plain'})}catch(e){file=null}
   if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:'QuickChat backup'}).then(()=>{backupDone();toast('Backup shared. Pick Drive to keep it safe')}).catch(err=>{if(!err||err.name!=='AbortError')downloadBackup()});
+    navigator.share({files:[file],title:'QuickChat backup'}).then(()=>{backupDone();toast('Backup shared. Pick Drive to keep it safe',{type:'ok'});notifyEvent('ok','Backup shared',{tab:'settings'})}).catch(err=>{if(!err||err.name!=='AbortError')downloadBackup()});
   }else downloadBackup();
 }
 $('shareBk').onclick=shareBackup;
@@ -40,7 +40,7 @@ $('csvBk').onclick=()=>{
     return [r.label||'','+'+r.full,c&&c.id!=='ot'?c.name:'',r.status?ST_LABEL[r.status]:'',r.value||'',r.note||'',r.due||'',r.due?dueTime(r):'',r.fuMsg||'',new Date(r.at).toISOString().slice(0,10)];
   });
   dl(new Blob(['﻿'+[head].concat(rows).map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'quickchat-contacts-'+stamp()+'.csv');
-  toast('Excel file saved to Downloads');
+  toast('Excel file saved to Downloads',{type:'ok'});
 };
 
 export function checkStorage(){

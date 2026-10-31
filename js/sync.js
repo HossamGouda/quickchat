@@ -9,7 +9,7 @@
 
    The personal access token is entered in the Backup tab and kept in the
    on-device store only — it is never committed to the repo or shown in UI. */
-import {$, store, state, COUNTRIES, STATUSES, toast} from './core.js';
+import {$, store, state, COUNTRIES, STATUSES, toast, notifyEvent} from './core.js';
 import {TEABLE_API, TEABLE_TABLES as TBLS, TEABLE_MATCH_FIELDS as MATCH, PROTOCOL_VERSION} from './sync-config.js';
 import {saveRecents} from './recents.js';
 import {renderTpls} from './templates.js';
@@ -195,11 +195,13 @@ export async function restoreFromCloud(){
     }
     store.set('qc_tpls',state.tpls);renderTpls();
     store.set('qc_last_sync',Date.now());
-    toast(`Restored from Teable: ${restored} contacts, ${restoredT} templates`);
+    toast(`Restored from Teable: ${restored} contacts, ${restoredT} templates`,{type:'ok'});
+    notifyEvent('ok',`Restored from Teable: ${restored} contacts, ${restoredT} templates`,{tab:'settings'});
     renderSync();
     return true;
   }catch(err){
-    toast('Restore failed: '+(err.message||'network error'));
+    toast('Restore failed: '+(err.message||'network error'),{type:'err'});
+    notifyEvent('err','Restore failed: '+(err.message||'network error'),{tab:'settings'});
     return false;
   }
 }
@@ -361,11 +363,17 @@ export async function syncNow(opts={}){
       }
       store.set('qc_recents',state.recents);store.set('qc_tpls',state.tpls);
       const nc=conflicts.filter(c=>c.kind==='c').length,nt=conflicts.length-nc;
-      toast(`${conflicts.length} updated from another device`+(nt&&nc?` (${nc} contacts, ${nt} templates)`:''));
+      const msg=`${conflicts.length} updated from another device`+(nt&&nc?` (${nc} contacts, ${nt} templates)`:'');
+      if(!opts.quiet)toast(msg,{type:'info'});
+      notifyEvent('sync',msg,{tab:'settings'}); /* unread: worth knowing about */
     }else if(settingsApplied){
-      toast(tr('Settings updated from another device'));
+      const msg=tr('Settings updated from another device');
+      if(!opts.quiet)toast(msg,{type:'info'});
+      notifyEvent('sync',msg,{tab:'settings'});
     }else{
-      toast(`Synced with Teable: ${pushed} sent, ${pulled} received`);
+      const msg=`Synced with Teable: ${pushed} sent, ${pulled} received`;
+      if(!opts.quiet){toast(msg,{type:'ok'});notifyEvent('sync',msg,{tab:'settings',read:true})}
+      /* quiet runs stay on the status line only — no toast, no badge */
     }
     renderSync();
     return true;
@@ -374,7 +382,11 @@ export async function syncNow(opts={}){
     renderSync(); /* resets the status line first… */
     $('syncStatus').textContent=err.message||'Sync failed';
     $('syncStatus').className='bk warn';
-    if(!opts.quiet)toast('Sync failed: '+(err.message||'network error'));
+    if(!opts.quiet){
+      const msg='Sync failed: '+(err.message||'network error');
+      toast(msg,{type:'err'});
+      notifyEvent('err',msg,{tab:'settings'});
+    }
     return false;
   }finally{
     syncing=false;
