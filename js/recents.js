@@ -18,7 +18,7 @@ export function addRecent(){
 export function pushRecent(n){
   const prev=state.recents.find(x=>x.full===n.full)||{};
   state.recents=state.recents.filter(x=>x.full!==n.full);
-  const r=Object.assign({},prev,{full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||prev.label||''});
+  const r=Object.assign({},prev,{full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),label:n.label||prev.label||''});r._lu=Date.now();
   logEv(r,'msg');state.recents.unshift(r);
   trimRecents();store.set('qc_recents',state.recents);renderRecents();renderBk();
 }
@@ -60,7 +60,7 @@ function recentClick(e){
   if(act==='reuse'){loadRecent(r);window.scrollTo({top:0,behavior:'smooth'});return}
   if(act==='ledit'){state.labelEditing=f;state.confirmRm=null}
   if(act==='lcancel'){state.labelEditing=null}
-  if(act==='lsave'){r.label=$('eLabel').value.trim();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')}
+  if(act==='lsave'){r.label=$('eLabel').value.trim();r._lu=Date.now();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')}
   if(act==='rm'){if(r&&r.label)state.confirmRm=f;else{state.recents=state.recents.filter(x=>x.full!==f);store.set('qc_recents',state.recents)}}
   if(act==='normv')state.confirmRm=null;
   if(act==='yesrm'){state.recents=state.recents.filter(x=>x.full!==f);state.confirmRm=null;store.set('qc_recents',state.recents);renderBk();toast('Number deleted')}

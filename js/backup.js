@@ -75,8 +75,8 @@ $('importFile').onchange=async e=>{
       if(!ex.dueTime&&/^\d\d:\d\d$/.test(r.dueTime||'')){ex.dueTime=r.dueTime;ch=true}
       if(!ex.value&&+r.value){ex.value=Math.round(+r.value);ch=true}
       if(!(ex.log&&ex.log.length)&&r.log){ex.log=okLog(r.log);ch=true}
-      if(ch)nn++;return}
-    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log)});nn++;
+      if(ch){ex._lu=Date.now();nn++}return}
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),_lu:Date.now()});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
   store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);

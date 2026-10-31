@@ -12,6 +12,7 @@ import {APP_VERSION, renderWhatsNew} from './version.js';
 import {setTab} from './tabs.js';
 import {renderQueue, initQueue} from './queue.js';
 import {drawQR, initQR} from './qr.js';
+import {initSync} from './sync.js';
 
 /* Language switch re-renders every visible surface, then re-walks the DOM for translation. */
 function setLang(l,quiet){
@@ -28,7 +29,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 /* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
 async function boot(){
 await store.ready;
-hydrateState();initQueue();initQR();
+hydrateState();initQueue();initQR();initSync();
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
 $('ver').textContent='QuickChat version '+APP_VERSION;
 // Example state on first open so the tool shows how it works

@@ -52,7 +52,7 @@ $('tpls').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const id=b.dataset.id,act=b.dataset.act;
   if(act==='use'){const t=state.tpls.find(x=>x.id===id);useTemplate(t);toast(state.pending.keys.length?'Fill in the highlighted fields':'Template added to message');$('msg').scrollIntoView({behavior:'smooth',block:'center'});return}
-  if(act==='pin'){state.tpls=state.tpls.map(x=>x.id===id?Object.assign({},x,{pinned:!x.pinned}):x);store.set('qc_tpls',state.tpls)}
+  if(act==='pin'){state.tpls=state.tpls.map(x=>x.id===id?Object.assign({},x,{pinned:!x.pinned,_lu:Date.now()}):x);store.set('qc_tpls',state.tpls)}
   if(act==='edit'){state.editing=id;state.confirmDel=null}
   if(act==='del'){state.confirmDel=id}
   if(act==='nodel'){state.confirmDel=null}
@@ -62,7 +62,7 @@ $('tpls').addEventListener('click',e=>{
     const title=$('eTitle').value.trim(),body=$('eBody').value.trim();
     if(!body){toast('Message text is required');return}
     const old=state.tpls.find(x=>x.id===id);
-    const t={id:id==='new'?'t'+Date.now():id,title:title||body.slice(0,30),body,pinned:!!(old&&old.pinned)};
+    const t={id:id==='new'?'t'+Date.now():id,title:title||body.slice(0,30),body,pinned:!!(old&&old.pinned),_lu:Date.now()};
     if(id==='new')state.tpls.unshift(t);else state.tpls=state.tpls.map(x=>x.id===id?t:x);
     state.editing=null;store.set('qc_tpls',state.tpls);renderBk();toast('Template saved');
   }

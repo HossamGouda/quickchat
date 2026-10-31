@@ -13,10 +13,10 @@ function findFuTpl(){return state.tpls.find(t=>/follow|متابع/i.test(t.title
 function lastStatusTime(r,s){const l=(r.log||[]).filter(x=>x.e==='status'&&x.v===s).pop();return l?l.t:r.at}
 
 export function setStatus(r,s){
-  if((r.status||'')===s)return;r.status=s;logEv(r,'status',s);
+  if((r.status||'')===s)return;r.status=s;r._lu=Date.now();logEv(r,'status',s);
   if((s==='won'||s==='lost')&&r.due){r.due='';toast('Marked '+ST_LABEL[s]+'. Follow-up cleared')}
 }
-export function setDueVal(r,ds){if((r.due||'')===ds)return;r.due=ds;logEv(r,ds?'due':'done',ds)}
+export function setDueVal(r,ds){if((r.due||'')===ds)return;r.due=ds;r._lu=Date.now();logEv(r,ds?'due':'done',ds)}
 export function cycleStatus(r){if(!r)return;setStatus(r,STATUSES[(STATUSES.indexOf(r.status||'')+1)%STATUSES.length]);store.set('qc_recents',state.recents)}
 function stChip(r){return `<button type="button" class="chipst${r.status?' st-'+r.status:''}" data-act="cyc" data-f="${r.full}" aria-label="Change status">${r.status?ST_LABEL[r.status]:'+ Status'}</button>`}
 
@@ -134,6 +134,7 @@ function saveCardFields(r){
   if(val!==(+r.value||0)){r.value=val;if(val)logEv(r,'value',val)}
   r.note=no.value.trim().slice(0,500);
   const tm=$('fpTime'),fm=$('fpMsg');
+  r._lu=Date.now();
   if(tm&&/^\d\d:\d\d$/.test(tm.value))r.dueTime=tm.value;
   if(fm)r.fuMsg=fm.value.trim().slice(0,2000);
 }
