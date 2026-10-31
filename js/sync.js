@@ -36,7 +36,7 @@ async function tb(method, path, body){
     throw new Error(e.name==='AbortError'?'Teable did not respond in time. Check the connection.':'No network route to Teable.');
   }
   clearTimeout(timer);
-  if(res.status===401||res.status===403)throw new Error('Teable rejected the token. Check it in Settings.');
+  if(res.status===401||res.status===403)throw new Error('Teable rejected the token. Check the token below.');
   if(!res.ok)throw new Error('Teable error '+res.status);
   const txt=await res.text();
   return txt?JSON.parse(txt):{};

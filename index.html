@@ -14,11 +14,14 @@
 
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="main">
   <header class="hdr">
     <div><h1 translate="no">QuickChat</h1>
     <p>Message any WhatsApp number without saving it.</p></div>
-    <button type="button" class="btn small" id="langBtn" translate="no" lang="ar">العربية</button>
+    <div class="hbtns">
+      <button type="button" class="btn small" id="langBtn" translate="no" lang="ar">العربية</button>
+      <button type="button" class="btn small iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.08A1.7 1.7 0 0 0 10.12 3V3a2 2 0 1 1 4 0v.09c0 .68.4 1.3 1.03 1.56.6.26 1.3.13 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.08c.26.6.88 1.03 1.56 1.03H21a2 2 0 1 1 0 4h-.09c-.68 0-1.3.4-1.51 1.03Z"/></svg></button>
+    </div>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
@@ -90,42 +93,6 @@
     <input id="search" class="txt" type="search" autocomplete="off" placeholder="Search name or number" hidden>
     <div class="list" id="recents"></div>
   </section>
-
-  <section class="stack">
-    <h2>Backup</h2>
-    <div class="card" style="gap:10px">
-      <p class="bk" id="bkInfo"></p>
-      <p class="bk" id="bkStore"></p>
-      <button type="button" class="btn primary" id="shareBk">Back up to Drive or share</button>
-      <div class="row2">
-        <button type="button" class="btn" id="exportBk" style="flex:1">Download backup</button>
-        <button type="button" class="btn" id="importBtn" style="flex:1">Import backup</button>
-      </div>
-      <button type="button" class="btn" id="csvBk">Export contacts to Excel (CSV)</button>
-      <input type="file" id="importFile" accept="application/json,text/plain,.json,.txt" hidden>
-      <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:2px 0">
-      <p class="bk">File backup is disaster recovery. Teable sync is the live mirror across your devices.</p>
-      <p class="bk" id="syncStatus"></p>
-      <div class="numrow" id="syncTokenRow">
-        <input type="password" class="txt" id="syncToken" dir="ltr" autocomplete="off" placeholder="Teable token (teable_…)" style="flex:1">
-        <button type="button" class="btn" id="syncSave">Save</button>
-      </div>
-      <div class="row2">
-        <button type="button" class="btn" id="syncNow" style="flex:1">Sync now</button>
-        <button type="button" class="btn" id="syncRestore" style="flex:1">Restore from Teable</button>
-        <button type="button" class="btn" id="syncOff" style="flex:1">Disable sync</button>
-      </div>
-      <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:2px 0">
-      <label class="chk"><input type="checkbox" id="ntfToggle"> <span>Notify me when follow-ups are due</span></label>
-      <p class="bk" id="ntfInfo"></p>
-      <button type="button" class="btn small" id="ntfSettings" hidden>Open notification settings</button>
-      <label class="chk"><input type="checkbox" id="lockToggle"> <span>Require a PIN to open the app</span></label>
-      <p class="bk" id="lockInfo">The app locks itself when you leave it.</p>
-    </div>
-  </section>
-
-  <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so back it up now and then.</p>
-  <p class="foot" id="ver"></p>
   </div>
 
   <div class="tabpane" id="tab-fu" hidden>
@@ -205,6 +172,70 @@
       <p class="bk">Use it on quotations, invoices, business cards or a site board.</p>
     </div>
   </div>
+</div>
+
+<div class="wrap pane" id="paneSettings" hidden>
+  <div class="sethead">
+    <button type="button" class="btn small" id="setBack"><span aria-hidden="true">&#8249; </span>Back</button>
+    <h2>Settings</h2>
+  </div>
+
+  <section class="stack">
+    <h2>Backup</h2>
+    <div class="card" style="gap:10px">
+      <p class="bk" id="bkInfo"></p>
+      <p class="bk" id="bkStore"></p>
+      <button type="button" class="btn primary" id="shareBk">Back up to Drive or share</button>
+      <div class="row2">
+        <button type="button" class="btn" id="exportBk" style="flex:1">Download backup</button>
+        <button type="button" class="btn" id="importBtn" style="flex:1">Import backup</button>
+      </div>
+      <button type="button" class="btn" id="csvBk">Export contacts to Excel (CSV)</button>
+      <input type="file" id="importFile" accept="application/json,text/plain,.json,.txt" hidden>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Cloud sync (Teable)</h2>
+    <div class="card" style="gap:10px">
+      <p class="bk">File backup is disaster recovery. Teable sync is the live mirror across your devices.</p>
+      <p class="bk" id="syncStatus"></p>
+      <div class="numrow" id="syncTokenRow">
+        <input type="password" class="txt" id="syncToken" dir="ltr" autocomplete="off" placeholder="Teable token (teable_…)" style="flex:1">
+        <button type="button" class="btn" id="syncSave">Save</button>
+      </div>
+      <div class="row2">
+        <button type="button" class="btn" id="syncNow" style="flex:1">Sync now</button>
+        <button type="button" class="btn" id="syncRestore" style="flex:1">Restore from Teable</button>
+        <button type="button" class="btn" id="syncOff" style="flex:1">Disable sync</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Reminders</h2>
+    <div class="card" style="gap:10px">
+      <label class="chk"><input type="checkbox" id="ntfToggle"> <span>Notify me when follow-ups are due</span></label>
+      <p class="bk" id="ntfInfo"></p>
+      <button type="button" class="btn small" id="ntfSettings" hidden>Open notification settings</button>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>Privacy</h2>
+    <div class="card" style="gap:10px">
+      <label class="chk"><input type="checkbox" id="lockToggle"> <span>Require a PIN to open the app</span></label>
+      <p class="bk" id="lockInfo">The app locks itself when you leave it.</p>
+    </div>
+  </section>
+
+  <section class="stack">
+    <h2>About</h2>
+    <div class="card" style="gap:10px">
+      <p class="bk" id="ver"></p>
+      <p class="foot">Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so back it up now and then.</p>
+    </div>
+  </section>
 </div>
 <div class="toast" id="toast" role="status"></div>
 

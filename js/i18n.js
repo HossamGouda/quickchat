@@ -5,6 +5,7 @@ import {state, setTranslator} from './core.js';
 const AR={
 '(example)':'(مثال)','+ New':'+ جديد','+ Status':'+ الحالة','1 week':'أسبوع','3 days':'3 أيام','in 1 week':'بعد أسبوع','in 3 days':'بعد 3 أيام',
 'Active':'النشطة','All':'الكل','History':'السجل',
+'Settings':'الإعدادات','Cloud sync (Teable)':'المزامنة السحابية (Teable)','Reminders':'التذكيرات','Privacy':'الخصوصية','About':'عن التطبيق',
 'Also add a reminder to my phone calendar':'أضف تذكيرًا إلى تقويم الهاتف أيضًا',
 'Back':'رجوع','Back up now':'انسخ احتياطيًا الآن','Back up to Drive or share':'نسخ احتياطي إلى Drive أو مشاركة','Back up your contacts':'انسخ جهات الاتصال احتياطيًا','Backup':'النسخ الاحتياطي',
 'Cancel':'إلغاء','Caption under the code':'النص أسفل الرمز','Change status':'تغيير الحالة','Chat':'محادثة',
@@ -83,6 +84,7 @@ const AR={
 'Add your Teable token in the Backup section first':'أضف رمز Teable في قسم النسخ الاحتياطي أولًا',
 'You are offline. Sync will run when you are back.':'أنت غير متصل. ستعمل المزامنة عند عودة الاتصال.',
 'Teable rejected the token. Check it in Settings.':'رفض Teable الرمز. تحقق منه في الإعدادات.',
+'Teable rejected the token. Check the token below.':'رفض Teable الرمز. تحقق من الرمز بالأسفل.',
 'Cloud sync (Teable) is off. Add a token to sync contacts and templates.':'المزامنة السحابية (Teable) متوقفة. أضف رمزًا لمزامنة جهات الاتصال والقوالب.',
 'Paste your Teable token first':'الصق رمز Teable أولًا',
 'Cloud sync disabled. Data stays on this phone.':'تم إيقاف المزامنة. تبقى البيانات على هذا الهاتف.',
@@ -93,7 +95,10 @@ const AR={
 'Updated from another device':'حُدّث من جهاز آخر','Settings updated from another device':'حُدّثت الإعدادات من جهاز آخر','Last 6 months':'آخر 6 أشهر',
 'For reminders at the exact time, allow alarms for QuickChat in phone settings.':'للتذكير في الوقت الدقيق، اسمح بالمنبهات لـ QuickChat من إعدادات الهاتف.',
 'Cloud sync is smarter: it tells you when another device changed your data, syncs your settings (QR text, country, app, queue drafts), and a Restore button rebuilds this phone from Teable':'المزامنة أذكى الآن: تُعلمك عندما يغيّر جهاز آخر بياناتك، وتزامن إعداداتك (نص QR والدولة والتطبيق ومسودات القائمة)، وزر الاستعادة يعيد بناء هذا الهاتف من Teable',
-'A 6-month win-rate trend now sits under the pipeline stats':'توجد الآن نسبة نجاح لآخر 6 أشهر أسفل إحصاءات الصفقات'
+'A 6-month win-rate trend now sits under the pipeline stats':'توجد الآن نسبة نجاح لآخر 6 أشهر أسفل إحصاءات الصفقات',
+'A dedicated Settings screen now holds backup, Teable sync, reminders and the PIN lock — tap the gear at the top':'شاشة إعدادات مخصصة تجمع النسخ الاحتياطي والمزامنة والتذكيرات والقفل برمز PIN — اضغط رمز الترس في الأعلى',
+'PIN lock: require a 4-digit code to open the app — it locks itself when you leave it (enable in Settings)':'القفل برمز من 4 أرقام يُطلب عند فتح التطبيق ويُقفل تلقائيًا عند مغادرته (فعّله من الإعدادات)',
+'Due reminders: notifications at the follow-up time, a due-count badge on the icon, and background checks on Android — enable in Settings':'تذكيرات الاستحقاق: إشعارات في وقت المتابعة وشارة بعدد المستحق على الأيقونة وتحقق تلقائي على أندرويد — فعّلها من الإعدادات'
 };
 
 const AR_RE=[
