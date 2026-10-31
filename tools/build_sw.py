@@ -21,7 +21,10 @@ def sha(path):
     p = path[2:] if path.startswith("./") else path
     if p == "":  # "./" shell root serves index.html
         p = "index.html"
-    return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+    # Normalize CRLF so the version hash is stable across platforms
+    # (Windows working trees are CRLF, Linux checkouts are LF).
+    data = pathlib.Path(p).read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 version = "qc-" + hashlib.sha256(
     "".join(sha(p) for p in SHELL).encode()
@@ -139,5 +142,6 @@ out = (template
        .replace("__PRECACHE__", json.dumps(SHELL))
        .replace("__COUNT__", str(len(SHELL)))
        .replace("__KB__", str(total_kb)))
-pathlib.Path("sw.js").write_text(out, encoding="utf-8")
+with open("sw.js", "w", encoding="utf-8", newline="\n") as f:
+    f.write(out)
 print(f"sw.js written: {version}, {len(SHELL)} assets, ~{total_kb} KB")
