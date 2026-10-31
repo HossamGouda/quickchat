@@ -20,6 +20,8 @@ globalThis.document = {
   documentElement: stubEl(),
   body: stubEl(),
   fonts: undefined,
+  addEventListener() {}, removeEventListener() {},
+  hidden: false, visibilityState: "visible",
 };
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.navigator = { userAgent: "", clipboard: undefined };

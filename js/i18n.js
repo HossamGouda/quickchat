@@ -67,7 +67,12 @@ const AR={
 'This template link is broken':'رابط القوالب هذا تالف','Enter the name first':'أدخل الاسم أولًا','Name saved':'تم حفظ الاسم','Name removed':'تم حذف الاسم',
 'No phone number found in shared text':'لم يُعثر على رقم هاتف في النص المشترك','No phone number found':'لم يُعثر على رقم هاتف','Template added to message':'تمت إضافة القالب إلى الرسالة',
 'Follow-up message ready. Tap Open chat':'رسالة المتابعة جاهزة. اضغط «افتح المحادثة»','Number loaded. Tap Open chat':'تم تحميل الرقم. اضغط «افتح المحادثة»',
-'just now':'الآن','Time':'الوقت','Follow-up time':'وقت المتابعة','Message to send (optional)':'الرسالة المراد إرسالها (اختياري)','Leave empty to use your Follow-up template':'اتركها فارغة لاستخدام قالب المتابعة','Message ready':'رسالة جاهزة','Saved message ready. Tap Open chat':'الرسالة المحفوظة جاهزة. اضغط «افتح المحادثة»','Hello, I\'d like a quotation.':'مرحبًا، أريد عرض سعر.','No backup yet.':'لا توجد نسخة احتياطية بعد.','WhatsApp follow-up:':'متابعة واتساب:'
+'just now':'الآن','Time':'الوقت','Follow-up time':'وقت المتابعة','Message to send (optional)':'الرسالة المراد إرسالها (اختياري)','Leave empty to use your Follow-up template':'اتركها فارغة لاستخدام قالب المتابعة','Message ready':'رسالة جاهزة','Saved message ready. Tap Open chat':'الرسالة المحفوظة جاهزة. اضغط «افتح المحادثة»','Hello, I\'d like a quotation.':'مرحبًا، أريد عرض سعر.','No backup yet.':'لا توجد نسخة احتياطية بعد.','WhatsApp follow-up:':'متابعة واتساب:',
+'Notify me when follow-ups are due':'أعلمني عند استحقاق المتابعات','Follow-up due':'متابعة مستحقة','Notifications enabled':'تم تفعيل الإشعارات',
+'Notification permission denied. Enable it in browser settings.':'تم رفض إذن الإشعارات. فعّله من إعدادات المتصفح.',
+'Notifications on while the app is open.':'الإشعارات تعمل أثناء فتح التطبيق.',
+'Notifications on, even when the app is closed (Android).':'الإشعارات تعمل حتى عند إغلاق التطبيق (أندرويد).',
+'This browser does not support notifications':'هذا المتصفح لا يدعم الإشعارات','QuickChat follow-up':'متابعة QuickChat'
 };
 
 const AR_RE=[

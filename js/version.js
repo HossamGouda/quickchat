@@ -1,12 +1,12 @@
 /* version.js — app version banner ("what's new"). */
 import {$, store} from './core.js';
 
-export const APP_VERSION='3.1';
-const WHATS_NEW=['Follow-ups: pick the exact time, and write the message to send in advance','Follow-ups: quote value, notes and history for each contact','Pipeline totals: open quotes, won this month, win rate','Filter contacts by status, and search notes','Back up to Google Drive in one tap, and export contacts to Excel','Share a PDF quotation into QuickChat and pass it to the chat','Arabic interface (tap العربية at the top)'];
+export const APP_VERSION='3.2';
+const WHATS_NEW=['Due reminders: notifications at the follow-up time, a due-count badge on the icon, and background checks on Android — enable in Backup','Cloud sync: your contacts and templates stay mirrored to Teable so any device stays up to date','Follow-ups: pick the exact time, and write the message to send in advance','Follow-ups: quote value, notes and history for each contact','Pipeline totals: open quotes, won this month, win rate','Filter contacts by status, and search notes','Back up to Google Drive in one tap, and export contacts to Excel','Share a PDF quotation into QuickChat and pass it to the chat','Arabic interface (tap العربية at the top)'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}
-  el.innerHTML=`<div class="qhead"><span><b>Updated to version ${APP_VERSION}</b></span><button type="button" class="btn small" id="wnOk">OK</button></div><ul class="steps">${(seen==='3.0'?WHATS_NEW.slice(0,1):WHATS_NEW).map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  el.innerHTML=`<div class="qhead"><span><b>Updated to version ${APP_VERSION}</b></span><button type="button" class="btn small" id="wnOk">OK</button></div><ul class="steps">${(seen==='3.1'?WHATS_NEW.slice(0,2):WHATS_NEW).map(x=>`<li>${x}</li>`).join('')}</ul>`;
   el.hidden=false;
   $('wnOk').onclick=()=>{store.set('qc_ver',APP_VERSION);el.hidden=true};
 }
