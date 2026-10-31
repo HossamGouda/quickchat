@@ -53,7 +53,8 @@ export function renderRecents(){
     const acts=state.confirmRm===f
       ?`<span class="confirm">Delete? <button class="btn small" data-act="normv">No</button><button class="btn small danger solid" data-act="yesrm" data-f="${f}">Yes</button></span>`
       :`<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
-    return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}</div></button><div class="acts">${acts}</div></div>`;
+    const conf=r._conf&&Date.now()-r._conf<864e5;
+    return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}${conf?` · <span class="conf">Updated from another device</span>`:''}</div></button><div class="acts">${acts}</div></div>`;
   }).join('');
   const e=$('eLabel');if(e){e.focus();e.onkeydown=ev=>{if(ev.key==='Enter')el.querySelector('[data-act="lsave"]').click()}}
 }

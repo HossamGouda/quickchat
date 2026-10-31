@@ -14,6 +14,7 @@ import {TEABLE_API, TEABLE_TABLES as TBLS, TEABLE_MATCH_FIELDS as MATCH, PROTOCO
 import {saveRecents} from './recents.js';
 import {renderTpls} from './templates.js';
 import {tombstones, addTombstone, removeTombstone, purgeTombstone, purgeDue} from './tombstones.js';
+import {tr} from './i18n.js';
 
 const token=()=>store.get('qc_teable_token','');
 const syncOn=()=>!!store.get('qc_sync_on',false);
@@ -109,6 +110,89 @@ async function writeMeta(key,value){
     records:[{fields:{Key:key,Value:String(value)}}]});
 }
 
+/* ---- settings blob: device preferences mirrored via SyncMeta ----
+   Per-device keys (token, lock, notification toggle) are never synced.
+   Language applies on next open; the rest apply immediately. */
+const SETTING_KEYS=['qc_country','qc_app','qc_qr','qc_qtpl','qc_qdraft','qc_cal','qc_lang'];
+function settingsBlob(){
+  const v={};
+  for(const k of SETTING_KEYS){const x=store.get(k,undefined);if(x!==undefined)v[k]=x}
+  return v;
+}
+function applySettings(v){
+  let langChanged=false;
+  for(const k of SETTING_KEYS){
+    if(v[k]===undefined)continue;
+    store.set(k,v[k]);
+    if(k==='qc_country')state.country=v[k];
+    if(k==='qc_app')state.app=v[k];
+    if(k==='qc_lang'&&state.lang!==v[k])langChanged=true;
+  }
+  return langChanged;
+}
+async function syncSettings(metaRows){
+  const row=metaRows.find(r=>String((r.fields||{}).Key)==='settings');
+  let remote=null;
+  if(row){try{remote=JSON.parse(String(row.fields.Value))}catch(e){remote=null}}
+  let applied=false;
+  if(remote&&+remote.lu>(store.get('qc_settings_lu',0))&&remote.v){
+    applySettings(remote.v);
+    store.set('qc_settings_lu',+remote.lu);
+    store.set('qc_settings_sig',JSON.stringify(remote.v));
+    applied=true;
+  }
+  const local=settingsBlob(),sig=JSON.stringify(local);
+  if(sig!==store.get('qc_settings_sig','')){
+    await writeMeta('settings',JSON.stringify({v:local,lu:Date.now()}));
+    store.set('qc_settings_sig',sig);store.set('qc_settings_lu',Date.now());
+  }
+  return applied;
+}
+
+/* Force-pull restore: cloud wins for every record it holds; local-only
+   records are kept; remote deletions are applied via tombstones. */
+export async function restoreFromCloud(){
+  if(!token()){toast('Add your Teable token in the Backup section first');return false}
+  if(navigator.onLine===false){toast('You are offline.');return false}
+  try{
+    const remote=await pullAll(TBLS.contacts);
+    let restored=0;
+    const seen=new Set();
+    for(const row of remote){
+      const g=row.fields||{};if(!g.Number)continue;
+      const full=String(g.Number);seen.add(full);
+      if(g.Deleted){addTombstone('c',full);state.recents=state.recents.filter(x=>x.full!==full);continue}
+      const m=contactFromRow(row);
+      if(!m)continue;
+      const ex=state.recents.find(x=>x.full===full);
+      if(ex)Object.assign(ex,m);else state.recents.push(m);
+      restored++;
+    }
+    state.recents.sort((a,b)=>b.at-a.at);
+    saveRecents();
+    const rT=await pullAll(TBLS.templates);
+    let restoredT=0;
+    for(const row of rT){
+      const g=row.fields||{};if(!g.TplId)continue;
+      const id=String(g.TplId);
+      if(g.Deleted){addTombstone('t',id);state.tpls=state.tpls.filter(x=>x.id!==id);continue}
+      const m=tplFromRow(row);
+      if(!m)continue;
+      const ex=state.tpls.find(x=>x.id===id);
+      if(ex)Object.assign(ex,m);else state.tpls.push(m);
+      restoredT++;
+    }
+    store.set('qc_tpls',state.tpls);renderTpls();
+    store.set('qc_last_sync',Date.now());
+    toast(`Restored from Teable: ${restored} contacts, ${restoredT} templates`);
+    renderSync();
+    return true;
+  }catch(err){
+    toast('Restore failed: '+(err.message||'network error'));
+    return false;
+  }
+}
+
 /* One-time (v2): give legacy records a sane UpdatedAt so a fresh Teable edit
    beats an old record last messaged long ago. */
 function backfillLu(){
@@ -121,8 +205,11 @@ function backfillLu(){
 }
 
 /* Merge one record kind. `kind` selects local getters and field mappers.
-   remote: Map(full -> teable row). Returns {pushed,pulled} and mutates state. */
-function mergeRecords(kind,remote,localList,toFields,fromRow,delF){
+   remote: Map(full -> teable row). lastSync enables conflict detection (both
+   sides changed since the last successful sync). Returns {pushList,pulled,
+   conflicts} and mutates state. */
+function mergeRecords(kind,remote,localList,toFields,fromRow,delF,lastSync){
+  const conflicts=[];
   const localBy=new Map(localList.map(x=>[kind==='c'?x.full:x.id,x]));
   const pushList=[];let pushed=0,pulled=0;
   const keyOf=x=>kind==='c'?x.full:x.id;
@@ -150,6 +237,8 @@ function mergeRecords(kind,remote,localList,toFields,fromRow,delF){
       continue;
     }
     if(remoteLu>luOf(x)){
+      /* Conflict: remote wins, but we also changed since the last sync. */
+      if(lastSync&&luOf(x)>lastSync)conflicts.push({kind,key:keyOf(x)});
       const m=fromRow(row);
       if(m){Object.assign(x,m);pulled++}
     }else if(remoteLu<luOf(x))pushList.push(toFields(x));
@@ -195,7 +284,7 @@ function mergeRecords(kind,remote,localList,toFields,fromRow,delF){
      already wrote theirs; here we flush the merged remote-adopted set). */
   store.set('qc_deleted',tombstones().filter(t=>t.k!==kind).concat([...tmbBy.values()]));
 
-  return {pushList,pulled};
+  return {pushList,pulled,conflicts};
 }
 
 /* Full bidirectional sync of contacts + templates. */
@@ -211,21 +300,26 @@ export async function syncNow(){
       throw new Error(`Sync protocol mismatch: this device v${PROTOCOL_VERSION}, cloud v${proto}. Update the app on all devices.`);
 
     let pushed=0,pulled=0;
+    const lastSync=store.get('qc_last_sync',0);
+    const conflicts=[];
 
     /* Contacts */
     const remote=new Map((await pullAll(TBLS.contacts)).map(r=>[String((r.fields||{}).Number||''),r]));
-    const mC=mergeRecords('c',remote,state.recents,contactToFields,contactFromRow,delFields);
+    const mC=mergeRecords('c',remote,state.recents,contactToFields,contactFromRow,delFields,lastSync);
     pushed+=await pushRows(TBLS.contacts,MATCH.contacts,mC.pushList);
-    pulled+=mC.pulled;
+    pulled+=mC.pulled;conflicts.push(...mC.conflicts);
     state.recents.sort((a,b)=>b.at-a.at);
     saveRecents();
 
     /* Templates */
     const rT=new Map((await pullAll(TBLS.templates)).map(r=>[String((r.fields||{}).TplId||''),r]));
-    const mT=mergeRecords('t',rT,state.tpls,tplToFields,tplFromRow,delFieldsTpl);
+    const mT=mergeRecords('t',rT,state.tpls,tplToFields,tplFromRow,delFieldsTpl,lastSync);
     pushed+=await pushRows(TBLS.templates,MATCH.templates,mT.pushList);
-    pulled+=mT.pulled;
+    pulled+=mT.pulled;conflicts.push(...mT.conflicts);
     store.set('qc_tpls',state.tpls);renderTpls();
+
+    /* Settings blob (queue draft, QR text, country, app, language, calendar) */
+    const settingsApplied=await syncSettings(metaRows);
 
     /* Purge tombstones older than 30 days from both sides (best effort) */
     for(const t of purgeDue()){
@@ -243,7 +337,21 @@ export async function syncNow(){
     store.set('qc_last_sync',Date.now());
     await writeMeta('protocol',PROTOCOL_VERSION);
     await writeMeta('lastSync',Date.now());
-    toast(`Synced with Teable: ${pushed} sent, ${pulled} received`);
+    /* Surface silent conflicts: both devices edited the same records. */
+    if(conflicts.length){
+      const now=Date.now();
+      for(const c of conflicts){
+        const r=c.kind==='c'?state.recents.find(x=>x.full===c.key):state.tpls.find(x=>x.id===c.key);
+        if(r)r._conf=now;
+      }
+      store.set('qc_recents',state.recents);store.set('qc_tpls',state.tpls);
+      const nc=conflicts.filter(c=>c.kind==='c').length,nt=conflicts.length-nc;
+      toast(`${conflicts.length} updated from another device`+(nt&&nc?` (${nc} contacts, ${nt} templates)`:''));
+    }else if(settingsApplied){
+      toast(tr('Settings updated from another device'));
+    }else{
+      toast(`Synced with Teable: ${pushed} sent, ${pulled} received`);
+    }
     renderSync();
     return true;
   }catch(err){
@@ -267,6 +375,8 @@ export function renderSync(){
   $('syncTokenRow').hidden=has;
   $('syncOff').hidden=!has;
   $('syncNow').hidden=!has;
+  $('syncRestore').hidden=!has;
+  if(restoreArm)$('syncRestore').textContent=tr('Restore from Teable');
   if(!has){el.textContent='Cloud sync (Teable) is off. Add a token to sync contacts and templates.';return}
   const last=store.get('qc_last_sync',0);
   el.textContent='Cloud sync on'+(syncOn()?'':' (auto-sync disabled)')+(last?' · Last sync '+new Date(last).toLocaleString():' · Not synced yet');
@@ -282,6 +392,12 @@ $('syncOff').onclick=()=>{
   renderSync();toast('Cloud sync disabled. Data stays on this phone.');
 };
 $('syncNow').onclick=syncNow;
+let restoreArm=0;
+$('syncRestore').onclick=()=>{
+  const now=Date.now();
+  if(now-restoreArm<4000){restoreArm=0;$('syncRestore').textContent=tr('Restore from Teable');restoreFromCloud()}
+  else{restoreArm=now;$('syncRestore').textContent=tr('Tap again to replace local data from Teable');setTimeout(()=>{if(Date.now()-restoreArm>=3900){restoreArm=0;$('syncRestore').textContent=tr('Restore from Teable')}},4000)}
+};
 window.addEventListener('online',()=>{if(token()&&syncOn())syncNow()});
 
 /* Called after store.ready: render the panel and auto-sync when enabled. */

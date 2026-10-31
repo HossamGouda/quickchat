@@ -104,6 +104,7 @@
       <button type="button" class="btn" id="csvBk">Export contacts to Excel (CSV)</button>
       <input type="file" id="importFile" accept="application/json,text/plain,.json,.txt" hidden>
       <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:2px 0">
+      <p class="bk">File backup is disaster recovery. Teable sync is the live mirror across your devices.</p>
       <p class="bk" id="syncStatus"></p>
       <div class="numrow" id="syncTokenRow">
         <input type="password" class="txt" id="syncToken" dir="ltr" autocomplete="off" placeholder="Teable token (teable_…)" style="flex:1">
@@ -111,6 +112,7 @@
       </div>
       <div class="row2">
         <button type="button" class="btn" id="syncNow" style="flex:1">Sync now</button>
+        <button type="button" class="btn" id="syncRestore" style="flex:1">Restore from Teable</button>
         <button type="button" class="btn" id="syncOff" style="flex:1">Disable sync</button>
       </div>
       <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:2px 0">

@@ -85,7 +85,12 @@ const AR={
 'Paste your Teable token first':'الصق رمز Teable أولًا',
 'Cloud sync disabled. Data stays on this phone.':'تم إيقاف المزامنة. تبقى البيانات على هذا الهاتف.',
 'PIN lock: require a 4-digit code to open the app — it locks itself when you leave it (enable in Backup)':'القفل برمز من 4 أرقام: يُطلب الرمز عند فتح التطبيق ويُقفل تلقائيًا عند مغادرته (فعّله من النسخ الاحتياطي)',
-'Arabic is now complete for sync, notifications, the PIN lock and every pop-up message':'اكتملت الواجهة العربية للمزامنة والإشعارات والقفل وكل الرسائل المنبثقة'
+'Arabic is now complete for sync, notifications, the PIN lock and every pop-up message':'اكتملت الواجهة العربية للمزامنة والإشعارات والقفل وكل الرسائل المنبثقة',
+'File backup is disaster recovery. Teable sync is the live mirror across your devices.':'النسخ الاحتياطي الملفي للتعافي من الكوارث، ومزامنة Teable هي النسخة الحية عبر أجهزتك.',
+'Restore from Teable':'استعادة من Teable','Tap again to replace local data from Teable':'اضغط مجددًا لاستبدال البيانات المحلية من Teable',
+'Updated from another device':'حُدّث من جهاز آخر','Settings updated from another device':'حُدّثت الإعدادات من جهاز آخر','Last 6 months':'آخر 6 أشهر',
+'Cloud sync is smarter: it tells you when another device changed your data, syncs your settings (QR text, country, app, queue drafts), and a Restore button rebuilds this phone from Teable':'المزامنة أذكى الآن: تُعلمك عندما يغيّر جهاز آخر بياناتك، وتزامن إعداداتك (نص QR والدولة والتطبيق ومسودات القائمة)، وزر الاستعادة يعيد بناء هذا الهاتف من Teable',
+'A 6-month win-rate trend now sits under the pipeline stats':'توجد الآن نسبة نجاح لآخر 6 أشهر أسفل إحصاءات الصفقات'
 };
 
 const AR_RE=[
@@ -125,7 +130,11 @@ const AR_RE=[
  [/^Cloud sync on \(auto-sync disabled\) · Last sync (.+)$/,(m,a)=>'المزامنة السحابية تعمل (تلقائيًا معطّل) · آخر مزامنة '+a],
  [/^Cloud sync on · Not synced yet$/,'المزامنة السحابية تعمل · لم تتم المزامنة بعد'],
  [/^Cloud sync on \(auto-sync disabled\) · Not synced yet$/,'المزامنة السحابية تعمل (تلقائيًا معطّل) · لم تتم المزامنة بعد'],
- [/^Sync protocol mismatch: this device v(\d+), cloud v(\d+)\. Update the app on all devices\.$/,(m,a,b)=>'تعارض في إصدار المزامنة: هذا الجهاز v'+a+' والسحابة v'+b+'. حدّث التطبيق على جميع الأجهزة.']
+ [/^Sync protocol mismatch: this device v(\d+), cloud v(\d+)\. Update the app on all devices\.$/,(m,a,b)=>'تعارض في إصدار المزامنة: هذا الجهاز v'+a+' والسحابة v'+b+'. حدّث التطبيق على جميع الأجهزة.'],
+ [/^Restored from Teable: (\d+) contacts, (\d+) templates$/,(m,a,b)=>'تمت الاستعادة من Teable: '+a+' جهة اتصال، '+b+' قالب'],
+ [/^Restore failed: (.+)$/,(m,a)=>'فشلت الاستعادة: '+a],
+ [/^(\d+) updated from another device \((\d+) contacts, (\d+) templates\)$/,(m,a,b,c)=>'تعارض: حُدّث '+a+' عنصر من جهاز آخر ('+b+' جهة اتصال، '+c+' قوالب)'],
+ [/^(\d+) updated from another device$/,(m,a)=>'حُدّث '+a+' عنصر من جهاز آخر']
 ];
 
 function trCore(k){

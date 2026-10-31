@@ -143,6 +143,7 @@ select.txt{appearance:auto}
 .picks .chips{display:flex;flex-wrap:wrap;gap:6px}
 .picks .chip{border:1px solid var(--accent);background:var(--surface);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 14px var(--mono);font-variant-numeric:tabular-nums;cursor:pointer}
 .picks .chip small{font:500 11px var(--sans);color:var(--muted);margin-inline-start:4px}
+.conf{color:var(--accent);font-weight:600}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 
 /* ---- PIN lock ---- */

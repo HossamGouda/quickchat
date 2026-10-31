@@ -37,6 +37,26 @@ function fuRow(r,kind){
   return `<div class="item"><button type="button" class="main fuitem" data-act="open" data-f="${r.full}" aria-label="Open details">${lab}${num}<div class="meta">${meta}</div>${extra?`<div class="xtra">${extra}</div>`:''}</button><div class="acts">${acts}</div></div>`;
 }
 
+/* Monthly pipeline snapshot: keep a rolling 6-month trend beside the stats. */
+function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function snapshot(){
+  const now=new Date(),mk=monthKey(now);
+  const snaps=store.get('qc_snaps',[]);
+  if(snaps.length&&snaps[snaps.length-1].m===mk)return snaps;
+  const won=state.recents.filter(r=>r.status==='won').length,lost=state.recents.filter(r=>r.status==='lost').length;
+  snaps.push({m:mk,won,lost});
+  const kept=snaps.filter(s=>{const[y,mo]=s.m.split('-').map(Number);return (now.getFullYear()-y)*12+(now.getMonth()+1-mo)<6});
+  store.set('qc_snaps',kept);
+  return kept;
+}
+function trendText(){
+  const snaps=store.get('qc_snaps',[]);
+  if(snaps.length<2)return '';
+  return snaps.map(s=>{
+    const rate=s.won+s.lost?Math.round(s.won/(s.won+s.lost)*100):null;
+    return s.m.slice(5)+' '+(rate===null?'–':rate+'%');
+  }).join(' · ');
+}
 function renderPipeline(){
   const el=$('pipe'),tracked=state.recents.some(r=>r.status);
   if(!tracked){el.hidden=true;return}
@@ -44,9 +64,12 @@ function renderPipeline(){
   const now=new Date(),m0=new Date(now.getFullYear(),now.getMonth(),1).getTime();
   const won=state.recents.filter(r=>r.status==='won'),wonM=won.filter(r=>lastStatusTime(r,'won')>=m0),wonSum=wonM.reduce((a,r)=>a+(+r.value||0),0);
   const lost=state.recents.filter(r=>r.status==='lost').length,rate=won.length+lost?Math.round(won.length/(won.length+lost)*100):null;
+  snapshot();
+  const trend=trendText();
   el.innerHTML=`<div class="stat"><span class="k">Open quotes</span><b>${open.length}</b><span class="s">${sar(openSum)}</span></div>
     <div class="stat"><span class="k">Won this month</span><b>${wonM.length}</b><span class="s">${sar(wonSum)}</span></div>
-    <div class="stat"><span class="k">Win rate</span><b>${rate===null?'–':rate+'%'}</b><span class="s">${won.length} won · ${lost} lost</span></div>`;
+    <div class="stat"><span class="k">Win rate</span><b>${rate===null?'–':rate+'%'}</b><span class="s">${won.length} won · ${lost} lost</span></div>
+    ${trend?`<div class="stat"><span class="k">Last 6 months</span><span class="s">${trend}</span></div>`:''}`;
   el.hidden=false;
 }
 
