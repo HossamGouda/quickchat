@@ -11,6 +11,7 @@ import {isOpen, who} from './followups.js';
 
 const NTF_KEY='qc_notify', NTF_SEEN='qc_notified', CAP_IDS='qc_cap_ntf_ids';
 const timers=new Map(); /* r.full -> timeout id for exact-time reminders */
+let capDenied=false; /* native: OS-level notification access is blocked */
 
 export function dueNow(){
   const t=todayStr();
@@ -114,6 +115,8 @@ async function permState(){
 function renderNotify(){
   const on=store.get(NTF_KEY,0)===1,el=$('ntfToggle');if(!el)return;
   const info=$('ntfInfo');
+  const stBtn=$('ntfSettings');
+  if(stBtn)stBtn.hidden=!(capLN()&&capDenied);
   if(!capLN()&&!'Notification'in window){info.textContent='';return}
   if(!on){info.textContent='';return}
   info.textContent=capLN()?tr('Notifications on, even when the app is closed.'):
@@ -138,19 +141,22 @@ export async function syncNotifyToggle(){
   }
   let granted=false;
   if(ln){
-    try{const p=await ln.requestPermission();granted=capGranted(p)}catch(e){granted=false}
+    try{const p=await ln.requestPermissions();granted=capGranted(p)}catch(e){granted=false}
   }else if('Notification'in window){
     granted=(Notification.permission==='granted'?true:await Notification.requestPermission()==='granted');
   }
   if(granted){
+    capDenied=false;
     store.set(NTF_KEY,1);toast(tr('Notifications enabled'));registerPbs();
     /* In the native app, prompt once more if Android blocked exact alarms. */
-    if(ln&&ln.canScheduleExactNotifications){
-      try{const e=await ln.canScheduleExactNotifications();
-        if(e&&e.exact===false)toast(tr('For reminders at the exact time, allow alarms for QuickChat in phone settings.'))}catch(_){}
+    if(ln&&ln.checkExactNotificationSetting){
+      try{const e=await ln.checkExactNotificationSetting();
+        if(e&&e.exact_alarm&&e.exact_alarm!=='granted')toast(tr('For reminders at the exact time, allow alarms for QuickChat in phone settings.'))}catch(_){}
     }
   }else{
-    el.checked=false;toast(tr('Notification permission denied. Enable it in browser settings.'));
+    el.checked=false;
+    if(capLN())capDenied=true;
+    toast(capLN()?tr('Notification permission denied. Enable it in phone settings (Apps → QuickChat → Notifications).'):tr('Notification permission denied. Enable it in browser settings.'));
   }
   renderNotify();refreshDue();
 }
@@ -158,12 +164,30 @@ export async function syncNotifyToggle(){
 export function initNotify(){
   const el=$('ntfToggle');if(!el)return;
   el.onchange=()=>syncNotifyToggle();
+  $('ntfSettings').onclick=()=>{
+    const cap=window.Capacitor;
+    if(cap&&cap.isNativePlatform&&cap.isNativePlatform()&&cap.Plugins&&cap.Plugins.QCOpen)
+      cap.Plugins.QCOpen.openNotificationSettings().catch(()=>{});
+  };
   /* Reflect the real permission state (e.g. revoked in OS settings). */
   permState().then(p=>{
-    if(p==='granted')el.checked=store.get(NTF_KEY,0)===1;
-    else{el.checked=false;if(store.get(NTF_KEY,0)===1&&p==='denied'){store.set(NTF_KEY,0)}}
+    if(p==='granted'){el.checked=store.get(NTF_KEY,0)===1;capDenied=false}
+    else{
+      el.checked=false;
+      if(capLN()&&p==='denied')capDenied=true;
+      if(store.get(NTF_KEY,0)===1&&p==='denied'){store.set(NTF_KEY,0)}
+    }
     renderNotify();refreshDue();
   });
   setInterval(refreshDue,60*1000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDue()});
+  /* Re-check when the user comes back from the OS settings screen. */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)return;
+    refreshDue();
+    permState().then(p=>{
+      if(p==='granted'){el.checked=store.get(NTF_KEY,0)===1;capDenied=false}
+      else if(capLN()&&p==='denied')capDenied=true;
+      renderNotify();
+    });
+  });
 }

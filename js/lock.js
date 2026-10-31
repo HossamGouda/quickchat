@@ -30,6 +30,7 @@ function reset(newPhase){
   entry='';phase=newPhase;
   msg(phase==='unlock'?tr('Enter your PIN'):phase==='choose'?tr('Choose a 4-digit PIN'):tr('Confirm your PIN'));
   $('lockForgot').hidden=phase!=='unlock'||!lockState();
+  $('lockCancel').hidden=phase==='unlock';
   drawDots();
 }
 async function commit(){
@@ -71,6 +72,7 @@ export function renderLockUI(){
   $('lockInfo').textContent=!ok?tr('PIN lock needs a secure connection (HTTPS).'):tr('The app locks itself when you leave it.');
 }
 export function initLock(){
+  renderPad();
   renderLockUI();
   $('lockToggle').onchange=()=>{
     if($('lockToggle').checked)startSetup();
@@ -80,6 +82,7 @@ export function initLock(){
     const b=e.target.closest('[data-k]');if(b)press(b.dataset.k);
   });
   $('lockForgot').onclick=()=>{store.set(KEY,null);$('lockScreen').hidden=true;renderLockUI();toast(tr('Lock disabled'))};
+  $('lockCancel').onclick=()=>{$('lockScreen').hidden=true;renderLockUI();toast(tr('Cancel'))};
   document.addEventListener('visibilitychange',()=>{if(document.hidden)lock()});
   /* Keyboard entry on desktops */
   document.addEventListener('keydown',e=>{

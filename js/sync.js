@@ -18,13 +18,24 @@ import {tr} from './i18n.js';
 
 const token=()=>store.get('qc_teable_token','');
 const syncOn=()=>!!store.get('qc_sync_on',false);
+const REQ_TIMEOUT=20000;
 
 async function tb(method, path, body){
-  const res=await fetch(TEABLE_API+path,{
-    method,
-    headers:{Authorization:'Bearer '+token(),'Content-Type':'application/json'},
-    body:body?JSON.stringify(body):undefined
-  });
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),REQ_TIMEOUT);
+  let res;
+  try{
+    res=await fetch(TEABLE_API+path,{
+      method,
+      headers:{Authorization:'Bearer '+token(),'Content-Type':'application/json'},
+      body:body?JSON.stringify(body):undefined,
+      signal:ctl.signal
+    });
+  }catch(e){
+    clearTimeout(timer);
+    throw new Error(e.name==='AbortError'?'Teable did not respond in time. Check the connection.':'No network route to Teable.');
+  }
+  clearTimeout(timer);
   if(res.status===401||res.status===403)throw new Error('Teable rejected the token. Check it in Settings.');
   if(!res.ok)throw new Error('Teable error '+res.status);
   const txt=await res.text();
@@ -287,10 +298,14 @@ function mergeRecords(kind,remote,localList,toFields,fromRow,delF,lastSync){
   return {pushList,pulled,conflicts};
 }
 
-/* Full bidirectional sync of contacts + templates. */
-export async function syncNow(){
-  if(!token()){toast('Add your Teable token in the Backup section first');return false}
-  if(navigator.onLine===false){toast('You are offline. Sync will run when you are back.');return false}
+/* Full bidirectional sync of contacts + templates.
+   opts.quiet: update the status line only, no toast (background runs). */
+let syncing=false;
+export async function syncNow(opts={}){
+  if(!token()){if(!opts.quiet)toast('Add your Teable token in the Backup section first');return false}
+  if(navigator.onLine===false){if(!opts.quiet)toast('You are offline. Sync will run when you are back.');return false}
+  if(syncing)return false; /* one sync at a time */
+  syncing=true;
   renderSync();
   try{
     backfillLu();
@@ -355,10 +370,14 @@ export async function syncNow(){
     renderSync();
     return true;
   }catch(err){
+    console.error('QC sync failed:',err&&err.message||err);
+    renderSync(); /* resets the status line first… */
     $('syncStatus').textContent=err.message||'Sync failed';
-    toast('Sync failed: '+(err.message||'network error'));
-    renderSync();
+    $('syncStatus').className='bk warn';
+    if(!opts.quiet)toast('Sync failed: '+(err.message||'network error'));
     return false;
+  }finally{
+    syncing=false;
   }
 }
 
@@ -366,7 +385,7 @@ export async function syncNow(){
 let delTimer=null;
 window.addEventListener('qc-data-changed',()=>{
   if(!token()||!syncOn())return;
-  clearTimeout(delTimer);delTimer=setTimeout(()=>syncNow(),2000);
+  clearTimeout(delTimer);delTimer=setTimeout(()=>syncNow({quiet:true}),2000);
 });
 
 /* ---- Backup-tab UI ---- */
@@ -400,10 +419,12 @@ $('syncRestore').onclick=()=>{
   if(now-restoreArm<4000){restoreArm=0;$('syncRestore').textContent=tr('Restore from Teable');restoreFromCloud()}
   else{restoreArm=now;$('syncRestore').textContent=tr('Tap again to replace local data from Teable');setTimeout(()=>{if(Date.now()-restoreArm>=3900){restoreArm=0;$('syncRestore').textContent=tr('Restore from Teable')}},4000)}
 };
-window.addEventListener('online',()=>{if(token()&&syncOn())syncNow()});
+window.addEventListener('online',()=>{if(token()&&syncOn())syncNow({quiet:true})});
 
-/* Called after store.ready: render the panel and auto-sync when enabled. */
+/* Called after store.ready: render the panel and auto-sync when enabled.
+   Boot-time auto-sync is quiet: a failure lands in the status line only,
+   so opening the app offline never pops an error toast. */
 export function initSync(){
   renderSync();
-  if(token()&&syncOn()&&navigator.onLine!==false)syncNow();
+  if(token()&&syncOn()&&navigator.onLine!==false)syncNow({quiet:true});
 }

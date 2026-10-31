@@ -21,6 +21,19 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class QCOpenPlugin extends Plugin {
 
     @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent("android.settings.APP_NOTIFICATION_SETTINGS")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra("android.provider.extra.APP_PACKAGE", getActivity().getPackageName());
+            getActivity().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
+    @PluginMethod
     public void open(PluginCall call) {
         String url = call.getString("url");
         if (url == null || url.isEmpty()) {
