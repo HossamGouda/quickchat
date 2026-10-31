@@ -1,0 +1,8 @@
+{
+  "appId": "com.hossamgouda.quickchat",
+  "appName": "QuickChat",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

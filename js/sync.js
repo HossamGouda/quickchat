@@ -377,9 +377,11 @@ export function renderSync(){
   $('syncNow').hidden=!has;
   $('syncRestore').hidden=!has;
   if(restoreArm)$('syncRestore').textContent=tr('Restore from Teable');
-  if(!has){el.textContent='Cloud sync (Teable) is off. Add a token to sync contacts and templates.';return}
+  if(!has){el.textContent='Cloud sync (Teable) is off. Add a token to sync contacts and templates.';el.className='bk';return}
   const last=store.get('qc_last_sync',0);
-  el.textContent='Cloud sync on'+(syncOn()?'':' (auto-sync disabled)')+(last?' · Last sync '+new Date(last).toLocaleString():' · Not synced yet');
+  const stale=last&&(Date.now()-last>7*864e5);
+  el.textContent='Cloud sync on'+(syncOn()?'':' (auto-sync disabled)')+(last?' · Last sync '+new Date(last).toLocaleString()+(stale?' — tap Sync now':''):' · Not synced yet');
+  el.className='bk'+(stale?' warn':'');
 }
 $('syncSave').onclick=()=>{
   const v=$('syncToken').value.trim();

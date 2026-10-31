@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">QuickChat</string>
+    <string name="title_activity_main">QuickChat</string>
+    <string name="package_name">com.hossamgouda.quickchat</string>
+    <string name="custom_url_scheme">com.hossamgouda.quickchat</string>
+</resources>

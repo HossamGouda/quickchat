@@ -1,3 +1,14 @@
 __pycache__/
 *.pyc
 server.log
+node_modules/
+www/
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+*.keystore
+!android/app/*.keystore
+QuickChat-debug.apk
+build.log

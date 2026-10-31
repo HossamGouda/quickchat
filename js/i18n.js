@@ -89,6 +89,7 @@ const AR={
 'File backup is disaster recovery. Teable sync is the live mirror across your devices.':'النسخ الاحتياطي الملفي للتعافي من الكوارث، ومزامنة Teable هي النسخة الحية عبر أجهزتك.',
 'Restore from Teable':'استعادة من Teable','Tap again to replace local data from Teable':'اضغط مجددًا لاستبدال البيانات المحلية من Teable',
 'Updated from another device':'حُدّث من جهاز آخر','Settings updated from another device':'حُدّثت الإعدادات من جهاز آخر','Last 6 months':'آخر 6 أشهر',
+'For reminders at the exact time, allow alarms for QuickChat in phone settings.':'للتذكير في الوقت الدقيق، اسمح بالمنبهات لـ QuickChat من إعدادات الهاتف.',
 'Cloud sync is smarter: it tells you when another device changed your data, syncs your settings (QR text, country, app, queue drafts), and a Restore button rebuilds this phone from Teable':'المزامنة أذكى الآن: تُعلمك عندما يغيّر جهاز آخر بياناتك، وتزامن إعداداتك (نص QR والدولة والتطبيق ومسودات القائمة)، وزر الاستعادة يعيد بناء هذا الهاتف من Teable',
 'A 6-month win-rate trend now sits under the pipeline stats':'توجد الآن نسبة نجاح لآخر 6 أشهر أسفل إحصاءات الصفقات'
 };

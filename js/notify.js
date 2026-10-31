@@ -1,11 +1,15 @@
-/* notify.js — due follow-up reminders: app badge, notifications while the app
-   is open (exact follow-up time), and Periodic Background Sync registration so
-   Android Chrome can check due follow-ups even when the app is closed. */
+/* notify.js — due follow-up reminders: app badge + notifications.
+   Three delivery paths, best available wins:
+   1. Capacitor native app: LocalNotifications fire at the exact follow-up
+      time even when the app is fully closed (Android + iOS).
+   2. Browser PWA on Android: exact-time notifications while open, plus
+      Periodic Background Sync checks while closed.
+   3. Other browsers: notifications while the app is open. */
 import {$, store, state, todayStr, parseDay, dueTime, dueWhen, sar, toast} from './core.js';
 import {tr} from './i18n.js';
 import {isOpen, who} from './followups.js';
 
-const NTF_KEY='qc_notify', NTF_SEEN='qc_notified';
+const NTF_KEY='qc_notify', NTF_SEEN='qc_notified', CAP_IDS='qc_cap_ntf_ids';
 const timers=new Map(); /* r.full -> timeout id for exact-time reminders */
 
 export function dueNow(){
@@ -14,6 +18,11 @@ export function dueNow(){
     .sort((a,b)=>(a.due+dueTime(a)).localeCompare(b.due+dueTime(b)));
 }
 function dueAt(r){const d=parseDay(r.due),hm=dueTime(r).split(':');d.setHours(+hm[0],+hm[1],0,0);return d}
+
+/* Capacitor bridge: present only inside the native app. */
+function capLN(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications)||null}
+function capGranted(p){return p&&(p.display==='granted'||p.granted===true)}
+function nid(full){let h=7;for(const c of full)h=(h*31+ +c)%2000000000;return 100000+(h%1000000)}
 
 /* App-icon badge with the number of due follow-ups. */
 export function refreshBadge(){
@@ -27,6 +36,36 @@ export function refreshBadge(){
 function seen(){return store.get(NTF_SEEN,{})}
 function markSeen(full,due){const s=seen();s[full]=due;store.set(NTF_SEEN,s)}
 
+/* ---- Capacitor path: schedule OS-level notifications for all due items ---- */
+async function capCancelAll(){
+  const ln=capLN(),ids=store.get(CAP_IDS,[]);
+  if(!ln||!ids.length)return;
+  try{await ln.cancel({notifications:ids.map(id=>({id}))})}catch(e){}
+  store.set(CAP_IDS,[]);
+}
+async function capSchedule(){
+  const ln=capLN();if(!ln)return;
+  await capCancelAll();
+  if(store.get(NTF_KEY,0)!==1)return;
+  const now=Date.now(),items=[];
+  for(const r of dueNow()){
+    const at=dueAt(r).getTime();
+    if(at<=now){items.push({r,at:now+1500});markSeen(r.full,r.due)} /* overdue: alert shortly after opening */
+    else if(at-now<31*864e5)items.push({r,at});
+  }
+  if(!items.length)return;
+  const ids=[];
+  try{
+    await ln.schedule({notifications:items.map(({r,at})=>{
+      const id=nid(r.full);ids.push(id);
+      return {id,title:tr('Follow-up due'),body:who(r)+(r.value?' · '+sar(r.value):'')+' · '+dueWhen(r),
+        schedule:{at:new Date(at)},extra:{full:r.full}};
+    })});
+    store.set(CAP_IDS,ids);
+  }catch(e){/* scheduling failed; badge still updates */}
+}
+
+/* ---- Web path ---- */
 function showNotif(r){
   if(!('Notification'in window)||Notification.permission!=='granted')return;
   const n=new Notification(tr('Follow-up due'),{
@@ -57,40 +96,74 @@ function scheduleUpcoming(){
   }
 }
 
-export function refreshDue(){refreshBadge();checkMissed();scheduleUpcoming()}
+export function refreshDue(){
+  refreshBadge();
+  if(capLN()){capSchedule();return} /* native app handles closed-app delivery */
+  checkMissed();scheduleUpcoming();
+}
 
 export function notifySupported(){
-  return {perm:'Notification'in window,pbs:!!(window.ServiceWorkerRegistration&&'periodicSync'in ServiceWorkerRegistration.prototype)};
+  return {native:!!capLN(),
+    pbs:!!(window.ServiceWorkerRegistration&&'periodicSync'in ServiceWorkerRegistration.prototype)};
+}
+async function permState(){
+  const ln=capLN();
+  if(ln){try{return (await ln.checkPermissions()).display}catch(e){return 'prompt'}}
+  return 'Notification'in window?Notification.permission:'unsupported';
 }
 function renderNotify(){
-  const on=store.get(NTF_KEY,0)===1,perm=notifySupported().perm;
-  const el=$('ntfToggle');if(!el)return;
-  el.checked=on&&perm&&Notification.permission==='granted';
+  const on=store.get(NTF_KEY,0)===1,el=$('ntfToggle');if(!el)return;
   const info=$('ntfInfo');
-  if(!perm)info.textContent='';
-  else if(Notification.permission==='denied')info.textContent=tr('Notification permission denied. Enable it in browser settings.');
-  else if(on)info.textContent=notifySupported().pbs?tr('Notifications on, even when the app is closed (Android).'):tr('Notifications on while the app is open.');
-  else info.textContent='';
+  if(!capLN()&&!'Notification'in window){info.textContent='';return}
+  if(!on){info.textContent='';return}
+  info.textContent=capLN()?tr('Notifications on, even when the app is closed.'):
+    notifySupported().pbs?tr('Notifications on, even when the app is closed (Android).'):
+    tr('Notifications on while the app is open.');
 }
 
 async function registerPbs(){
-  if(!notifySupported().pbs||Notification.permission!=='granted')return;
+  if(capLN()||!notifySupported().pbs||Notification.permission!=='granted')return;
   try{const reg=await navigator.serviceWorker.ready;
     await reg.periodicSync.register('qc-due',{minInterval:60*60*1000});
   }catch(e){/* permission or quota denied — page-side reminders still work */}
 }
 
+export async function syncNotifyToggle(){
+  const el=$('ntfToggle');if(!el)return;
+  const ln=capLN();
+  if(!el.checked){
+    store.set(NTF_KEY,0);
+    if(ln)await capCancelAll();
+    renderNotify();refreshDue();return;
+  }
+  let granted=false;
+  if(ln){
+    try{const p=await ln.requestPermission();granted=capGranted(p)}catch(e){granted=false}
+  }else if('Notification'in window){
+    granted=(Notification.permission==='granted'?true:await Notification.requestPermission()==='granted');
+  }
+  if(granted){
+    store.set(NTF_KEY,1);toast(tr('Notifications enabled'));registerPbs();
+    /* In the native app, prompt once more if Android blocked exact alarms. */
+    if(ln&&ln.canScheduleExactNotifications){
+      try{const e=await ln.canScheduleExactNotifications();
+        if(e&&e.exact===false)toast(tr('For reminders at the exact time, allow alarms for QuickChat in phone settings.'))}catch(_){}
+    }
+  }else{
+    el.checked=false;toast(tr('Notification permission denied. Enable it in browser settings.'));
+  }
+  renderNotify();refreshDue();
+}
+
 export function initNotify(){
   const el=$('ntfToggle');if(!el)return;
-  el.onchange=async()=>{
-    if(!el.checked){store.set(NTF_KEY,0);renderNotify();refreshDue();return}
-    if(!('Notification'in window)){toast(tr('This browser does not support notifications'));el.checked=false;return}
-    const p=Notification.permission==='granted'?'granted':await Notification.requestPermission();
-    if(p==='granted'){store.set(NTF_KEY,1);toast(tr('Notifications enabled'));registerPbs()}
-    else{el.checked=false;toast(tr('Notification permission denied. Enable it in browser settings.'))}
+  el.onchange=()=>syncNotifyToggle();
+  /* Reflect the real permission state (e.g. revoked in OS settings). */
+  permState().then(p=>{
+    if(p==='granted')el.checked=store.get(NTF_KEY,0)===1;
+    else{el.checked=false;if(store.get(NTF_KEY,0)===1&&p==='denied'){store.set(NTF_KEY,0)}}
     renderNotify();refreshDue();
-  };
-  renderNotify();refreshDue();
+  });
   setInterval(refreshDue,60*1000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshDue()});
 }
