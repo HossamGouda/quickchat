@@ -25,7 +25,7 @@ jobs:
 
       - name: Validate generated service worker is current
         run: |
-          python tools/build_sw.py
+          python3 tools/build_sw.py
           git diff --exit-code sw.js
 
       - name: Upload site artifact
