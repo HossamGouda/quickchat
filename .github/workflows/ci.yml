@@ -1,0 +1,43 @@
+name: CI checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Syntax-check every JS module
+        run: |
+          set -e
+          for f in js/*.js sw.js qrcode.js tools/*.cjs; do
+            node --check "$f"
+          done
+
+      - name: Verify all imports resolve
+        run: node tools/check_imports.cjs
+
+      - name: Boot smoke test (DOM-stubbed, fake IndexedDB)
+        run: node tools/eval_smoke.cjs
+
+      - name: Validate manifest JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.webmanifest','utf8')); console.log('manifest OK')"
+
+      - name: Verify generated service worker is current
+        run: |
+          python3 tools/build_sw.py
+          git diff --exit-code sw.js
+
+      # Live sync e2e is intentionally NOT run here: it needs a Teable token.
+      # Run manually: TEABLE_TOKEN=... node tools/sync_e2e.cjs

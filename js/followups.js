@@ -88,24 +88,30 @@ export function renderFollowups(){
   renderPipeline();renderFilters();
   const f=state.fuFilter||'active';
   $('activeView').hidden=f!=='active';$('fltSec').hidden=f==='active';
-  {
-    const pf=store.get('qc_fuPrompt','');
-    const no=state.recents.filter(r=>!r.due&&isOpen(r)&&r.full!==pf).slice(0,15);
-    $('fuCount').textContent=due.length?due.length+' today or overdue':'';
-    $('fuList').innerHTML=due.length?due.map(r=>fuRow(r,'due')).join('')
-      :`<div class="empty">${all.length||no.length?'Nothing due. You are up to date.':'No follow-ups yet. After you message someone, set a reminder here.'}</div>`;
-    $('upSec').hidden=!up.length;$('upList').innerHTML=up.map(r=>fuRow(r,'up')).join('');
-    $('noSec').hidden=!no.length;$('noList').innerHTML=no.map(r=>fuRow(r,'no')).join('');
-  }
-  if(f!=='active'){
-    const s=$('fltSearch').value.trim().toLowerCase(),sd=s.replace(/\D/g,'');
-    let list=state.recents.filter(r=>f==='all'||r.status===f);
-    if(s)list=list.filter(r=>(r.label||'').toLowerCase().includes(s)||(r.note||'').toLowerCase().includes(s)||(sd&&r.full.includes(sd)));
-    list.sort((a,b)=>b.at-a.at);
-    const sum=list.reduce((a,r)=>a+(+r.value||0),0);
-    $('fltTitle').textContent=F_LABEL[f]+' ('+list.length+')'+(sum?' · '+sar(sum):'');
-    $('fltList').innerHTML=list.length?list.map(r=>fuRow(r,'list')).join(''):'<div class="empty">No contacts here yet.</div>';
-  }
+  if(f==='active')renderActiveView(all,due,up);
+  else renderFilterView(f);
+}
+
+/* Active view: due now, upcoming, and messaged-without-reminder prompts. */
+function renderActiveView(all,due,up){
+  const pf=store.get('qc_fuPrompt','');
+  const no=state.recents.filter(r=>!r.due&&isOpen(r)&&r.full!==pf).slice(0,15);
+  $('fuCount').textContent=due.length?due.length+' today or overdue':'';
+  $('fuList').innerHTML=due.length?due.map(r=>fuRow(r,'due')).join('')
+    :`<div class="empty">${all.length||no.length?'Nothing due. You are up to date.':'No follow-ups yet. After you message someone, set a reminder here.'}</div>`;
+  $('upSec').hidden=!up.length;$('upList').innerHTML=up.map(r=>fuRow(r,'up')).join('');
+  $('noSec').hidden=!no.length;$('noList').innerHTML=no.map(r=>fuRow(r,'no')).join('');
+}
+
+/* Filtered view: one status bucket with live search. */
+function renderFilterView(f){
+  const s=$('fltSearch').value.trim().toLowerCase(),sd=s.replace(/\D/g,'');
+  let list=state.recents.filter(r=>f==='all'||r.status===f);
+  if(s)list=list.filter(r=>(r.label||'').toLowerCase().includes(s)||(r.note||'').toLowerCase().includes(s)||(sd&&r.full.includes(sd)));
+  list.sort((a,b)=>b.at-a.at);
+  const sum=list.reduce((a,r)=>a+(+r.value||0),0);
+  $('fltTitle').textContent=F_LABEL[f]+' ('+list.length+')'+(sum?' · '+sar(sum):'');
+  $('fltList').innerHTML=list.length?list.map(r=>fuRow(r,'list')).join(''):'<div class="empty">No contacts here yet.</div>';
 }
 
 export function startFollowUp(r){
@@ -115,26 +121,32 @@ export function startFollowUp(r){
   toast(r.fuMsg?'Saved message ready. Tap Open chat':t?'Follow-up message ready. Tap Open chat':'Number loaded. Tap Open chat');
 }
 function openCard(r,mode){store.set('qc_fuPrompt',r.full);state.cardMode=mode||'contact';renderFuPrompt();renderFollowups();setTimeout(()=>$('fuPrompt').scrollIntoView({behavior:'smooth',block:'start'}),50)}
+/* Row actions, dispatched from a registry (open/extend per action,
+   no growing if-chains). Each handler receives the contact record. */
+const FU_ACTIONS={
+  open:r=>openCard(r),
+  fu:r=>startFollowUp(r),
+  q3:r=>quickDue(r,3),
+  q7:r=>quickDue(r,7),
+  fudone:r=>{setDueVal(r,'');toast('Follow-up done')},
+  cyc:r=>cycleStatus(r),
+};
+function quickDue(r,days){
+  setDueVal(r,todayStr(days));saveRecents();toast('Follow-up set: '+dueLow(r.due));
+  if(store.get('qc_cal',true))location.href=calLink(r);
+}
 function fuListClick(e){
   const b=e.target.closest('[data-act]');if(!b)return;const r=state.recents.find(x=>x.full===b.dataset.f);if(!r)return;
-  const a=b.dataset.act;
-  if(a==='open'){openCard(r);return}
-  if(a==='fu'){startFollowUp(r);return}
-  if(a==='q3'||a==='q7'){setDueVal(r,todayStr(a==='q3'?3:7));saveRecents();toast('Follow-up set: '+dueLow(r.due));if(store.get('qc_cal',true))location.href=calLink(r);return}
-  if(a==='fudone'){setDueVal(r,'');toast('Follow-up done')}
-  if(a==='cyc')cycleStatus(r);
+  const h=FU_ACTIONS[b.dataset.act];if(h)h(r);
   saveRecents();
 }
 ['fuList','upList','noList','fltList'].forEach(id=>$(id).addEventListener('click',fuListClick));
 
 /* Contact card: status, follow-up date, quote value, note, history */
 const EV_TXT={msg:()=>'Messaged',status:v=>v?'Status: '+ST_LABEL[v]:'Status cleared',due:v=>'Follow-up set for '+fmtDay(v),done:()=>'Follow-up cleared',value:v=>'Quote value: '+sar(v)};
-export function renderFuPrompt(){
-  const el=$('fuPrompt'),f=store.get('qc_fuPrompt',''),r=state.recents.find(x=>x.full===f);
-  if(!r){el.hidden=true;el.innerHTML='';return}
-  const cal=store.get('qc_cal',true),log=(r.log||[]).slice().reverse();
-  const head=state.cardMode==='just'?'Just messaged':'Contact';
-  el.innerHTML=`<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>
+/* Contact card: pure template builder (renderFuPrompt wires state around it). */
+function cardHtml(r,cal,log,head){
+  return `<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>
     <input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name" value="${esc(r.label||'')}" aria-label="Name">
     <div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div>
     <div class="wrapr"><span class="bk">Status</span>${['quoted','waiting','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
@@ -148,6 +160,13 @@ export function renderFuPrompt(){
     <label class="field"><span class="lbl">Note</span><textarea id="fpNote" dir="auto" rows="2" placeholder="What was quoted, site, products">${esc(r.note||'')}</textarea></label>
     ${log.length?`<details class="tl"><summary>History (${log.length})</summary><ol>${log.map(x=>`<li><span class="d">${fmtShort(x.t)}</span> <span>${(EV_TXT[x.e]||(()=>x.e))(x.v)}</span></li>`).join('')}</ol></details>`:''}
     <button type="button" class="btn primary" data-x="go">Follow up now</button>`;
+}
+export function renderFuPrompt(){
+  const el=$('fuPrompt'),f=store.get('qc_fuPrompt',''),r=state.recents.find(x=>x.full===f);
+  if(!r){el.hidden=true;el.innerHTML='';return}
+  const cal=store.get('qc_cal',true),log=(r.log||[]).slice().reverse();
+  const head=state.cardMode==='just'?'Just messaged':'Contact';
+  el.innerHTML=cardHtml(r,cal,log,head);
   el.hidden=false;
 }
 function saveCardFields(r){

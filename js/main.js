@@ -51,4 +51,15 @@ renderWhatsNew();
 setLang(state.lang,true);
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
 }
-boot().catch(e=>console.error('QuickChat boot failed:',e));
+boot().catch(e=>{
+  console.error('QuickChat boot failed:',e);
+  const card=document.createElement('div');
+  card.className='card notice warnc';
+  card.style.margin='20px';
+  card.innerHTML=`<p><b>QuickChat could not start</b></p>
+    <p class="bk">An update may have been only partially saved. Your data is safe.</p>
+    <div class="row2"><button type="button" class="btn primary" id="bootRetry" style="flex:1">Retry</button></div>
+    <p class="bk">If it keeps failing: uninstall the home-screen app and add it again, or clear site data in browser settings (take a backup first if you can open the app on another device).</p>`;
+  document.body.prepend(card);
+  document.getElementById('bootRetry').onclick=()=>location.reload();
+});

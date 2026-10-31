@@ -3,6 +3,10 @@
 Prioritized from "matters for daily use on the phone" down to "nice to have".
 P0 = do first, P1 = next, P2 = later. No code yet — this is the plan.
 
+> **Status (2026-10-31): all items implemented and deployed.**
+> P0 #1–5 shipped in v3.2–3.3, P1 #6–10 in v3.4, P2 #11–14 in v3.5.
+> Live at https://hossamgouda.github.io/quickchat
+
 ## P0 — Trust & daily-use essentials
 
 ### 1. Deploy so the phone can actually install it

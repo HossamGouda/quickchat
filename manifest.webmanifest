@@ -39,6 +39,22 @@
       "purpose": "maskable"
     }
   ],
+  "screenshots": [
+    {
+      "src": "screenshot-chat.png",
+      "sizes": "594x782",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Chat dialer: message any WhatsApp number without saving it"
+    },
+    {
+      "src": "screenshot-followups.png",
+      "sizes": "594x782",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Follow-ups: due reminders, statuses and pipeline stats"
+    }
+  ],
   "share_target": {
     "action": "./share-target",
     "method": "POST",

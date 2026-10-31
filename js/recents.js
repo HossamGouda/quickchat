@@ -32,6 +32,23 @@ export function pushRecent(n){
   trimRecents();store.set('qc_recents',state.recents);renderRecents();renderBk();
 }
 
+/* Row builders: one function per visual state, kept out of the renderer. */
+function editingRow(r,f){
+  return `<div class="item editing">
+    <div class="rnum">+${r.code} ${r.local}</div>
+    <input class="txt" id="eLabel" dir="auto" placeholder="Name / note" value="${esc(r.label||'')}">
+    <div class="acts"><button class="btn small" data-act="lcancel">Cancel</button><button class="btn small primary" data-act="lsave" data-f="${f}">Save</button></div></div>`;
+}
+function actsFor(r,f){
+  return state.confirmRm===f
+    ?`<span class="confirm">Delete? <button class="btn small" data-act="normv">No</button><button class="btn small danger solid" data-act="yesrm" data-f="${f}">Yes</button></span>`
+    :`<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
+}
+function recentRow(r,c,f){
+  const conf=r._conf&&Date.now()-r._conf<864e5;
+  return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}${conf?` · <span class="conf">Updated from another device</span>`:''}</div></button><div class="acts">${actsFor(r,f)}</div></div>`;
+}
+
 export function renderRecents(){
   renderFollowups();
   const el=$('recents'),w=$('clearRecentWrap'),sIn=$('search');
@@ -46,15 +63,7 @@ export function renderRecents(){
   if(!list.length){el.innerHTML='<div class="empty">No numbers match “'+esc(q)+'”.</div>';return}
   el.innerHTML=list.map(r=>{
     const c=COUNTRIES.find(x=>x.id===r.country),f=r.full;
-    if(state.labelEditing===f)return `<div class="item editing">
-      <div class="rnum">+${r.code} ${r.local}</div>
-      <input class="txt" id="eLabel" dir="auto" placeholder="Name / note" value="${esc(r.label||'')}">
-      <div class="acts"><button class="btn small" data-act="lcancel">Cancel</button><button class="btn small primary" data-act="lsave" data-f="${f}">Save</button></div></div>`;
-    const acts=state.confirmRm===f
-      ?`<span class="confirm">Delete? <button class="btn small" data-act="normv">No</button><button class="btn small danger solid" data-act="yesrm" data-f="${f}">Yes</button></span>`
-      :`<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
-    const conf=r._conf&&Date.now()-r._conf<864e5;
-    return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}${conf?` · <span class="conf">Updated from another device</span>`:''}</div></button><div class="acts">${acts}</div></div>`;
+    return state.labelEditing===f?editingRow(r,f):recentRow(r,c,f);
   }).join('');
   const e=$('eLabel');if(e){e.focus();e.onkeydown=ev=>{if(ev.key==='Enter')el.querySelector('[data-act="lsave"]').click()}}
 }
@@ -64,20 +73,26 @@ export function loadRecent(r){
   if(state.pending&&state.pending.nameAuto&&state.pending.keys.includes('name')){state.pending.vals.name=nameFromLabel();renderVars();applyVars()}
 }
 
+/* Row actions as a registry; handlers that don't need the record use the
+   button's data-f directly via the wrapper below. */
+const RECENT_ACTIONS={
+  reuse:r=>{loadRecent(r);window.scrollTo({top:0,behavior:'smooth'})},
+  ledit:r=>{state.labelEditing=r.full;state.confirmRm=null},
+  lcancel:()=>{state.labelEditing=null},
+  lsave:r=>{r.label=$('eLabel').value.trim();r._lu=Date.now();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')},
+  rm:r=>{if(r.label)state.confirmRm=r.full;else deleteRecent(r.full)},
+  normv:()=>{state.confirmRm=null},
+  yesrm:r=>{deleteRecent(r.full);state.confirmRm=null;renderBk();toast('Number deleted')},
+  clearall:()=>{state.confirmClear=true},
+  noclear:()=>{state.confirmClear=false},
+  cyc:r=>cycleStatus(r),
+  yesclear:()=>{state.recents.filter(r=>!keep(r)).forEach(r=>addTombstone('c',r.full));if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));state.recents=state.recents.filter(keep);state.confirmClear=false;store.set('qc_recents',state.recents)},
+};
 function recentClick(e){
   const b=e.target.closest('[data-act]');if(!b)return;
   const act=b.dataset.act,f=b.dataset.f,r=state.recents.find(x=>x.full===f);
-  if(act==='reuse'){loadRecent(r);window.scrollTo({top:0,behavior:'smooth'});return}
-  if(act==='ledit'){state.labelEditing=f;state.confirmRm=null}
-  if(act==='lcancel'){state.labelEditing=null}
-  if(act==='lsave'){r.label=$('eLabel').value.trim();r._lu=Date.now();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')}
-  if(act==='rm'){if(r&&r.label)state.confirmRm=f;else deleteRecent(f)}
-  if(act==='normv')state.confirmRm=null;
-  if(act==='yesrm'){deleteRecent(f);state.confirmRm=null;renderBk();toast('Number deleted')}
-  if(act==='clearall')state.confirmClear=true;
-  if(act==='noclear')state.confirmClear=false;
-  if(act==='cyc'){if(r)cycleStatus(r)}
-  if(act==='yesclear'){state.recents.filter(r=>!keep(r)).forEach(r=>addTombstone('c',r.full));if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));state.recents=state.recents.filter(keep);state.confirmClear=false;store.set('qc_recents',state.recents)}
+  const h=RECENT_ACTIONS[act];if(!h)return;
+  if(r||act==='clearall'||act==='noclear'||act==='yesclear'||act==='lcancel'||act==='normv')h(r||{full:f});
   renderRecents();
 }
 
