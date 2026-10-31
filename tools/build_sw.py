@@ -17,14 +17,16 @@ SHELL = [
 ] + [f"js/{p.name}" for p in sorted(pathlib.Path("js").glob("*.js"))] \
   + [f"assets/fonts/{p.name}" for p in sorted(pathlib.Path("assets/fonts").glob("*.woff2"))]
 
-def sha(path):
+def norm_bytes(path):
     p = path[2:] if path.startswith("./") else path
     if p == "":  # "./" shell root serves index.html
         p = "index.html"
-    # Normalize CRLF so the version hash is stable across platforms
+    # Normalize CRLF so sizes/hashes are stable across platforms
     # (Windows working trees are CRLF, Linux checkouts are LF).
-    data = pathlib.Path(p).read_bytes().replace(b"\r\n", b"\n")
-    return hashlib.sha256(data).hexdigest()
+    return pathlib.Path(p).read_bytes().replace(b"\r\n", b"\n")
+
+def sha(path):
+    return hashlib.sha256(norm_bytes(path)).hexdigest()
 
 version = "qc-" + hashlib.sha256(
     "".join(sha(p) for p in SHELL).encode()
@@ -136,7 +138,7 @@ self.addEventListener("message", (event) => {
 });
 '''
 
-total_kb = sum(pathlib.Path(p.lstrip("./")).stat().st_size for p in SHELL) // 1024
+total_kb = sum(len(norm_bytes(p)) for p in SHELL) // 1024
 out = (template
        .replace("__VERSION__", version)
        .replace("__PRECACHE__", json.dumps(SHELL))
