@@ -1,5 +1,8 @@
 /* Headless boot smoke test: stub the DOM just enough to evaluate every module
    and run main.js's boot sequence, surfacing ReferenceError/TDZ/missing-export bugs. */
+const path = require("path"), { pathToFileURL } = require("url");
+const modUrl = (p) => pathToFileURL(path.join(__dirname, "..", p)).href;
+
 const stubEl = () => ({
   innerHTML: "", textContent: "", value: "", hidden: false, className: "",
   style: {}, dataset: {}, readOnly: false, placeholder: "", href: "",
@@ -67,9 +70,9 @@ globalThis.indexedDB = {
   },
 };
 
-import("file:///D:/Gouda Projects/direct-whatsapp/quickchat/js/main.js")
+import(modUrl("js/main.js"))
   .then(async () => {
-    const { state } = await import("file:///D:/Gouda Projects/direct-whatsapp/quickchat/js/core.js");
+    const { state } = await import(modUrl("js/core.js"));
     /* boot is async: poll until hydration lands (max 2 s) */
     for (let i = 0; i < 40 && !(state.lang === "ar" && state.recents.length === 1); i++)
       await new Promise(r => setTimeout(r, 50));

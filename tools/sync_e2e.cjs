@@ -26,15 +26,18 @@ globalThis.NodeFilter = { SHOW_TEXT: 4 };
 globalThis.scrollTo = () => {};
 globalThis.prompt = () => null;
 
+const path = require("path"), { pathToFileURL } = require("url");
+const modUrl = (p) => pathToFileURL(path.join(__dirname, "..", p)).href;
+
 const BASE = "https://app.teable.ai/api";
 const T = process.env.TEABLE_TOKEN;
 const AUTH = { Authorization: `Bearer ${T}`, "Content-Type": "application/json" };
 
 (async () => {
-  const core = await import("file:///D:/Gouda Projects/direct-whatsapp/quickchat/js/core.js");
+  const core = await import(modUrl("js/core.js"));
   await core.store.ready;
   core.store.set("qc_teable_token", T);
-  const sync = await import("file:///D:/Gouda Projects/direct-whatsapp/quickchat/js/sync.js");
+  const sync = await import(modUrl("js/sync.js"));
 
   const testFull = "966500000098";
   core.state.recents.push({ full: testFull, code: "966", local: "500000098", country: "sa", at: Date.now(), label: "E2E Local Contact", log: [] });
@@ -58,7 +61,7 @@ const AUTH = { Authorization: `Bearer ${T}`, "Content-Type": "application/json" 
   console.log("remote-only contact pulled locally:", !!pulled, pulled && pulled.label);
 
   /* 3. tombstone propagation: delete locally, sync, expect remote Deleted=true */
-  const { addTombstone } = await import("file:///D:/Gouda Projects/direct-whatsapp/quickchat/js/tombstones.js");
+  const { addTombstone } = await import(modUrl("js/tombstones.js"));
   core.state.recents = core.state.recents.filter(r => r.full !== testFull);
   addTombstone("c", testFull);
   await sync.syncNow();
