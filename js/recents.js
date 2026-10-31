@@ -4,6 +4,15 @@ import {setCountry, update, currentNumber, nameFromLabel, ccIn, numIn, labelIn} 
 import {renderVars, applyVars} from './templates.js';
 import {renderFollowups, cycleStatus} from './followups.js';
 import {renderBk} from './backup.js';
+import {addTombstone} from './tombstones.js';
+
+/* Deletion bookkeeping: tombstone for cloud sync + nudge sync to propagate. */
+function deleteRecent(f){
+  addTombstone('c',f);
+  state.recents=state.recents.filter(x=>x.full!==f);
+  store.set('qc_recents',state.recents);
+  if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+}
 
 export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg}
 export function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
@@ -61,13 +70,13 @@ function recentClick(e){
   if(act==='ledit'){state.labelEditing=f;state.confirmRm=null}
   if(act==='lcancel'){state.labelEditing=null}
   if(act==='lsave'){r.label=$('eLabel').value.trim();r._lu=Date.now();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')}
-  if(act==='rm'){if(r&&r.label)state.confirmRm=f;else{state.recents=state.recents.filter(x=>x.full!==f);store.set('qc_recents',state.recents)}}
+  if(act==='rm'){if(r&&r.label)state.confirmRm=f;else deleteRecent(f)}
   if(act==='normv')state.confirmRm=null;
-  if(act==='yesrm'){state.recents=state.recents.filter(x=>x.full!==f);state.confirmRm=null;store.set('qc_recents',state.recents);renderBk();toast('Number deleted')}
+  if(act==='yesrm'){deleteRecent(f);state.confirmRm=null;renderBk();toast('Number deleted')}
   if(act==='clearall')state.confirmClear=true;
   if(act==='noclear')state.confirmClear=false;
   if(act==='cyc'){if(r)cycleStatus(r)}
-  if(act==='yesclear'){state.recents=state.recents.filter(keep);state.confirmClear=false;store.set('qc_recents',state.recents)}
+  if(act==='yesclear'){state.recents.filter(r=>!keep(r)).forEach(r=>addTombstone('c',r.full));if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));state.recents=state.recents.filter(keep);state.confirmClear=false;store.set('qc_recents',state.recents)}
   renderRecents();
 }
 

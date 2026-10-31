@@ -2,6 +2,7 @@
 import {$, store, state, COUNTRIES, STATUSES, ST_LABEL, dl, toast, dueTime, todayStr} from './core.js';
 import {renderRecents, keep, trimRecents} from './recents.js';
 import {renderTpls} from './templates.js';
+import {tombstones, addTombstone} from './tombstones.js';
 
 function tracked(){return state.recents.filter(keep).length}
 export function renderBk(){
@@ -16,7 +17,7 @@ export function renderBk(){
   if(!n.hidden)$('nudgeTxt').textContent=last?`Last backup ${days} days ago. You have ${tr} saved contact${tr===1?'':'s'} on this phone only.`:`You have ${tr} saved contact${tr===1?'':'s'} and no backup yet.`;
 }
 
-function backupJson(){return JSON.stringify({app:'quickchat',version:3,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents},null,2)}
+function backupJson(){return JSON.stringify({app:'quickchat',version:4,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents,deleted:tombstones()},null,2)}
 function stamp(){return todayStr()}
 function backupDone(){store.set('qc_lastBackup',Date.now());renderBk()}
 function downloadBackup(){dl(new Blob([backupJson()],{type:'application/json'}),'quickchat-backup-'+stamp()+'.json');backupDone();toast('Backup saved to Downloads')}
@@ -79,6 +80,12 @@ $('importFile').onchange=async e=>{
     state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),_lu:Date.now()});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
+  /* Restore deletion tombstones (keep the newer side if we already have one). */
+  if(Array.isArray(d.deleted))d.deleted.forEach(t=>{
+    if(!t||!t.full||!/^[ct]$/.test(t.k||'c'))return;
+    const k=t.k||'c',ex=tombstones().find(x=>x.k===k&&x.full===String(t.full));
+    if(!ex){addTombstone(k,String(t.full))}
+  });
   store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);
   renderTpls();renderRecents();renderBk();
   toast(`Imported ${nt} template${nt===1?'':'s'} and ${nn} number${nn===1?'':'s'}`);

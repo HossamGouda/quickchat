@@ -5,6 +5,9 @@ export const TEABLE_API = 'https://app.teable.ai/api';
 
 export const TEABLE_BASE_ID = 'bseFic1XljL6STITEdM';
 
+/* Bump when the sync wire format changes; mismatched clients refuse to sync. */
+export const PROTOCOL_VERSION = 2;
+
 /* Records are addressed by field NAME (fieldKeyType=name), so only table IDs are needed. */
 export const TEABLE_TABLES = {
   contacts: 'tbl6RVbTbEYB4qK5wu1',   // Number(primary,unique), Code, Local, Country, Label, Status(select), Due(date), DueTime, Value, Note, FuMsg, At, Log, UpdatedAt
@@ -15,5 +18,6 @@ export const TEABLE_TABLES = {
 /* Field IDs used as upsert match keys (must stay unique=true in Teable). */
 export const TEABLE_MATCH_FIELDS = {
   contacts: 'fldiPPw5VRUivc4vgiF',   // Number
-  templates: 'fld8qmvyV5KyU9FAReS'   // TplId
+  templates: 'fld8qmvyV5KyU9FAReS',  // TplId
+  syncMeta: 'fld2phX1CpXI9QqKwyk'    // Key
 };

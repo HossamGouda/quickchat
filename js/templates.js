@@ -2,6 +2,7 @@
 import {$ ,store, state, esc, VAR_RE, autoVars, fillTpl, b64uEnc, b64uDec, toast} from './core.js';
 import {nameFromLabel, msgIn, update} from './dialer.js';
 import {renderBk} from './backup.js';
+import {addTombstone} from './tombstones.js';
 
 export function useTemplate(t){
   const auto=autoVars(t.body);
@@ -56,7 +57,7 @@ $('tpls').addEventListener('click',e=>{
   if(act==='edit'){state.editing=id;state.confirmDel=null}
   if(act==='del'){state.confirmDel=id}
   if(act==='nodel'){state.confirmDel=null}
-  if(act==='yesdel'){state.tpls=state.tpls.filter(x=>x.id!==id);state.confirmDel=null;store.set('qc_tpls',state.tpls);renderBk();toast('Template deleted')}
+  if(act==='yesdel'){addTombstone('t',id);if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));state.tpls=state.tpls.filter(x=>x.id!==id);state.confirmDel=null;store.set('qc_tpls',state.tpls);renderBk();toast('Template deleted')}
   if(act==='cancel'){state.editing=null}
   if(act==='save'){
     const title=$('eTitle').value.trim(),body=$('eBody').value.trim();

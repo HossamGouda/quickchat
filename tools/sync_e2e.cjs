@@ -57,14 +57,34 @@ const AUTH = { Authorization: `Bearer ${T}`, "Content-Type": "application/json" 
   const pulled = core.state.recents.find(r => r.full === "966500000097");
   console.log("remote-only contact pulled locally:", !!pulled, pulled && pulled.label);
 
-  /* 3. cleanup test rows */
+  /* 3. tombstone propagation: delete locally, sync, expect remote Deleted=true */
+  const { addTombstone } = await import("file:///D:/Gouda Projects/direct-whatsapp/quickchat/js/tombstones.js");
+  core.state.recents = core.state.recents.filter(r => r.full !== testFull);
+  addTombstone("c", testFull);
+  await sync.syncNow();
+  const res3 = await fetch(`${BASE}/table/tbl6RVbTbEYB4qK5wu1/record?pageSize=100`, { headers: AUTH }).then(r => r.json());
+  const tombRow = (res3.records || []).find(r => String(r.fields.Number) === testFull);
+  console.log("tombstone propagated to Teable:", !!tombRow && tombRow.fields.Deleted === true);
+
+  /* 4. resurrection: remote edit lands after our delete -> contact comes back */
+  await fetch(`${BASE}/table/tbl6RVbTbEYB4qK5wu1/record`, {
+    method: "PATCH", headers: AUTH,
+    body: JSON.stringify({ records: [{ id: tombRow.id, fields: { Deleted: false, Label: "E2E Resurrected", UpdatedAt: Date.now() } }] }),
+  });
+  await sync.syncNow();
+  const res4 = await fetch(`${BASE}/table/tbl6RVbTbEYB4qK5wu1/record?pageSize=100`, { headers: AUTH }).then(r => r.json());
+  const liveRow = (res4.records || []).find(r => String(r.fields.Number) === testFull);
+  const resurrected = core.state.recents.find(r => r.full === testFull);
+  console.log("resurrection: local copy back:", !!resurrected, "| remote still live:", !!liveRow && liveRow.fields.Deleted !== true);
+
+  /* 5. cleanup test rows */
   const del = async (table, id) => fetch(`${BASE}/table/${table}/record/${id}`, { method: "DELETE", headers: AUTH });
-  if (pushed) await del("tbl6RVbTbEYB4qK5wu1", pushed.id);
+  if (liveRow) await del("tbl6RVbTbEYB4qK5wu1", liveRow.id);
   if (pushedTpl) await del("tblEzLuJ5UevMxVrzPm", pushedTpl.id);
   const res2 = await fetch(`${BASE}/table/tbl6RVbTbEYB4qK5wu1/record?pageSize=100`, { headers: AUTH }).then(r => r.json());
   const remote2 = (res2.records || []).find(r => String(r.fields.Number) === "966500000097");
   if (remote2) await del("tbl6RVbTbEYB4qK5wu1", remote2.id);
   core.state.recents = core.state.recents.filter(r => r.full !== "966500000097");
   console.log("cleanup done");
-  process.exit(ok1 && pushed && pushedTpl && pulled ? 0 : 1);
+  process.exit(ok1 && pushed && pushedTpl && pulled && tombRow && tombRow.fields.Deleted === true && resurrected && liveRow && liveRow.fields.Deleted !== true ? 0 : 1);
 })().catch(e => { console.error("E2E FAILED:", e.message); process.exit(1); });

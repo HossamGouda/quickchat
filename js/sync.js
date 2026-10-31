@@ -1,15 +1,19 @@
-/* sync.js — Teable cloud sync.
+/* sync.js — Teable cloud sync (protocol v2).
    IndexedDB stays the source of truth; this module mirrors contacts and templates
    to the Teable base (js/sync-config.js) and merges remote changes back.
-   Conflict rule per record: the side with the newer UpdatedAt wins. Deletions
-   are not synced (v1): a record deleted on one side reappears from the other.
+   Conflict rule per record: the side with the newer UpdatedAt wins.
+   Deletions propagate via tombstones (js/tombstones.js): a deleted record is
+   marked Deleted in Teable and purged from both sides after 30 days.
+   SyncMeta rows hold the protocol version and last-sync timestamp; clients on
+   mismatched protocol versions refuse to sync rather than corrupt data.
 
    The personal access token is entered in the Backup tab and kept in the
    on-device store only — it is never committed to the repo or shown in UI. */
 import {$, store, state, COUNTRIES, STATUSES, toast} from './core.js';
-import {TEABLE_API, TEABLE_TABLES as TBLS, TEABLE_MATCH_FIELDS as MATCH} from './sync-config.js';
+import {TEABLE_API, TEABLE_TABLES as TBLS, TEABLE_MATCH_FIELDS as MATCH, PROTOCOL_VERSION} from './sync-config.js';
 import {saveRecents} from './recents.js';
 import {renderTpls} from './templates.js';
+import {tombstones, addTombstone, removeTombstone, purgeTombstone, purgeDue} from './tombstones.js';
 
 const token=()=>store.get('qc_teable_token','');
 const syncOn=()=>!!store.get('qc_sync_on',false);
@@ -41,6 +45,16 @@ async function pullAll(tableId){
 }
 
 function chunk(arr,n){const o=[];for(let i=0;i<arr.length;i+=n)o.push(arr.slice(i,i+n));return o}
+
+/* Push local rows in batches; returns total upserted. */
+async function pushRows(tableId,matchField,fieldsList){
+  let n=0;
+  for(const part of chunk(fieldsList,50)){
+    const d=await tb('POST',`/table/${tableId}/record/upsert`,{matchField,onConflict:'update',typecast:true,records:part.map(fields=>({fields}))});
+    n+=(d.summary&&(d.summary.updated+d.summary.created))||part.length;
+  }
+  return n;
+}
 
 /* ---- field mapping: local recent <-> Teable row ---- */
 function dayMs(ds){const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).getTime()}
@@ -74,6 +88,8 @@ function contactFromRow(row){
     note:String(g.Note||'').slice(0,500),fuMsg:String(g.FuMsg||'').slice(0,2000),
     log,_lu:+g.UpdatedAt||0};
 }
+function delFields(full,delAt){return {Number:full,Deleted:true,DeletedAt:delAt,UpdatedAt:delAt}}
+function delFieldsTpl(id,delAt){return {TplId:id,Deleted:true,DeletedAt:delAt,UpdatedAt:delAt}}
 
 /* ---- templates ---- */
 function tplToFields(t){return {TplId:t.id,Title:t.title,Body:t.body,Pinned:!!t.pinned,UpdatedAt:t._lu||0}}
@@ -83,14 +99,103 @@ function tplFromRow(row){
   return {id:String(g.TplId),title:String(g.Title||g.Body.slice(0,30)),body:g.Body,pinned:!!g.Pinned,_lu:+g.UpdatedAt||0};
 }
 
-/* Push local rows in batches; returns total upserted. */
-async function pushRows(tableId,matchField,fieldsList){
-  let n=0;
-  for(const part of chunk(fieldsList,50)){
-    const d=await tb('POST',`/table/${tableId}/record/upsert`,{matchField,onConflict:'update',typecast:true,records:part.map(fields=>({fields}))});
-    n+=(d.summary&&(d.summary.updated+d.summary.created))||part.length;
+/* ---- SyncMeta: protocol version + informational cursor ---- */
+async function readMeta(rows,key){
+  const row=rows.find(r=>String((r.fields||{}).Key)===key);
+  return row?String((row.fields||{}).Value):null;
+}
+async function writeMeta(key,value){
+  await tb('POST',`/table/${TBLS.syncMeta}/record/upsert`,{matchField:MATCH.syncMeta,onConflict:'update',typecast:true,
+    records:[{fields:{Key:key,Value:String(value)}}]});
+}
+
+/* One-time (v2): give legacy records a sane UpdatedAt so a fresh Teable edit
+   beats an old record last messaged long ago. */
+function backfillLu(){
+  if(store.get('qc_sync_v2',false))return;
+  const floor=store.get('qc_last_sync',0)||0;
+  state.recents.forEach(r=>{r._lu=Math.max(r._lu||0,r.at||0,floor)});
+  state.tpls.forEach(t=>{t._lu=Math.max(t._lu||0,floor)});
+  store.set('qc_recents',state.recents);store.set('qc_tpls',state.tpls);
+  store.set('qc_sync_v2',true);
+}
+
+/* Merge one record kind. `kind` selects local getters and field mappers.
+   remote: Map(full -> teable row). Returns {pushed,pulled} and mutates state. */
+function mergeRecords(kind,remote,localList,toFields,fromRow,delF){
+  const localBy=new Map(localList.map(x=>[kind==='c'?x.full:x.id,x]));
+  const pushList=[];let pushed=0,pulled=0;
+  const keyOf=x=>kind==='c'?x.full:x.id;
+  const luOf=x=>x._lu||x.at||0;
+  const tmb=tombstones().filter(t=>t.k===kind);
+  const tmbBy=new Map(tmb.map(t=>[t.full,t]));
+
+  /* 1. Local survivors vs remote rows */
+  for(const x of localList){
+    const row=remote.get(keyOf(x));
+    if(!row){pushList.push(toFields(x));continue}
+    const g=row.fields||{},remoteLu=+g.UpdatedAt||0;
+    if(g.Deleted){
+      /* Remote tombstone vs local live record: newer side wins. */
+      const remoteDelAt=+g.DeletedAt||0;
+      if(luOf(x)>remoteDelAt){ /* resurrect: local edit is newer */
+        const f=toFields(x);f.Deleted=false;pushList.push(f);pulled--;
+      }else{
+        /* adopt the deletion locally */
+        if(kind==='c')state.recents=state.recents.filter(r=>r.full!==x.full);
+        else state.tpls=state.tpls.filter(t=>t.id!==x.id);
+        const old=tmbBy.get(keyOf(x));if(!old||remoteDelAt>old.delAt)tmbBy.set(keyOf(x),{k:kind,full:keyOf(x),delAt:remoteDelAt});
+        pulled++;
+      }
+      continue;
+    }
+    if(remoteLu>luOf(x)){
+      const m=fromRow(row);
+      if(m){Object.assign(x,m);pulled++}
+    }else if(remoteLu<luOf(x))pushList.push(toFields(x));
+    /* equal: nothing to do */
   }
-  return n;
+
+  /* 2. Remote-only rows: import unless deleted or covered by a local tombstone */
+  for(const [k,row] of remote){
+    const g=row.fields||{};
+    if(localBy.has(k))continue;
+    const tb2=tmbBy.get(k);
+    if(g.Deleted){
+      if(!tb2||(+g.DeletedAt||0)>tb2.delAt)tmbBy.set(k,{k:kind,full:k,delAt:+g.DeletedAt||0});
+      continue;
+    }
+    const m=fromRow(row);
+    if(!m)continue;
+    if(tb2&&luOf(m)>tb2.delAt){ /* remote edit arrived after our delete: resurrect */
+      removeTombstone(kind,k);tmbBy.delete(k);
+      if(kind==='c')state.recents.push(m);else state.tpls.push(m);
+      pulled++;
+    }else if(!tb2){
+      if(kind==='c')state.recents.push(m);else state.tpls.push(m);
+      pulled++;
+    }
+    /* tb2 && remote older than delete: stale row under an active tombstone;
+       step 3 pushes the deletion — no import, no duplicate push here. */
+  }
+
+  /* 3. Local tombstones vs remote: propagate deletions, drop orphans.
+     Iterate the LIVE tmbBy map — resurrections in step 2 removed entries from it. */
+  for(const t of tmbBy.values()){
+    const row=remote.get(t.full);
+    if(!row){ /* remote row already gone (purged elsewhere) */
+      purgeTombstone(kind,t.full);tmbBy.delete(t.full);continue;
+    }
+    const g=row.fields||{};
+    if(!g.Deleted)pushList.push(delF(t.full,t.delAt));
+    else if((+g.DeletedAt||0)<t.delAt)pushList.push(delF(t.full,t.delAt));
+  }
+
+  /* Persist the tombstone ledger for this kind (addTombstone/removeTombstone
+     already wrote theirs; here we flush the merged remote-adopted set). */
+  store.set('qc_deleted',tombstones().filter(t=>t.k!==kind).concat([...tmbBy.values()]));
+
+  return {pushList,pulled};
 }
 
 /* Full bidirectional sync of contacts + templates. */
@@ -99,39 +204,46 @@ export async function syncNow(){
   if(navigator.onLine===false){toast('You are offline. Sync will run when you are back.');return false}
   renderSync();
   try{
+    backfillLu();
+    const metaRows=await pullAll(TBLS.syncMeta);
+    const proto=await readMeta(metaRows,'protocol');
+    if(proto&&+proto!==PROTOCOL_VERSION)
+      throw new Error(`Sync protocol mismatch: this device v${PROTOCOL_VERSION}, cloud v${proto}. Update the app on all devices.`);
+
+    let pushed=0,pulled=0;
+
     /* Contacts */
     const remote=new Map((await pullAll(TBLS.contacts)).map(r=>[String((r.fields||{}).Number||''),r]));
-    const localByFull=new Map(state.recents.map(r=>[r.full,r]));
-    let pushed=0,pulled=0;
-    const pushList=[];
-    for(const r of state.recents){
-      const row=remote.get(r.full);
-      if(!row){pushList.push(contactToFields(r));continue}
-      if((+((row.fields||{}).UpdatedAt)||0)>(r._lu||r.at||0)){
-        const merged=contactFromRow(row);
-        if(merged){Object.assign(r,merged);pulled++}
-      }else pushList.push(contactToFields(r));
-    }
-    for(const [num,row] of remote){
-      if(!localByFull.has(num)&&contactFromRow(row)){state.recents.push(contactFromRow(row));pulled++}
-    }
-    pushed+=await pushRows(TBLS.contacts,MATCH.contacts,pushList);
+    const mC=mergeRecords('c',remote,state.recents,contactToFields,contactFromRow,delFields);
+    pushed+=await pushRows(TBLS.contacts,MATCH.contacts,mC.pushList);
+    pulled+=mC.pulled;
     state.recents.sort((a,b)=>b.at-a.at);
     saveRecents();
+
     /* Templates */
     const rT=new Map((await pullAll(TBLS.templates)).map(r=>[String((r.fields||{}).TplId||''),r]));
-    const localTpl=new Map(state.tpls.map(t=>[t.id,t]));
-    const pushTpl=[];let tPulled=0;
-    for(const t of state.tpls){
-      const row=rT.get(t.id);
-      if(!row){pushTpl.push(tplToFields(t));continue}
-      if((+((row.fields||{}).UpdatedAt)||0)>(t._lu||0)){const m=tplFromRow(row);if(m){Object.assign(t,m);tPulled++}}else pushTpl.push(tplToFields(t));
-    }
-    for(const [id,row] of rT)if(!localTpl.has(id)&&tplFromRow(row)){state.tpls.push(tplFromRow(row));tPulled++}
-    pushed+=await pushRows(TBLS.templates,MATCH.templates,pushTpl);
+    const mT=mergeRecords('t',rT,state.tpls,tplToFields,tplFromRow,delFieldsTpl);
+    pushed+=await pushRows(TBLS.templates,MATCH.templates,mT.pushList);
+    pulled+=mT.pulled;
     store.set('qc_tpls',state.tpls);renderTpls();
+
+    /* Purge tombstones older than 30 days from both sides (best effort) */
+    for(const t of purgeDue()){
+      try{
+        const table=t.k==='c'?TBLS.contacts:TBLS.templates;
+        const src=t.k==='c'?remote:rT;
+        const row=src.get(t.full);
+        if(row&&row.id)await tb('DELETE',`/table/${table}/record/${row.id}`);
+        purgeTombstone(t.k,t.full);
+      }catch(e){/* leave tombstone for the next sync */
+        removeTombstone(t.k,t.full); /* local purge always; remote retried never (row id may vanish) */
+      }
+    }
+
     store.set('qc_last_sync',Date.now());
-    toast(`Synced with Teable: ${pushed} sent, ${pulled+tPulled} received`);
+    await writeMeta('protocol',PROTOCOL_VERSION);
+    await writeMeta('lastSync',Date.now());
+    toast(`Synced with Teable: ${pushed} sent, ${pulled} received`);
     renderSync();
     return true;
   }catch(err){
@@ -141,6 +253,13 @@ export async function syncNow(){
     return false;
   }
 }
+
+/* Debounced sync after local deletions (window event from recents/templates). */
+let delTimer=null;
+window.addEventListener('qc-data-changed',()=>{
+  if(!token()||!syncOn())return;
+  clearTimeout(delTimer);delTimer=setTimeout(()=>syncNow(),2000);
+});
 
 /* ---- Backup-tab UI ---- */
 export function renderSync(){
