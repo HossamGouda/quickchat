@@ -22,18 +22,90 @@ export const ST_LABEL = {quoted:'Quoted',waiting:'Waiting',won:'Won',lost:'Lost'
 /* Template variables: {name}, {greeting}, {date}, or any {word} */
 export const VAR_RE = /\{([A-Za-z_؀-ۿ][\w؀-ۿ]*)\}/g;
 
+/* Storage: write-through cache over IndexedDB, with a localStorage fallback.
+   store.get reads synchronously from memory; store.set persists in the background.
+   Await store.ready before boot. Existing localStorage data migrates on first run. */
+const mem = new Map();
+let idbFailed = false, dbPromise = null;
+
+function openDb(){
+  dbPromise = new Promise(resolve => {
+    if(typeof indexedDB === 'undefined'){ idbFailed = true; return resolve(null) }
+    const req = indexedDB.open('quickchat', 1);
+    req.onupgradeneeded = () => { if(!req.result.objectStoreNames.contains('kv')) req.result.createObjectStore('kv') };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { idbFailed = true; resolve(null) };
+    req.onblocked = () => { idbFailed = true; resolve(null) };
+  });
+  return dbPromise;
+}
+
+function idbPut(k, v){
+  dbPromise.then(db => {
+    if(!db) return;
+    try{ db.transaction('kv', 'readwrite').objectStore('kv').put(v, k) }catch(e){}
+  });
+}
+
+function lsGet(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : undefined }catch(e){ return undefined } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} }
+function persist(k, v){ idbFailed ? lsSet(k, v) : idbPut(k, v) }
+
+/* One-time move of pre-IndexedDB data (localStorage) into IndexedDB. */
+function migrateFromLocalStorage(){
+  try{
+    for(let i = localStorage.length - 1; i >= 0; i--){
+      const k = localStorage.key(i);
+      if(!k || !k.startsWith('qc_') || k === 'qc_migrated') continue;
+      if(!mem.has(k)){ const v = lsGet(k); if(v !== undefined){ mem.set(k, v); idbPut(k, v) } }
+      localStorage.removeItem(k);
+    }
+    lsSet('qc_migrated', Date.now());
+  }catch(e){}
+}
+
 export const store = {
-  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+  /* Resolves once memory holds every persisted value (or the fallback is armed). */
+  ready: null,
+  get(k, d){ return mem.has(k) ? mem.get(k) : d },
+  set(k, v){ mem.set(k, v); persist(k, v) }
 };
 
-export const state = {lang:store.get('qc_lang','en'),
-  country:store.get('qc_country','sa'),
-  app:store.get('qc_app','wa'),
-  tpls:store.get('qc_tpls',null)||DEFAULT_TPLS.slice(),
-  recents:store.get('qc_recents',[]),
+store.ready = openDb().then(db => {
+  if(!db){
+    /* IndexedDB unavailable: keep using localStorage behind the same API. */
+    try{ for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith('qc_') && k !== 'qc_migrated'){ const v = lsGet(k); if(v !== undefined) mem.set(k, v) }
+    }}catch(e){}
+    return;
+  }
+  return new Promise(resolve => {
+    const cursor = db.transaction('kv').objectStore('kv').openCursor();
+    cursor.onsuccess = () => {
+      const c = cursor.result;
+      if(c){ mem.set(c.key, c.value); c.continue() } else { migrateFromLocalStorage(); resolve() }
+    };
+    cursor.onerror = () => { migrateFromLocalStorage(); resolve() };
+  });
+});
+
+export const state = {lang:'en',
+  country:'sa',
+  app:'wa',
+  tpls:DEFAULT_TPLS.slice(),
+  recents:[],
   editing:null, confirmDel:null, confirmClear:false
 };
+
+/* Called once store.ready resolves, before the boot sequence. */
+export function hydrateState(){
+  state.lang=store.get('qc_lang','en');
+  state.country=store.get('qc_country','sa');
+  state.app=store.get('qc_app','wa');
+  state.tpls=store.get('qc_tpls',null)||DEFAULT_TPLS.slice();
+  state.recents=store.get('qc_recents',[]);
+}
 
 export const $ = id=>document.getElementById(id);
 

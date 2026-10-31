@@ -3,9 +3,12 @@ import {$, store, normalize, toast} from './core.js';
 import {tr} from './i18n.js';
 
 const qrNum=$('qrNum'),qrMsg=$('qrMsg'),qrCap=$('qrCap');
-const qrSaved=store.get('qc_qr',{num:'',msg:"Hello, I'd like a quotation.",cap:'Scan to chat on WhatsApp'});
-qrNum.value=qrSaved.num;qrMsg.value=qrSaved.msg;qrCap.value=qrSaved.cap;
 let qrLink=null;
+/* Called once store.ready resolves: restores saved QR fields into the inputs. */
+export function initQR(){
+  const s=store.get('qc_qr',{num:'',msg:"Hello, I'd like a quotation.",cap:'Scan to chat on WhatsApp'});
+  qrNum.value=s.num;qrMsg.value=s.msg;qrCap.value=s.cap;
+}
 export function drawQR(){
   const cv=$('qrCanvas'),x=cv.getContext('2d'),W=cv.width,H=cv.height;
   store.set('qc_qr',{num:qrNum.value,msg:qrMsg.value,cap:qrCap.value});

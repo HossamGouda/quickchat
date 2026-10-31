@@ -1,6 +1,6 @@
 /* main.js — boot orchestration: initial render, deep links / share intents,
    language switching, and service worker registration. */
-import {$, store, state, toast, extractNumbers} from './core.js';
+import {$, store, state, hydrateState, toast, extractNumbers} from './core.js';
 import {i18nAll} from './i18n.js';
 import {setCountry, setApp, update, handleText, pasteFromClipboard, numIn, hint} from './dialer.js';
 import {renderTpls, showPack} from './templates.js';
@@ -10,8 +10,8 @@ import {renderFuPrompt, startFollowUp} from './followups.js';
 import {renderAttach, loadSharedFile} from './share.js';
 import {APP_VERSION, renderWhatsNew} from './version.js';
 import {setTab} from './tabs.js';
-import {renderQueue} from './queue.js';
-import {drawQR} from './qr.js';
+import {renderQueue, initQueue} from './queue.js';
+import {drawQR, initQR} from './qr.js';
 
 /* Language switch re-renders every visible surface, then re-walks the DOM for translation. */
 function setLang(l,quiet){
@@ -25,7 +25,10 @@ $('langBtn').onclick=()=>setLang(state.lang==='ar'?'en':'ar');
 
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 
-/* ---- Boot ---- */
+/* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
+async function boot(){
+await store.ready;
+hydrateState();initQueue();initQR();
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
 $('ver').textContent='QuickChat version '+APP_VERSION;
 // Example state on first open so the tool shows how it works
@@ -44,3 +47,5 @@ else if(action==='paste'){numIn.focus();pasteFromClipboard()}
 renderWhatsNew();
 setLang(state.lang,true);
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}
+}
+boot().catch(e=>console.error('QuickChat boot failed:',e));

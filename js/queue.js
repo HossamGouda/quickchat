@@ -5,10 +5,12 @@ import {buildLink} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
 import {setDueVal, setStatus, isOpen} from './followups.js';
 
-let q=store.get('qc_queue',null);
+let q=null;
 const qText=$('qText');
 let qFoundList=[],qExtra={};
 export function queueState(){return q}
+/* Called once store.ready resolves: restores an in-progress batch queue. */
+export function initQueue(){q=store.get('qc_queue',null)}
 const NOISE=/\b(mob(ile)?|tel|phone|whats ?app|wa|cell|no|number|contact)\b\.?|جوال|واتساب|هاتف|رقم/gi;
 function extractWithNames(text){
   const out=[],seen=new Set();
