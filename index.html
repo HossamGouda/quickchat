@@ -83,7 +83,7 @@
     </div>
   </div>
 
-  <section style="display:flex;flex-direction:column;gap:10px">
+  <section style="display:flex;flex-direction:column;gap:10px" data-coll="tpls">
     <h2>Message templates <span class="row2"><button type="button" class="btn small" id="shareTpl">Share</button><button type="button" class="btn small primary" id="addTpl">+ New</button></span></h2>
     <div class="picks" id="packBanner" hidden></div>
     <div class="list" id="tpls"></div>
@@ -181,7 +181,7 @@
     <h2>Settings</h2>
   </div>
 
-  <section class="stack">
+  <section class="stack" data-coll="set-backup">
     <h2>Backup</h2>
     <div class="card" style="gap:10px">
       <p class="bk" id="bkInfo"></p>
@@ -196,7 +196,7 @@
     </div>
   </section>
 
-  <section class="stack">
+  <section class="stack" data-coll="set-sync">
     <h2>Cloud sync (Teable)</h2>
     <div class="card" style="gap:10px">
       <p class="bk">File backup is disaster recovery. Teable sync is the live mirror across your devices.</p>
@@ -213,7 +213,7 @@
     </div>
   </section>
 
-  <section class="stack">
+  <section class="stack" data-coll="set-reminders">
     <h2>Reminders</h2>
     <div class="card" style="gap:10px">
       <label class="chk"><input type="checkbox" id="ntfToggle"> <span>Notify me when follow-ups are due</span></label>
@@ -231,7 +231,7 @@
     </div>
   </section>
 
-  <section class="stack">
+  <section class="stack" data-coll="set-privacy">
     <h2>Privacy</h2>
     <div class="card" style="gap:10px">
       <label class="chk"><input type="checkbox" id="lockToggle"> <span>Require a PIN to open the app</span></label>
@@ -239,7 +239,7 @@
     </div>
   </section>
 
-  <section class="stack">
+  <section class="stack" data-coll="set-about" data-coll-default="closed">
     <h2>About</h2>
     <div class="card" style="gap:10px">
       <p class="bk" id="ver"></p>

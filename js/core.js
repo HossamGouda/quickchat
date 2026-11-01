@@ -162,6 +162,42 @@ export function toast(s,opts){
   el.addEventListener('click',e=>{if(e.target===el||e.target===txt||e.target===ic){clearTimeout(tm);dismiss()}});
 }
 
+/* ---- Collapsible sections: [data-coll] wrappers, state persisted ----
+   The first h2 becomes the toggle; everything else goes into a .cl-body that
+   hides on collapse. Buttons inside the h2 (e.g. "+ New") keep their own
+   click handlers — only bare-heading clicks toggle. */
+const CL_KEY='qc_collapsed';
+export function initCollapsibles(){
+  const saved=store.get(CL_KEY,{});
+  document.querySelectorAll('[data-coll]').forEach(sec=>{
+    if(sec._clInit)return;sec._clInit=true;
+    const h=sec.querySelector(':scope>h2');if(!h)return;
+    const body=document.createElement('div');body.className='cl-body';
+    while(sec.children[1])body.appendChild(sec.children[1]);
+    sec.appendChild(body);
+    h.setAttribute('role','button');h.tabIndex=0;h.classList.add('cl-h');
+    const chev=document.createElement('span');chev.className='cl-chev';chev.setAttribute('aria-hidden','true');
+    chev.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    h.appendChild(chev);
+    const key=sec.dataset.coll;
+    const apply=collapsed=>{
+      sec.classList.toggle('cl-collapsed',collapsed);
+      h.setAttribute('aria-expanded',String(!collapsed));
+    };
+    const set=collapsed=>{
+      apply(collapsed);
+      const s=store.get(CL_KEY,{});
+      if(collapsed)s[key]=1;else delete s[key];
+      store.set(CL_KEY,s);
+    };
+    if(saved[key]!==undefined)apply(!!saved[key]);
+    else if(sec.dataset.collDefault==='closed')apply(true); /* once-off default, not persisted */
+    const toggle=()=>set(!sec.classList.contains('cl-collapsed'));
+    h.addEventListener('click',e=>{if(e.target.closest('button'))return;toggle()});
+    h.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}});
+  });
+}
+
 /* ---- In-app notification center (bell) ----
    Callers log user-relevant events with notifyEvent(); the bell in the header
    shows unread count and a panel with history. opts.tab makes tapping the item

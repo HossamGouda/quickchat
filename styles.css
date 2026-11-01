@@ -114,6 +114,14 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .bp-time{display:block;margin-top:2px;font-size:11.5px;color:var(--muted)}
 .bp-rm{flex:none;background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:6px}
 .bp-rm:hover{color:var(--danger)}
+/* Collapsible sections (data-coll): heading is the toggle, chevron rotates */
+.cl-h{cursor:pointer;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cl-chev{display:flex;color:var(--muted);transition:transform .18s}
+.cl-body{display:flex;flex-direction:column;gap:10px}
+[data-coll].cl-collapsed>.cl-body{display:none}
+[data-coll].cl-collapsed{gap:0}
+[data-coll].cl-collapsed .cl-chev{transform:rotate(-90deg)}
+.cl-h[aria-expanded="false"]{margin-bottom:0}
 
 .foot{font-size:12px;color:var(--muted)}
 .vars{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent-soft)}

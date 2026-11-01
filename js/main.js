@@ -1,8 +1,8 @@
 /* main.js — boot orchestration: initial render, deep links / share intents,
    language switching, and service worker registration. */
-import {$, store, state, hydrateState, toast, extractNumbers, initBell, renderBell} from './core.js';
+import {$, store, state, hydrateState, toast, extractNumbers, initBell, renderBell, initCollapsibles} from './core.js';
 import {i18nAll} from './i18n.js';
-import {setCountry, setApp, update, handleText, pasteFromClipboard, numIn, hint} from './dialer.js';
+import {setCountry, setApp, update, handleText, pasteFromClipboard, initClipboardAsk, numIn, hint} from './dialer.js';
 import {renderTpls, showPack} from './templates.js';
 import {renderRecents, loadRecent} from './recents.js';
 import {renderBk, checkStorage} from './backup.js';
@@ -32,7 +32,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 /* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
 async function boot(){
 await store.ready;
-hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();
+hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initCollapsibles();
 document.addEventListener('qc:nav',e=>{e.detail==='settings'?openSettings():setTab(e.detail)});
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
 $('ver').textContent='QuickChat version '+APP_VERSION;

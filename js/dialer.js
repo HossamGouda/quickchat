@@ -130,8 +130,35 @@ labelIn.addEventListener('input',()=>{const p=state.pending;if(p&&p.nameAuto&&p.
 
 export async function pasteFromClipboard(){
   try{const t=await navigator.clipboard.readText();if(t&&t.trim())return handleText(t,'paste');toast('Clipboard is empty')}
-  catch(err){toast('Allow clipboard access, or long-press the field to paste');numIn.focus()}
+  catch(err){
+    /* Chrome grants clipboard-read per user gesture: offer a retry button so
+       the next tap happens inside a click (where the browser prompt can appear). */
+    toast('Allow clipboard access, or long-press the field to paste',{type:'err',action:{label:'Try again',fn:()=>pasteFromClipboard()}});
+    numIn.focus();
+  }
   return false;
+}
+/* Proactive clipboard-permission ask. Browsers only show their allow/deny prompt
+   inside a user gesture, so we surface one toast with a Paste action instead of
+   waiting for the first failed paste. Native app: clipboard usually just works. */
+export function initClipboardAsk(){
+  try{
+    if(!navigator.permissions||!navigator.permissions.query)return;
+    navigator.permissions.query({name:'clipboard-read'}).then(p=>{
+      if(p.state==='denied'){
+        if(!store.get('qc_clip_denied_note')){
+          store.set('qc_clip_denied_note',1);
+          toast('Clipboard access is blocked. Enable it in the browser site settings to keep one-tap paste.',{type:'info',dur:5200});
+        }
+        return;
+      }
+      if(p.state==='prompt'&&!store.get('qc_clip_asked')){
+        store.set('qc_clip_asked',1);
+        toast('One-tap paste needs clipboard access. Tap below, then choose Allow.',{type:'info',dur:8000,action:{label:'Paste',fn:()=>pasteFromClipboard()}});
+      }
+      p.onchange=()=>{if(p.state==='granted')toast('Clipboard access allowed — one-tap paste is on',{type:'ok'})};
+    }).catch(()=>{});
+  }catch(e){}
 }
 $('paste').onclick=pasteFromClipboard;
 numIn.addEventListener('paste',e=>{
