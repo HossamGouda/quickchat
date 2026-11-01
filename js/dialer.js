@@ -128,7 +128,19 @@ go.addEventListener('click',e=>{
 msgIn.addEventListener('input',()=>{if(state.pending){state.pending=null;renderVars()}});
 labelIn.addEventListener('input',()=>{const p=state.pending;if(p&&p.nameAuto&&p.keys.includes('name')){p.vals.name=nameFromLabel();renderVars();applyVars()}});
 
+function capClip(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Clipboard)||null}
+function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}
 export async function pasteFromClipboard(){
+  /* Native app: the Capacitor Clipboard plugin reads via the OS clipboard
+     manager — no browser permission prompt, no user-gesture requirement. */
+  if(isNative()){
+    try{
+      const {value}=await capClip().read();
+      if(value&&value.trim())return handleText(value,'paste');
+      toast('Clipboard is empty');
+    }catch(e){toast('Clipboard is empty')}
+    return false;
+  }
   try{const t=await navigator.clipboard.readText();if(t&&t.trim())return handleText(t,'paste');toast('Clipboard is empty')}
   catch(err){
     /* Chrome grants clipboard-read per user gesture: offer a retry button so
@@ -140,9 +152,10 @@ export async function pasteFromClipboard(){
 }
 /* Proactive clipboard-permission ask. Browsers only show their allow/deny prompt
    inside a user gesture, so we surface one toast with a Paste action instead of
-   waiting for the first failed paste. Native app: clipboard usually just works. */
+   waiting for the first failed paste. Native app: the plugin needs no permission. */
 export function initClipboardAsk(){
   try{
+    if(isNative())return;
     if(!navigator.permissions||!navigator.permissions.query)return;
     navigator.permissions.query({name:'clipboard-read'}).then(p=>{
       if(p.state==='denied'){
