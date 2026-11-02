@@ -208,3 +208,15 @@ select.txt{appearance:auto}
 .pad span{width:72px;height:64px}
 @media (max-width:360px){.pad{grid-template-columns:repeat(3,64px)}.padkey{height:56px}}
 @media (prefers-reduced-motion:reduce){.dots i{transition:none}}
+
+/* v3.9: bell kind filters */
+.bp-filters{display:flex;gap:6px;padding:8px 12px 4px;border-bottom:1px solid var(--line)}
+.bp-filters button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 12px;font:500 12px var(--sans);cursor:pointer}
+.bp-filters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* v3.9: snooze bottom sheet */
+.qc-sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:90;display:flex;align-items:flex-end;justify-content:center}
+.qc-sheet{width:min(420px,100vw);background:var(--surface);border-radius:18px 18px 0 0;padding:10px 10px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;box-shadow:0 -8px 40px rgba(0,0,0,.3)}
+.qc-sheet-item{border:0;background:var(--bg);color:var(--ink);border-radius:12px;padding:13px;font:500 15px var(--sans);cursor:pointer;text-align:center}
+.qc-sheet-item:active{background:var(--line)}
+.qc-sheet-item.cancel{color:var(--danger);font-weight:600}

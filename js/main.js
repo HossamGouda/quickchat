@@ -6,7 +6,7 @@ import {setCountry, setApp, update, handleText, pasteFromClipboard, initClipboar
 import {renderTpls, showPack} from './templates.js';
 import {renderRecents, loadRecent} from './recents.js';
 import {renderBk, checkStorage} from './backup.js';
-import {renderFuPrompt, startFollowUp} from './followups.js';
+import {renderFuPrompt, startFollowUp, openCardFull} from './followups.js';
 import {renderAttach, loadSharedFile} from './share.js';
 import {APP_VERSION, renderWhatsNew} from './version.js';
 import {setTab} from './tabs.js';
@@ -34,6 +34,7 @@ async function boot(){
 await store.ready;
 hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initCollapsibles();
 document.addEventListener('qc:nav',e=>{e.detail==='settings'?openSettings():setTab(e.detail)});
+document.addEventListener('qc:open-contact',e=>{setTab('fu');openCardFull(e.detail)});
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
 $('ver').textContent='QuickChat version '+APP_VERSION;
 // Example state on first open so the tool shows how it works

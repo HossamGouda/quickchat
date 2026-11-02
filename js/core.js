@@ -201,14 +201,15 @@ export function initCollapsibles(){
 /* ---- In-app notification center (bell) ----
    Callers log user-relevant events with notifyEvent(); the bell in the header
    shows unread count and a panel with history. opts.tab makes tapping the item
-   navigate there (main.js listens for qc:nav). */
+   navigate there (main.js listens for qc:nav); opts.full also opens the
+   contact card (main.js listens for qc:open-contact). */
 const EV_KEY='qc_events';
 export function events(){return store.get(EV_KEY,[])}
 export function notifyEvent(kind,text,opts){
   opts=opts||{};
   const evs=events();
   evs.unshift({id:Date.now()+'-'+Math.floor(Math.random()*999),ts:Date.now(),kind,
-    text,tab:opts.tab||'',read:!!opts.read});
+    text,tab:opts.tab||'',full:opts.full||'',read:!!opts.read});
   while(evs.length>20)evs.pop();
   store.set(EV_KEY,evs);
   renderBell();
@@ -218,39 +219,59 @@ export function renderBell(){
   const n=events().filter(e=>!e.read).length;
   b.hidden=!n;b.textContent=n>9?'9+':''+n;
 }
+/* Kind chips above the bell list. 'due' matches due events; 'sync' matches
+   sync events; 'rest' collects ok/err/anything else. */
+const BP_FILTERS=[['all','All'],['due','Due'],['sync','Sync'],['rest','Other']];
+function bpBucket(k){return k==='due'?'due':k==='sync'?'sync':'rest'}
 export function initBell(){
   const btn=$('bellBtn'),panel=$('bellPanel'),list=$('bellList');
   if(!btn||!panel||!list)return;
+  let filter='all';
   const close=()=>{panel.hidden=true};
-  btn.onclick=e=>{
-    e.stopPropagation();
-    if(!panel.hidden){close();return}
-    const evs=events();
+  const matches=ev=>filter==='all'||bpBucket(ev.kind)===filter;
+  function renderItems(){
+    const evs=events().filter(matches);
     list.innerHTML='';
     if(!evs.length){
       const p=document.createElement('p');p.className='bp-empty';p.textContent=_tr('No notifications yet');list.appendChild(p);
-    }else{
-      for(const ev of evs){
-        const it=document.createElement('div');it.className='bp-item k-'+ev.kind;
-        if(ev.tab)it.classList.add('lnk');
-        const ic=document.createElement('span');ic.className='bp-ic';ic.innerHTML=kindSvg(ev.kind);it.appendChild(ic);
-        const body=document.createElement('div');body.className='bp-body';
-        const tx=document.createElement('p');tx.className='bp-txt';tx.textContent=_tr(ev.text);body.appendChild(tx);
-        const tm=document.createElement('span');tm.className='bp-time';tm.textContent=ago(ev.ts);body.appendChild(tm);
-        it.appendChild(body);
-        const rm=document.createElement('button');rm.type='button';rm.className='bp-rm';rm.setAttribute('aria-label',_tr('Dismiss'));rm.textContent='✕';
-        rm.onclick=ev2=>{ev2.stopPropagation();store.set(EV_KEY,events().filter(x=>x.id!==ev.id));renderPanel();renderBell()};
-        it.appendChild(rm);
-        if(ev.tab)it.onclick=()=>{close();document.dispatchEvent(new CustomEvent('qc:nav',{detail:ev.tab}))};
-        list.appendChild(it);
-      }
+      return;
     }
+    for(const ev of evs){
+      const it=document.createElement('div');it.className='bp-item k-'+ev.kind;
+      if(ev.tab||ev.full)it.classList.add('lnk');
+      const ic=document.createElement('span');ic.className='bp-ic';ic.innerHTML=kindSvg(ev.kind);it.appendChild(ic);
+      const body=document.createElement('div');body.className='bp-body';
+      const tx=document.createElement('p');tx.className='bp-txt';tx.textContent=_tr(ev.text);body.appendChild(tx);
+      const tm=document.createElement('span');tm.className='bp-time';tm.textContent=ago(ev.ts);body.appendChild(tm);
+      it.appendChild(body);
+      const rm=document.createElement('button');rm.type='button';rm.className='bp-rm';rm.setAttribute('aria-label',_tr('Dismiss'));rm.textContent='✕';
+      rm.onclick=ev2=>{ev2.stopPropagation();store.set(EV_KEY,events().filter(x=>x.id!==ev.id));renderItems();renderBell()};
+      it.appendChild(rm);
+      it.onclick=()=>{close();
+        if(ev.full)document.dispatchEvent(new CustomEvent('qc:open-contact',{detail:ev.full}));
+        if(ev.tab)document.dispatchEvent(new CustomEvent('qc:nav',{detail:ev.tab}))};
+      list.appendChild(it);
+    }
+  }
+  const chips=$('bpFilters');
+  if(chips){
+    chips.innerHTML=BP_FILTERS.map(([k,label])=>`<button type="button" data-bpf="${k}" aria-pressed="${k==='all'}">${_tr(label)}</button>`).join('');
+    chips.onclick=e=>{
+      const b=e.target.closest('[data-bpf]');if(!b)return;
+      filter=b.dataset.bpf;
+      chips.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+      renderItems();
+    };
+  }
+  btn.onclick=e=>{
+    e.stopPropagation();
+    if(!panel.hidden){close();return}
+    renderItems();
     panel.hidden=false;
     /* Opening the panel counts as reading. */
     const unread=events().some(e=>!e.read);
     if(unread){store.set(EV_KEY,events().map(e=>Object.assign({},e,{read:true})));renderBell()}
   };
-  function renderPanel(){btn.onclick()}
   $('bellClear').onclick=e=>{
     e.stopPropagation();store.set(EV_KEY,[]);renderBell();
     list.innerHTML='';const p=document.createElement('p');p.className='bp-empty';p.textContent=_tr('No notifications yet');list.appendChild(p);

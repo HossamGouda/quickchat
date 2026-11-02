@@ -228,6 +228,11 @@
           <option value="morning">That morning (9:00)</option>
         </select>
       </div>
+      <label class="chk"><input type="checkbox" id="quietToggle"> <span>Quiet hours (no notifications at night)</span></label>
+      <div class="row2" id="quietRow">
+        <label class="field" style="flex:1"><span class="lbl">From</span><input type="time" id="quietFrom" class="txt" value="22:00" dir="ltr"></label>
+        <label class="field" style="flex:1"><span class="lbl">To</span><input type="time" id="quietTo" class="txt" value="08:00" dir="ltr"></label>
+      </div>
     </div>
   </section>
 
@@ -252,6 +257,7 @@
   <div class="bp-head"><span id="bpTitle">Notifications</span>
     <button type="button" class="btn small" id="bellClear">Clear all</button>
   </div>
+  <div class="bp-filters" id="bpFilters"></div>
   <div class="bp-list" id="bellList"></div>
 </div>
 

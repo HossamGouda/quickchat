@@ -106,7 +106,12 @@ const AR={
 'A dedicated Settings screen now holds backup, Teable sync, reminders and the PIN lock — tap the gear at the top':'شاشة إعدادات مخصصة تجمع النسخ الاحتياطي والمزامنة والتذكيرات والقفل برمز PIN — اضغط رمز الترس في الأعلى',
 'PIN lock: require a 4-digit code to open the app — it locks itself when you leave it (enable in Settings)':'القفل برمز من 4 أرقام يُطلب عند فتح التطبيق ويُقفل تلقائيًا عند مغادرته (فعّله من الإعدادات)',
 'Due reminders: notifications at the follow-up time, a due-count badge on the icon, and background checks on Android — enable in Settings':'تذكيرات الاستحقاق: إشعارات في وقت المتابعة وشارة بعدد المستحق على الأيقونة وتحقق تلقائي على أندرويد — فعّلها من الإعدادات',
-'Notifications are actionable now: Mark done or Snooze 1 hour straight from the reminder, plus choose a lead time (exact, 30 min, 1 hour, or that morning)':'أصبحت الإشعارات تفاعلية: تمّت المتابعة أو تأجيل ساعة من الإشعار مباشرة، مع خيار توقيت التذكير (الوقت الدقيق، قبل 30 دقيقة، قبل ساعة، أو صباح ذلك اليوم)'
+'Notifications are actionable now: Mark done or Snooze 1 hour straight from the reminder, plus choose a lead time (exact, 30 min, 1 hour, or that morning)':'أصبحت الإشعارات تفاعلية: تمّت المتابعة أو تأجيل ساعة من الإشعار مباشرة، مع خيار توقيت التذكير (الوقت الدقيق، قبل 30 دقيقة، قبل ساعة، أو صباح ذلك اليوم)',
+'Snooze':'تأجيل','Snooze 3 hours':'تأجيل 3 ساعات','Snooze until tomorrow 9:00':'تأجيل إلى الغد 9:00','Tomorrow 9:00':'غدًا 9:00',
+'Snoozed for 1 hour':'أُجلت المتابعة ساعة','Snoozed for 3 hours':'أُجلت المتابعة 3 ساعات','Snoozed until tomorrow 9:00':'أُجلت المتابعة إلى الغد 9:00',
+'Quiet hours (no notifications at night)':'ساعات هادئة (لا إشعارات ليلًا)','From':'من','To':'إلى','tap to open':'اضغط للفتح',
+'Still waiting':'ما زلنا ننتظر','Follow-up is overdue':'المتابعة متأخرة','Follow-ups due':'متابعات مستحقة',
+'Due':'مستحقة','Sync':'المزامنة'
 };
 
 const AR_RE=[
@@ -150,7 +155,8 @@ const AR_RE=[
  [/^Restored from Teable: (\d+) contacts, (\d+) templates$/,(m,a,b)=>'تمت الاستعادة من Teable: '+a+' جهة اتصال، '+b+' قالب'],
  [/^Restore failed: (.+)$/,(m,a)=>'فشلت الاستعادة: '+a],
  [/^(\d+) updated from another device \((\d+) contacts, (\d+) templates\)$/,(m,a,b,c)=>'تعارض: حُدّث '+a+' عنصر من جهاز آخر ('+b+' جهة اتصال، '+c+' قوالب)'],
- [/^(\d+) updated from another device$/,(m,a)=>'حُدّث '+a+' عنصر من جهاز آخر']
+ [/^(\d+) updated from another device$/,(m,a)=>'حُدّث '+a+' عنصر من جهاز آخر'],
+ [/^Follow-ups due: (\d+)$/,(m,a)=>'متابعات مستحقة: '+a]
 ];
 
 function trCore(k){

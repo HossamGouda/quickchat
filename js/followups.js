@@ -32,7 +32,7 @@ function fuRow(r,kind){
     acts=stChip(r);
   }else{
     const n=dayDiff(r.due);meta=`<span class="due ${n<0?'od':n===0?'td':''}">${dueWhen(r)}</span>`+(r.fuMsg?' · <span>Message ready</span>':'');
-    acts=stChip(r)+(kind==='due'?`<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button>`:'');
+    acts=stChip(r)+(kind==='due'?`<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="snz" data-f="${r.full}">Snooze</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button>`:'');
   }
   return `<div class="item"><button type="button" class="main fuitem" data-act="open" data-f="${r.full}" aria-label="Open details">${lab}${num}<div class="meta">${meta}</div>${extra?`<div class="xtra">${extra}</div>`:''}</button><div class="acts">${acts}</div></div>`;
 }
@@ -129,8 +129,12 @@ const FU_ACTIONS={
   q3:r=>quickDue(r,3),
   q7:r=>quickDue(r,7),
   fudone:r=>{setDueVal(r,'');toast('Follow-up done')},
+  /* Snooze lives in notify.js; the event keeps this module cycle-free. */
+  snz:r=>document.dispatchEvent(new CustomEvent('qc:snz',{detail:r.full})),
   cyc:r=>cycleStatus(r),
 };
+/* Deep link: open a contact's card from a notification or bell entry. */
+export function openCardFull(full){const r=state.recents.find(x=>x.full===full);if(r)openCard(r)}
 function quickDue(r,days){
   setDueVal(r,todayStr(days));saveRecents();toast('Follow-up set: '+dueLow(r.due));
   if(store.get('qc_cal',true))location.href=calLink(r);
