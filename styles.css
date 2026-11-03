@@ -220,3 +220,11 @@ select.txt{appearance:auto}
 .qc-sheet-item{border:0;background:var(--bg);color:var(--ink);border-radius:12px;padding:13px;font:500 15px var(--sans);cursor:pointer;text-align:center}
 .qc-sheet-item:active{background:var(--line)}
 .qc-sheet-item.cancel{color:var(--danger);font-weight:600}
+/* v3.10: contacts picker sheet */
+.qc-ct-head{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 0;font:600 16px var(--sans)}
+.qc-ct-list{max-height:55vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px}
+.qc-ct{display:flex;flex-direction:column;gap:5px;padding:8px 10px;background:var(--bg);border-radius:12px}
+.qc-ct-name{font:600 14px var(--sans)}
+.qc-ct-nums{display:flex;flex-wrap:wrap;gap:6px}
+.qc-ct-empty{color:var(--muted);text-align:center;padding:14px}
+.qc-ct-none{color:var(--muted);font-size:13px}

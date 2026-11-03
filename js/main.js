@@ -14,6 +14,7 @@ import {renderQueue, initQueue} from './queue.js';
 import {drawQR, initQR} from './qr.js';
 import {initSync} from './sync.js';
 import {initNotify} from './notify.js';
+import {initContacts} from './contacts.js';
 import {initLock} from './lock.js';
 import {initSettings, openSettings} from './settings.js';
 
@@ -32,7 +33,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 /* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
 async function boot(){
 await store.ready;
-hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initCollapsibles();
+hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initContacts();initCollapsibles();
 document.addEventListener('qc:nav',e=>{e.detail==='settings'?openSettings():setTab(e.detail)});
 document.addEventListener('qc:open-contact',e=>{setTab('fu');openCardFull(e.detail)});
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();

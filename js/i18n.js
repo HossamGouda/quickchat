@@ -111,7 +111,11 @@ const AR={
 'Snoozed for 1 hour':'أُجلت المتابعة ساعة','Snoozed for 3 hours':'أُجلت المتابعة 3 ساعات','Snoozed until tomorrow 9:00':'أُجلت المتابعة إلى الغد 9:00',
 'Quiet hours (no notifications at night)':'ساعات هادئة (لا إشعارات ليلًا)','From':'من','To':'إلى','tap to open':'اضغط للفتح',
 'Still waiting':'ما زلنا ننتظر','Follow-up is overdue':'المتابعة متأخرة','Follow-ups due':'متابعات مستحقة',
-'Due':'مستحقة','Sync':'المزامنة'
+'Due':'مستحقة','Sync':'المزامنة',
+'Contacts':'جهات الاتصال','Pick a contact':'اختر جهة اتصال','Search contacts':'ابحث في جهات الاتصال',
+'No contacts found':'لا توجد جهات اتصال','No phone numbers':'لا توجد أرقام هاتف','Loading…':'جارٍ التحميل…',
+'Could not read contacts':'تعذّرت قراءة جهات الاتصال',
+'Contacts access denied. Enable it in system settings for QuickChat.':'تم رفض إذن الوصول إلى جهات الاتصال. فعّله من إعدادات النظام لتطبيق QuickChat.'
 };
 
 const AR_RE=[
