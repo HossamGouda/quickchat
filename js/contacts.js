@@ -1,8 +1,8 @@
 /* contacts.js — pick a number from the phone's contact book (native app only).
    Reads via the QCContacts native plugin; on web the picker button stays hidden. */
-import {$, toast, esc} from './core.js';
+import {$, toast, esc, normalize} from './core.js';
 import {tr} from './i18n.js';
-import {numIn, labelIn, update} from './dialer.js';
+import {numIn, labelIn, setCountry, update} from './dialer.js';
 
 function capContacts(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.QCContacts)||null}
 function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}
@@ -70,11 +70,20 @@ async function load(q){
   }).join('');
 }
 
-/* Fill the dialer exactly as if the user had typed +<full>: parse() detects
-   the country from the prefix. Name fills the label field only if it's empty. */
+/* Fill the dialer via normalize(), which understands every stored format:
+   +9665…, 009665…, 9665… (explicit country code) and 0559… / 5598… (local
+   number — the leading zero is dropped and the selected country's code is
+   applied; any known country matching the length/pattern wins). Unmatched
+   numbers fall back to the raw digits so parse() shows its usual hint. */
 function pickNumber(full,name){
   if(!full)return;
-  numIn.value='+'+full;
+  const n=normalize(full);
+  if(n){
+    setCountry(n.country);
+    numIn.value=n.intl?'+'+n.full:n.local;
+  }else{
+    numIn.value=full;
+  }
   if(!labelIn.value.trim()&&name)labelIn.value=name;
   update();
   labelIn.dispatchEvent(new Event('input'));
