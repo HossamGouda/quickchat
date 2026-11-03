@@ -28,6 +28,18 @@ work. No code yet — this is the plan.
 
 ## Gaps worth closing
 
+0. **Follow-ups are implicitly sales-only.** Every surface assumes a quote:
+   value in SAR, statuses quoted/waiting/won/lost, stats about win rate. But
+   most real follow-ups are *tasks*: "QC owes me the material test
+   certificate", "waiting on the PM to approve the drawing", "send the
+   passport copy to the logistics agent". The card has a Note and a
+   Message, but no first-class **task** — nothing that says what this
+   follow-up is *for* — and you can only create a follow-up for someone
+   already in Recents (i.e. someone you messaged from the Chat tab first).
+   Real workflows are also **chained**: the certificate example is two jobs
+   — (1) request from QC, (2) forward to the client — and today nothing
+   links them.
+
 1. **No recurrence.** "Done" clears `r.due` — a deal waiting on a customer
    who replies "call me next week" needs a manual re-set every time. The log
    shows due-set/cleared events, but nothing repeats.
@@ -54,6 +66,32 @@ work. No code yet — this is the plan.
 ## Proposed work
 
 ### P0 — functional depth
+
+**F0. General/custom follow-ups (not just quotations).**
+The headline item — re-frames the section from "deal tracker" to
+"anything I owe or am waiting for".
+
+- **Task text becomes first-class.** New field `r.task` (short, e.g. "Get
+  material test certificate from QC"). Shown as the row's primary line
+  under the name on Due/Upcoming lists, editable in the card above the
+  note ("What is this follow-up for?"). Statuses and SAR value stay
+  optional — a task follow-up has no value and needs no status beyond
+  open/done.
+- **Create a follow-up for anyone, from the Follow-ups tab.** The contacts
+  icon (same picker built for the Chat tab) moves into the Follow-ups
+  header; picking a contact there opens a **New follow-up** sheet: name and
+  number prefilled, task text, due date chips (+ time), save. Creates the
+  recents entry with `due` set — no WhatsApp message required first.
+- **Chained next steps.** On Done (and on the notification "Mark done"
+  action), an optional toast action **"Next step…"** opens the same sheet
+  pre-filled: the *other* contact can be picked from the same picker, task
+  text pre-drafted from the completed one ("Send certificate to PM —
+  Al Noor project"). This covers the two-job certificate flow end to end
+  without a dependency-graph engine: the chain is just "done → prompted to
+  create the linked follow-up".
+- **"Waiting on someone" is a first-class use.** The existing `waiting`
+  status already means it; F0 makes it usable without a quote attached,
+  and the task text carries who/what you're waiting for.
 
 **F1. Recurring follow-ups (repeat interval).**
 `r.fuRepeat ∈ {none,3d,1w,2w,1m}` set on the card (small select beside the
@@ -146,6 +184,8 @@ Guard against duplicates using the existing `qc_notified` map keyed by
 
 ## Suggested order
 
-F1 → F4 → F5 → F6 (one focused release, "follow-ups that work with you"),
-then F2 → F3 → F7 → F8 → F9, then F10 → F11. F1+F4+F5+F6 are all
-small, user-visible every day, and share the due-list render path.
+F0 → F1 → F4 → F5 → F6 (one focused release: "follow-ups for anything you
+owe or are waiting for"), then F2 → F3 → F7 → F8 → F9, then F10 → F11.
+F0+F1+F4+F5+F6 are all small, user-visible every day, and share the
+due-list render path; F0 also unlocks the contacts-picker reuse the same
+way v3.10–v3.12 did for the Chat tab.
