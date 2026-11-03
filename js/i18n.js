@@ -115,7 +115,17 @@ const AR={
 'Contacts':'جهات الاتصال','Pick a contact':'اختر جهة اتصال','Search contacts':'ابحث في جهات الاتصال',
 'No contacts found':'لا توجد جهات اتصال','No phone numbers':'لا توجد أرقام هاتف','Loading…':'جارٍ التحميل…',
 'Could not read contacts':'تعذّرت قراءة جهات الاتصال',
-'Contacts access denied. Enable it in system settings for QuickChat.':'تم رفض إذن الوصول إلى جهات الاتصال. فعّله من إعدادات النظام لتطبيق QuickChat.'
+'Contacts access denied. Enable it in system settings for QuickChat.':'تم رفض إذن الوصول إلى جهات الاتصال. فعّله من إعدادات النظام لتطبيق QuickChat.',
+'Time':'الوقت',
+'Select':'تحديد','Cancel selection':'إلغاء التحديد','Apply':'تطبيق','Set date':'تحديد تاريخ','Snooze to tomorrow':'تأجيل إلى الغد',
+'New follow-up':'متابعة جديدة','Phone number':'رقم الهاتف','What is this follow-up for?':'ما الغرض من هذه المتابعة؟',
+'e.g. Get material test certificate from QC':'مثال: استلام شهادة فحص المادة من الجودة','Save follow-up':'حفظ المتابعة','Enter a phone number':'أدخل رقم الهاتف',
+'Repeat':'تكرار','No repeat':'بدون تكرار','Every 3 days':'كل 3 أيام','Every week':'كل أسبوع','Every 2 weeks':'كل أسبوعين','Every month':'كل شهر',
+'Next step…':'الخطوة التالية…','Undo':'تراجع','Today':'اليوم','Tomorrow':'غدًا','Overdue':'متأخرة','Later this week':'لاحقًا هذا الأسبوع',
+'Mute reminders for this contact':'كتم التذكيرات لهذه الجهة','Reminders muted for this contact':'تم كتم التذكيرات لهذه الجهة','Reminders on for this contact':'التذكيرات مفعّلة لهذه الجهة',
+'Call':'اتصال','Copy number':'نسخ الرقم','Number copied':'تم نسخ الرقم','last 7 days':'آخر 7 أيام',
+'Pick date & time…':'اختر التاريخ والوقت…','Snooze until then':'تأجيل حتى ذلك الحين','Pick a future date and time':'اختر تاريخًا ووقتًا مستقبليين',
+'Contacts are only available in the Android app':'جهات الاتصال متاحة فقط في تطبيق أندرويد','Pick a date first':'اختر التاريخ أولًا'
 };
 
 const AR_RE=[
@@ -160,7 +170,12 @@ const AR_RE=[
  [/^Restore failed: (.+)$/,(m,a)=>'فشلت الاستعادة: '+a],
  [/^(\d+) updated from another device \((\d+) contacts, (\d+) templates\)$/,(m,a,b,c)=>'تعارض: حُدّث '+a+' عنصر من جهاز آخر ('+b+' جهة اتصال، '+c+' قوالب)'],
  [/^(\d+) updated from another device$/,(m,a)=>'حُدّث '+a+' عنصر من جهاز آخر'],
- [/^Follow-ups due: (\d+)$/,(m,a)=>'متابعات مستحقة: '+a]
+ [/^Follow-ups due: (\d+)$/,(m,a)=>'متابعات مستحقة: '+a],
+[/^Status: (.+)$/,(m,a)=>'الحالة: '+trCore(a)],
+[/^(\d+) snoozed to tomorrow$/,(m,a)=>'أُجلت '+a+' إلى الغد'],[/^(\d+) marked done$/,(m,a)=>'أُنجزت '+a+' متابعة'],[/^(\d+) follow-ups set$/,(m,a)=>'ضُبطت '+a+' متابعات'],
+[/^Follow-up done — next: (.+)$/,(m,a)=>'أُنجزت المتابعة — التالية: '+a],
+[/^Snoozed until (.+)$/,(m,a)=>'مُؤجل حتى '+a],
+[/^Task: (.*)$/,(m,a)=>'المهمة: '+a],[/^Repeats: (.*)$/,(m,a)=>'التكرار: '+a]
 ];
 
 function trCore(k){

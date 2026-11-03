@@ -1,5 +1,8 @@
 /* contacts.js — pick a number from the phone's contact book (native app only).
-   Reads via the QCContacts native plugin; on web the picker button stays hidden. */
+   Reads via the QCContacts native plugin; on web the picker button stays hidden.
+   Two consumers: the Chat tab fills the dialer (initContacts), and other
+   modules call pickContact(cb) to get {digits, name} for their own purpose
+   (e.g. the Follow-ups "new follow-up" sheet). */
 import {$, toast, esc, normalize} from './core.js';
 import {tr} from './i18n.js';
 import {numIn, labelIn, setCountry, update} from './dialer.js';
@@ -7,20 +10,20 @@ import {numIn, labelIn, setCountry, update} from './dialer.js';
 function capContacts(){return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.QCContacts)||null}
 function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}
 
-let sheet=null;
+let sheet=null,onPickCb=null;
 
 export function initContacts(){
   const btn=$('pickContact');
   if(!btn)return;
   if(!isNative()||!capContacts()){btn.hidden=true;return}
   btn.hidden=false;
-  btn.onclick=openPicker;
+  btn.onclick=()=>pickContact((digits,name)=>fillDialer(digits,name));
 }
 
-function closeSheet(){if(sheet){sheet.remove();sheet=null}}
-
-async function openPicker(){
+/* Open the contact picker; cb receives (digits, name) of the tapped number. */
+export async function pickContact(cb){
   const cap=capContacts();
+  if(!cap){toast(tr('Contacts are only available in the Android app'));return}
   try{
     const {granted}=await cap.requestAccess();
     if(!granted){toast(tr('Contacts access denied. Enable it in system settings for QuickChat.'),{type:'err'});return}
@@ -28,12 +31,15 @@ async function openPicker(){
     toast(tr('Contacts access denied. Enable it in system settings for QuickChat.'),{type:'err'});
     return;
   }
+  onPickCb=cb;
   showSheet();
   await load('');
 }
 
+function closeSheet(){if(sheet){sheet.remove();sheet=null}onPickCb=null}
+
 function showSheet(){
-  closeSheet();
+  if(sheet)closeSheet();
   sheet=document.createElement('div');
   sheet.className='qc-sheet-back';
   sheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Pick a contact'))}">
@@ -44,7 +50,11 @@ function showSheet(){
   sheet.addEventListener('click',e=>{
     if(e.target===sheet||e.target.closest('[data-x]')){closeSheet();return}
     const chip=e.target.closest('[data-full]');
-    if(chip)pickNumber(chip.dataset.full,chip.dataset.name);
+    if(chip){
+      const cb=onPickCb,digits=chip.dataset.full,name=chip.dataset.name;
+      closeSheet();
+      if(cb)cb(digits,name);
+    }
   });
   document.body.appendChild(sheet);
   const s=$('ctSearch');let t;
@@ -75,7 +85,7 @@ async function load(q){
    number — the leading zero is dropped and the selected country's code is
    applied; any known country matching the length/pattern wins). Unmatched
    numbers fall back to the raw digits so parse() shows its usual hint. */
-function pickNumber(full,name){
+function fillDialer(full,name){
   if(!full)return;
   const n=normalize(full);
   if(n){
@@ -87,6 +97,5 @@ function pickNumber(full,name){
   if(!labelIn.value.trim()&&name)labelIn.value=name;
   update();
   labelIn.dispatchEvent(new Event('input'));
-  closeSheet();
   toast(tr('Number added'));
 }

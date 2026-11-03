@@ -68,3 +68,30 @@ export function dayStr(ts){
   const d=new Date(ts);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
+
+/* Recurring follow-ups (F1): the next due date for a repeat key, from `ds`.
+   d3/w1/w2 add days; m1 adds a calendar month with day clamping
+   (Jan 31 → Feb 28, not Mar 3). Returns '' for unknown keys. */
+const REPEAT_DAYS={d3:3,w1:7,w2:14};
+export function nextRepeatDue(ds,key){
+  if(!ds)return'';
+  const p=ds.split('-').map(Number);
+  if(p.length!==3||p.some(isNaN))return'';
+  const d=new Date(p[0],p[1]-1,p[2]);
+  if(key==='m1'){const day=d.getDate();d.setMonth(d.getMonth()+1);if(d.getDate()<day)d.setDate(0)}
+  else if(REPEAT_DAYS[key])d.setDate(d.getDate()+REPEAT_DAYS[key]);
+  else return'';
+  return dayStr(d.getTime());
+}
+
+/* Custom snooze target (F2): date YYYY-MM-DD + optional HH:MM -> ms, or null
+   when the date is invalid or the resulting time is in the past. */
+export function snoozeUntilParts(dateStr,timeStr,now){
+  const t=now!==undefined?now:Date.now();
+  const p=/^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr||'');
+  if(!p)return null;
+  const hm=/^(\d{1,2}):(\d{2})$/.exec(timeStr||'')||{1:'9',2:'00'};
+  const d=new Date(+p[1],+p[2]-1,+p[3],+hm[1],+hm[2],0,0);
+  if(isNaN(d.getTime())||d.getTime()<=t)return null;
+  return d.getTime();
+}

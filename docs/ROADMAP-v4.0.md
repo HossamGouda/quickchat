@@ -6,7 +6,10 @@ not just a due-date list. Brainstormed from a full read of
 `js/followups.js`, `js/notify.js`, `js/queue.js`, and the v3.9 notification
 work. No code yet — this is the plan.
 
-> **Status:** planned 2026-11-04. Awaiting prioritization.
+> **Status:** implemented 2026-11-04. All F0–F11 items shipped in v4.0 and
+> verified on an API 35 emulator (grouped due list, recurrence, batch
+> actions, custom snooze, mute, exact-time future alarms, stats; unit
+> tests and CI green).
 > Live: https://hossamgouda.github.io/quickchat · Native: Capacitor APK.
 
 ## What the section does today (ground truth)

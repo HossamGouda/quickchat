@@ -9,8 +9,8 @@
    for simultaneous bursts, a once-a-day re-nag for overdue follow-ups. */
 import {$, store, state, todayStr, parseDay, dueTime, dueWhen, sar, toast, notifyEvent} from './core.js';
 import {tr} from './i18n.js';
-import {isOpen, who, setDueVal} from './followups.js';
-import {applyQuiet, snoozeUntilMs, nextNagMs, groupAlerts} from './ntfutil.js';
+import {isOpen, who} from './followups.js';
+import {applyQuiet, snoozeUntilMs, snoozeUntilParts, nextNagMs, groupAlerts} from './ntfutil.js';
 
 const NTF_KEY='qc_notify', NTF_SEEN='qc_notified', CAP_IDS='qc_cap_ntf_ids';
 const NTF_LEAD='qc_ntf_lead', SNOOZE='qc_snoozed', NTF_NOTE='qc_ntf_note', NTF_JUMP='qc_ntf_jump';
@@ -21,7 +21,7 @@ let capDenied=false; /* native: OS-level notification access is blocked */
 
 export function dueNow(){
   const t=todayStr();
-  return state.recents.filter(r=>r.due&&isOpen(r)&&r.due<=t)
+  return state.recents.filter(r=>r.due&&isOpen(r)&&!r.muted&&r.due<=t)
     .sort((a,b)=>(a.due+dueTime(a)).localeCompare(b.due+dueTime(b)));
 }
 function dueAt(r){const d=parseDay(r.due),hm=dueTime(r).split(':');d.setHours(+hm[0],+hm[1],0,0);return d}
@@ -63,13 +63,14 @@ export function refreshBadge(){
 function seen(){return store.get(NTF_SEEN,{})}
 function markSeen(full,due){const s=seen();s[full]=due;store.set(NTF_SEEN,s)}
 
-/* ---- Snooze (v3.9): 1 hour / 3 hours / tomorrow 9:00, in-app or from the OS ---- */
+/* ---- Snooze (v3.9): 1 hour / 3 hours / tomorrow 9:00 + custom date (v4.0) ---- */
 function snoozeLabel(kind){return kind==='h3'?tr('Snoozed for 3 hours'):kind==='morning'?tr('Snoozed until tomorrow 9:00'):tr('Snoozed for 1 hour')}
-/* Record the snooze and schedule the re-alert; works for both OS-action and in-app calls. */
-export async function userSnooze(full,kind){
+/* Record the snooze and schedule the re-alert; works for OS-action,
+   in-app and custom-date calls. `label` feeds the toast/bell entry. */
+export async function userSnoozeUntil(full,until,label){
   const r=state.recents.find(x=>x.full===full);if(!r)return;
   const q=quietCfg();
-  const until=applyQuiet(snoozeUntilMs(kind),q.from,q.to);
+  until=applyQuiet(until,q.from,q.to);
   const sz=snoozed();sz[full]=until;store.set(SNOOZE,sz);
   /* A snooze cancels today's re-nag bookkeeping for this contact. */
   const ln=capLN();
@@ -80,14 +81,17 @@ export async function userSnooze(full,kind){
       await ln.cancel({notifications:[{id:nid(full)},{id:snid(full)}]});
       await ln.schedule({notifications:[{id:snid(full),
         title:tr('Follow-up due')+': '+who(r),
-        body:snoozeLabel(kind)+' · '+(r.value?sar(r.value)+' · ':'')+dueWhen(r),
+        body:(label?label+' · ':'')+(r.value?sar(r.value)+' · ':'')+dueWhen(r),
         schedule:{at:new Date(until)},extra:{full:r.full},
         actionTypeId:ACT_TYPE,channelId:'followups',smallIcon:'ic_stat_notify'}]});
     }catch(e){}
   }
   refreshDue();
-  store.set(NTF_NOTE,snoozeLabel(kind));
-  notifyEvent('due',snoozeLabel(kind)+': '+who(r),{tab:'fu',full:r.full});
+  store.set(NTF_NOTE,label);
+  notifyEvent('due',label+': '+who(r),{tab:'fu',full:r.full});
+}
+export async function userSnooze(full,kind){
+  return userSnoozeUntil(full,snoozeUntilMs(kind),snoozeLabel(kind));
 }
 /* Bottom-sheet snooze picker, opened from the due-row Snooze button. */
 function snoozeSheet(full){
@@ -102,6 +106,23 @@ function snoozeSheet(full){
   sheet.appendChild(mk('h1','Snooze 1 hour'));
   sheet.appendChild(mk('h3','Snooze 3 hours'));
   sheet.appendChild(mk('morning','Snooze until tomorrow 9:00'));
+  /* F2: custom date & time, expanded inline. */
+  const custom=document.createElement('button');custom.type='button';custom.className='qc-sheet-item';custom.textContent=tr('Pick date & time…');
+  const area=document.createElement('div');area.className='qc-snooze-custom';area.hidden=true;
+  const dIn=document.createElement('input');dIn.type='date';dIn.min=todayStr();dIn.className='txt';dIn.setAttribute('aria-label',tr('Date'));
+  const tIn=document.createElement('input');tIn.type='time';tIn.className='txt';tIn.setAttribute('aria-label',tr('Time'));
+  const ok=document.createElement('button');ok.type='button';ok.className='btn primary';ok.textContent=tr('Snooze until then');
+  ok.onclick=()=>{
+    const until=snoozeUntilParts(dIn.value,tIn.value);
+    if(!until){toast(tr('Pick a future date and time'));return}
+    closeSnoozeSheet();
+    const q=quietCfg();
+    const lbl=tr(`Snoozed until ${new Date(until).toLocaleDateString(state.lang==='ar'?'ar-u-ca-gregory-nu-latn':'en-GB',{weekday:'short',day:'numeric',month:'short'})} ${tIn.value||'09:00'}`);
+    userSnoozeUntil(full,until,lbl);
+  };
+  area.appendChild(dIn);area.appendChild(tIn);area.appendChild(ok);
+  custom.onclick=()=>{area.hidden=!area.hidden;if(!area.hidden)dIn.focus()};
+  sheet.appendChild(custom);sheet.appendChild(area);
   const cx=document.createElement('button');cx.type='button';cx.className='qc-sheet-item cancel';cx.textContent=tr('Cancel');
   cx.onclick=closeSnoozeSheet;sheet.appendChild(cx);
   back.appendChild(sheet);
@@ -120,7 +141,7 @@ async function capCancelAll(){
 function capNtf(r,at,extra){
   const note=(r.note||'').slice(0,80);
   return {id:nid(r.full),title:tr('Follow-up due')+': '+who(r),
-    body:(r.value?sar(r.value)+' · ':'')+dueWhen(r)+(note?' · '+note:''),
+    body:(r.task?r.task+' · ':'')+(r.value?sar(r.value)+' · ':'')+dueWhen(r)+(note?' · '+note:''),
     schedule:{at:new Date(at)},extra:Object.assign({full:r.full},extra),
     actionTypeId:ACT_TYPE,channelId:'followups',smallIcon:'ic_stat_notify'};
 }
@@ -161,13 +182,23 @@ async function capSchedule(){
   const ln=capLN();if(!ln)return;
   await capCancelAll();
   if(store.get(NTF_KEY,0)!==1)return;
-  const now=Date.now(),items=[],sz=snoozed(),ng=nags(),oneOffs=[];
+  const now=Date.now(),dueItems=[],futureItems=[],sz=snoozed(),ng=nags(),oneOffs=[];
   const q=quietCfg();
   for(const r of dueNow()){
     if(sz[r.full]>now)continue; /* snoozed: its own one-off is scheduled separately */
     let at=notifyTimeRaw(r);
     if(at<=now){at=now+1500;markSeen(r.full,r.due)} /* overdue: alert shortly after opening */
-    if(at-now<31*864e5)items.push({r,at});
+    if(at-now<31*864e5)dueItems.push({r,at});
+  }
+  /* F11: future due dates get their own exact-time alarm, so a follow-up
+     scheduled for Thursday 14:00 fires Thursday 14:00 even if the app
+     hasn't been opened since Monday. Replaced by id on every refresh.
+     Burst-summary grouping applies to due-now items only. */
+  const future=state.recents.filter(r=>r.due&&isOpen(r)&&!r.muted&&r.due>todayStr()&&r.due<=todayStr(14));
+  for(const r of future){
+    if(sz[r.full]>now)continue;
+    const at=notifyTimeRaw(r);
+    if(at>now)futureItems.push({r,at});
   }
   /* Re-nag for still-overdue follow-ups: one re-alert per day, at the next 9:00. */
   for(const r of nagList()){
@@ -179,14 +210,19 @@ async function capSchedule(){
   try{
     await capRegisterActions();
     await capEnsureChannel();
-    if(items.length>3){
+    if(dueItems.length>3){
       /* Burst: one summary notification instead of a wall of alerts. */
-      const g=groupAlerts(items.map(i=>({full:i.r.full,at:i.at})));
-      const n=capSummaryNtf(items.map(i=>i.r),g.at);
+      const g=groupAlerts(dueItems.map(i=>({full:i.r.full,at:i.at})));
+      const n=capSummaryNtf(dueItems.map(i=>i.r),g.at);
       await ln.schedule({notifications:[n]});scheduled.push(n.id);
-      for(const i of items)markSeen(i.r.full,i.r.due);
-    }else if(items.length){
-      await ln.schedule({notifications:items.map(({r,at})=>{
+      for(const i of dueItems)markSeen(i.r.full,i.r.due);
+    }else if(dueItems.length){
+      await ln.schedule({notifications:dueItems.map(({r,at})=>{
+        const n=capNtf(r,at);scheduled.push(n.id);return n;
+      })});
+    }
+    if(futureItems.length){
+      await ln.schedule({notifications:futureItems.map(({r,at})=>{
         const n=capNtf(r,at);scheduled.push(n.id);return n;
       })});
     }
@@ -201,15 +237,18 @@ async function capSchedule(){
     store.set(CAP_IDS,scheduled);
   }catch(e){/* scheduling failed; badge still updates */}
 }
-/* Notification action: mark the follow-up done without opening the app. */
+/* Notification action: mark the follow-up done without opening the app.
+   The FU logic (recurrence, undo bookkeeping, next due) lives in
+   followups.js — completed via the qc:done event so web and native share
+   exactly one completion path. */
 export function capDone(full){
-  const r=state.recents.find(x=>x.full===full);if(!r)return;
-  setDueVal(r,'');store.set('qc_recents',state.recents);
+  document.dispatchEvent(new CustomEvent('qc:done',{detail:full}));
   const ln=capLN();if(ln){const id=nid(full);ln.cancel({notifications:[{id},{id:snid(full)}]}).catch(()=>{})}
   const sz=snoozed();if(sz[full]){delete sz[full];store.set(SNOOZE,sz)}
   const ng=nags();if(ng[full]){delete ng[full];store.set(NAG,ng)}
   store.set(NTF_NOTE,tr('Follow-up done'));
-  notifyEvent('ok',tr('Follow-up done')+': '+who(r),{tab:'fu',full});
+  const r=state.recents.find(x=>x.full===full);
+  notifyEvent('ok',tr('Follow-up done')+(r?': '+who(r):''),{tab:'fu',full});
   refreshDue();
 }
 
@@ -217,7 +256,7 @@ export function capDone(full){
 function showNotif(r){
   if(!('Notification'in window)||Notification.permission!=='granted')return;
   const n=new Notification(tr('Follow-up due'),{
-    body:who(r)+(r.value?' · '+sar(r.value):'')+' · '+dueWhen(r),
+    body:(r.task?r.task+' · ':'')+who(r)+(r.value?' · '+sar(r.value):'')+' · '+dueWhen(r),
     tag:'qc-'+r.full,icon:'icon-192.png',badge:'icon-192.png',dir:state.lang==='ar'?'rtl':'auto'});
   n.onclick=()=>{window.focus();n.close();jumpToContact(r.full)};
 }

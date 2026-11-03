@@ -2,7 +2,7 @@
    Runs in plain node (no DOM); CI picks up tools/*.cjs via node --check,
    and this file exits non-zero on failure so it can be run directly too. */
 const assert = require("assert");
-const { applyQuiet, quietHit, snoozeUntilMs, nextNagMs, groupAlerts, dayStr } =
+const { applyQuiet, quietHit, snoozeUntilMs, snoozeUntilParts, nextNagMs, groupAlerts, dayStr, nextRepeatDue } =
   require("../js/ntfutil.js");
 
 /* Fixed "now": 2026-03-10 12:00:00 local */
@@ -59,5 +59,28 @@ assert.strictEqual(g.items.length, 0);
 /* ---- dayStr ---- */
 assert.strictEqual(dayStr(at(23, 59)), "2026-03-10");
 assert.strictEqual(dayStr(at(0, 0, 1)), "2026-03-11");
+
+/* ---- nextRepeatDue (v4.0 recurrence) ---- */
+assert.strictEqual(nextRepeatDue("2026-03-10", "d3"), "2026-03-13");
+assert.strictEqual(nextRepeatDue("2026-03-10", "w1"), "2026-03-17");
+assert.strictEqual(nextRepeatDue("2026-03-10", "w2"), "2026-03-24");
+/* calendar month with clamping: Jan 31 -> Feb 28 (not Mar 3) */
+assert.strictEqual(nextRepeatDue("2026-01-31", "m1"), "2026-02-28");
+assert.strictEqual(nextRepeatDue("2026-03-10", "m1"), "2026-04-10");
+assert.strictEqual(nextRepeatDue("2026-03-10", "none"), "");
+assert.strictEqual(nextRepeatDue("", "w1"), "");
+assert.strictEqual(nextRepeatDue("garbage", "w1"), "");
+
+/* ---- snoozeUntilParts (v4.0 custom snooze) ---- */
+const t9 = new Date(2026, 2, 12, 9, 0, 0, 0).getTime();
+assert.strictEqual(snoozeUntilParts("2026-03-12", "09:00", NOW), t9);
+/* default time 09:00 when omitted */
+assert.strictEqual(snoozeUntilParts("2026-03-12", "", NOW), t9);
+/* past date and past time on today -> null */
+assert.strictEqual(snoozeUntilParts("2026-03-09", "09:00", NOW), null);
+assert.strictEqual(snoozeUntilParts("2026-03-10", "09:00", NOW), null);
+/* invalid -> null */
+assert.strictEqual(snoozeUntilParts("12/03/2026", "09:00", NOW), null);
+assert.strictEqual(snoozeUntilParts("", "09:00", NOW), null);
 
 console.log("ntfutil: all assertions passed");

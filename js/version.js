@@ -1,8 +1,8 @@
 /* version.js — app version banner ("what's new"). */
 import {$, store} from './core.js';
 
-export const APP_VERSION='3.12';
-const WHATS_NEW=['Pasting a number in another country\'s local format (like an Egyptian 010…) now switches the country automatically — same smart detection as the contacts picker','Arabic covers every new string, as always'];
+export const APP_VERSION='4.0';
+const WHATS_NEW=['Follow-ups are for anything now, not just deals: a task line ("get the test certificate from QC"), create one for anyone straight from your phone book, and Done offers a "Next step…" that chains the follow-up to the client','Recurring follow-ups: set "every week" (or 3 days / 2 weeks / monthly) and Done automatically schedules the next one','Due list is grouped — Overdue / Today / Tomorrow / Later this week — with batch Select: snooze many to tomorrow, mark many done, or set one date for all','Snooze any reminder to a custom date and time; mute reminders per contact; undo Done and status changes; call or copy a number from the contact card','Follow-ups done in the last 7 days now sit in the stats strip, and the Android app fires reminders at the exact due time even for future dates','Arabic covers every new string, as always'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}

@@ -175,13 +175,13 @@ async function checkDueNotify() {
   const icon = new URL("icon-192.png", self.registration.scope).href;
   let changed = false;
   for (const r of recents) {
-    if (!r.due || r.status === "won" || r.status === "lost" || r.due > today) continue;
+    if (!r.due || r.status === "won" || r.status === "lost" || r.muted || r.due > today) continue;
     const hm = /^\\d\\d:\\d\\d$/.test(r.dueTime || "") ? r.dueTime : "09:00";
     const at = new Date(r.due + "T" + hm + ":00");
     if (at.getTime() > now.getTime() || seenMap[r.full] === r.due) continue;
     const label = r.label || ("+" + (r.code ? r.code + " " + r.local : r.full));
     self.registration.showNotification("QuickChat follow-up", {
-      body: label + (r.value ? " · SAR " + Math.round(r.value).toLocaleString("en-US") : ""),
+      body: (r.task ? r.task + " · " : "") + label + (r.value ? " · SAR " + Math.round(r.value).toLocaleString("en-US") : ""),
       tag: "qc-" + r.full, icon, badge: icon, dir: "auto", data: { full: r.full },
     });
     seenMap[r.full] = r.due; changed = true;

@@ -228,3 +228,17 @@ select.txt{appearance:auto}
 .qc-ct-nums{display:flex;flex-wrap:wrap;gap:6px}
 .qc-ct-empty{color:var(--muted);text-align:center;padding:14px}
 .qc-ct-none{color:var(--muted);font-size:13px}
+/* v4.0: follow-ups polish — grouped due list, task line, select mode, batch bar */
+.fuh2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fuhead-acts{display:flex;gap:6px;align-items:center}
+.fugroup{display:flex;align-items:baseline;gap:6px;padding:10px 2px 4px;font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fugroup small{font-weight:500;color:var(--muted)}
+.item .task{font-size:13px;color:var(--fg);overflow-wrap:anywhere;margin:1px 0}
+.fu-check{align-self:center;width:18px;height:18px;accent-color:var(--accent);flex:none}
+.fu-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:80;display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px 12px;box-shadow:0 8px 30px rgba(0,0,0,.25);max-width:calc(100vw - 24px);flex-wrap:wrap}
+.fu-bar-n{font:700 14px var(--sans);background:var(--fg);color:var(--bg);border-radius:999px;padding:2px 9px}
+.numrow-card{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fu-new-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
+.qc-snooze-custom{display:flex;gap:8px;align-items:center;padding:2px 4px 6px}
+.qc-snooze-custom .txt{flex:1;min-width:0}
+.chk.on{color:var(--muted)}
