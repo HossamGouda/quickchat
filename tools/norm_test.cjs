@@ -2,7 +2,7 @@
    Covers the contact-book scenarios: explicit country codes with + or 00,
    bare codes, and local numbers with/without a trunk zero. */
 const assert = require("assert");
-const { normalize, state, COUNTRIES } = require("../js/core.js");
+const { normalize, extractNumbers, state, COUNTRIES } = require("../js/core.js");
 
 /* The selected country is Saudi Arabia (default) unless a test overrides it. */
 state.country = "sa";
@@ -36,6 +36,13 @@ assert.deepStrictEqual(normalize("0559871234"),
 /* Egypt local number while Egypt is selected → stays Egypt */
 assert.deepStrictEqual(normalize("01012345678"),
   { country: "eg", code: "20", local: "1012345678", full: "201012345678" });
+
+/* Paste/share flows: extractNumbers must surface the foreign-country match
+   so the dialer can auto-switch (previously only the selected country was
+   considered, so these came back empty or misvalidated). */
+assert.deepStrictEqual(extractNumbers("01012345678").map(n => n.country), ["eg"]);
+assert.deepStrictEqual(extractNumbers("771234567").map(n => n.country), ["ye"]);
+assert.deepStrictEqual(extractNumbers("call 0559871234 now").map(n => n.full), ["966559871234"]);
 
 /* Unmatchable garbage → null (caller falls back to raw digits) */
 assert.strictEqual(normalize("12345"), null);

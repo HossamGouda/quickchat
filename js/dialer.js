@@ -176,7 +176,16 @@ export function initClipboardAsk(){
 $('paste').onclick=pasteFromClipboard;
 numIn.addEventListener('paste',e=>{
   const t=(e.clipboardData||window.clipboardData).getData('text');
-  if(t&&(/[^\d\s+\-().]/.test(t)||extractNumbers(t).length>1)){e.preventDefault();handleText(t,'paste')}
+  if(!t)return;
+  const found=extractNumbers(t);
+  /* One number that belongs to a different country than the selected one:
+     route it through normalize (the same engine as the contacts picker) so
+     the country auto-switches. Raw field paste would only validate against
+     the selected country and reject it as too short/long. */
+  if(found.length===1&&found[0].country!=='ot'&&found[0].country!==state.country){
+    e.preventDefault();applyNumber(found[0]);toast('Number added');return;
+  }
+  if(/[^\d\s+\-().]/.test(t)||found.length>1){e.preventDefault();handleText(t,'paste')}
 });
 $('picks').addEventListener('click',e=>{if(e.target.id==='toQueue'){const p=$('picks'),q=queueState();if(q&&q.items.some(i=>i.status==='pending')){toast('Finish or end the current queue first');setTab('queue');return}$('qText').value=p._text;p.hidden=true;setTab('queue');qParse();return}const b=e.target.closest('.chip');if(b)applyNumber($('picks')._found[+b.dataset.i])});
 
