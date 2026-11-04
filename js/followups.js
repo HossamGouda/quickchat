@@ -164,7 +164,7 @@ $('fltSearch').addEventListener('input',()=>renderFollowups());
 export function renderFollowups(){
   const key=r=>r.due+' '+dueTime(r),all=state.recents.filter(r=>r.due&&isOpen(r)).sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
   const t=todayStr(),due=all.filter(r=>r.due<=t),up=all.filter(r=>r.due>t);
-  $('tb-fu').innerHTML='<span>Follow-ups</span>'+(due.length?`<span class="badge" aria-label="${due.length} due">${due.length}</span>`:'');
+  $('tb-fu').innerHTML='<span>Follow</span>'+(due.length?`<span class="badge" aria-label="${due.length} due">${due.length}</span>`:'');
   renderPipeline();renderFilters();
   const f=state.fuFilter||'active';
   $('activeView').hidden=f!=='active';$('fltSec').hidden=f==='active';

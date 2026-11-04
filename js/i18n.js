@@ -22,7 +22,7 @@ const AR={
 'Fill in the highlighted fields':'املأ الحقول المحددة','Fill in the template (updates the message as you type):':'املأ القالب (تتحدث الرسالة أثناء الكتابة):',
 'Same value for everyone in this queue:':'نفس القيمة لكل من في القائمة:',
 'Filter by status':'تصفية حسب الحالة','Follow up':'تابِع','Follow up now':'تابِع الآن','Follow-up date':'موعد المتابعة',
-'Follow-up cleared':'أُلغيت المتابعة','Follow-up done':'تمت المتابعة','Follow-ups':'المتابعات',
+'Follow-up cleared':'أُلغيت المتابعة','Follow-up done':'تمت المتابعة','Follow-ups':'المتابعات','Follow':'متابعات',
 'Import backup':'استيراد نسخة احتياطية','Later':'لاحقًا','Just messaged':'تمت مراسلته للتو','Not needed':'غير مطلوب',
 'Quoted':'عرض سعر','Waiting':'بانتظار الرد','Won':'تم البيع','Lost':'لم تتم','Status':'الحالة','Status cleared':'أُلغيت الحالة',
 'Message':'الرسالة','Message (optional)':'الرسالة (اختياري)','Message any WhatsApp number without saving it.':'راسل أي رقم واتساب دون حفظه.',

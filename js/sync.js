@@ -301,7 +301,9 @@ export async function syncNow(opts={}){
        new protocol. Newer cloud schema: this app is outdated — refuse. */
     if(proto&&+proto>PROTOCOL_VERSION)
       throw new Error(`Sync protocol mismatch: this device v${PROTOCOL_VERSION}, cloud v${proto}. Update the app on all devices.`);
-    if(proto&&+proto<PROTOCOL_VERSION)await ensureContactFields();
+    /* Fresh bases have no protocol row: create the v3 fields before the
+       first push or Teable rejects the unknown field names. */
+    if(!proto||+proto<PROTOCOL_VERSION)await ensureContactFields();
 
     let pushed=0,pulled=0;
     const lastSync=store.get('qc_last_sync',0);
