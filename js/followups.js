@@ -13,6 +13,7 @@ import {pickContact} from './contacts.js';
 import {nextRepeatDue} from './ntfutil.js';
 import {seqPlan, SEQ_LBL, lastOutcomeStreak} from './qutil.js';
 import {addTombstone} from './tombstones.js';
+import {renderTodayMini} from './stats.js';
 
 export function isOpen(r){return r.status!=='won'&&r.status!=='lost'}
 export function who(r){return r.label||('+'+(r.code?r.code+' '+r.local:r.full))}
@@ -169,6 +170,7 @@ export function renderFollowups(){
   $('activeView').hidden=f!=='active';$('fltSec').hidden=f==='active';
   if(f==='active')renderActiveView(all,due,up);
   else renderFilterView(f);
+  renderTodayMini(); /* E4: keep the Chat-tab strip in sync with every list change */
 }
 
 /* F5: due-list buckets. */

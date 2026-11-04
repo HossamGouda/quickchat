@@ -9,6 +9,9 @@ import {outcomeCounts, responseRate, weeklyCounts, statusCounts,
 /* ---------- renderer ---------- */
 const TOP_N=5;
 
+/* E2: last-rendered weekly rows + series so a tap can show the week's numbers. */
+let wkRows=[],wkSeries=[];
+
 function barRow(label,n,max,color){
   const w=max?Math.max(2,Math.round(n/max*100)):0;
   return `<div class="strow"><span class="stlbl">${esc(label)}</span><span class="stbar"><span style="width:${w}%;background:${color}"></span></span><b>${n}</b></div>`;
@@ -46,6 +49,7 @@ export function renderStats(){
   const wk=weeklyCounts(recs,8);
   const wMax=Math.max(1,...wk.map(r=>r.n));
   const series=OUTCOMES.filter(o=>(oc[o]||0)>0).slice(0,3);
+  wkRows=wk;wkSeries=series;
   const colors={sent:'#8fbf9f',replied:'#5a8fc0',interested:'#3e7d54',noreply:'#c9c9c9'};
   el.querySelector('#stWeekly').innerHTML=`
     <p class="bk">${esc(tr('Weekly activity'))} — ${esc(tr('last 8 weeks'))}</p>
@@ -53,7 +57,8 @@ export function renderStats(){
     <div class="stweeks">${wk.map(r=>{
       const segs=series.map(o=>r.c[o]?`<span style="height:${Math.max(2,Math.round(r.c[o]/wMax*72))}px;background:${colors[o]}"></span>`:'').join('');
       return `<div class="stcol" title="${r.wk}: ${r.n}">${r.n?`<div class="ststack">${segs}</div>`:'<div class="ststack"></div>'}<small>${esc(r.wk.slice(5))}</small></div>`;
-    }).join('')}</div>`;
+    }).join('')}</div>
+    <p class="bk" id="stWkSel" hidden></p>`;
 
   // pipeline
   const order=['lead','contacted','quoted','waiting','negotiating','won','lost'];
@@ -100,7 +105,33 @@ export function renderToday(){
     `<p class="bk" style="margin-top:8px">${esc(tr('This week'))}: <b>${ws.sent}</b> ${esc(tr('Sent'))} · <b>${replies}</b> ${esc(tr('Replies'))} · <b>${ws.won}</b> ${esc(tr('Won'))} · <b>${ws.lost}</b> ${esc(tr('Lost'))}${ws.sent?` — ${esc(tr('Response rate'))} <b>${Math.round(replies/ws.sent*100)}%</b>`:''}</p>`;
   el.hidden=false;
 }
+
+/* E4: compact today strip on the Chat tab — one glance, tap jumps to
+   Follow-ups. Empty (hidden) when there is nothing actionable. */
+export function renderTodayMini(){
+  const el=document.getElementById('todayMini');if(!el)return;
+  const recs=state.recents;
+  if(!recs.length){el.hidden=true;el.innerHTML='';return}
+  const d=dueOn(recs,todayStr()),x=expiringQuotes(recs),n=newLeads(recs);
+  if(!d&&!x&&!n){el.hidden=true;el.innerHTML='';return}
+  const seg=(lbl,cnt)=>cnt?`<b>${cnt}</b> ${esc(tr(lbl))}`:'';
+  const parts=[seg('Follow-ups due today',d),seg('Quotes expiring within 7 days',x),seg('New leads not yet messaged',n)].filter(Boolean);
+  el.innerHTML=`<button type="button" class="todayrow" data-today="fu">${parts.join(' · ')}</button>`;
+  el.hidden=false;
+}
 if(typeof document!=='undefined')document.addEventListener('click',e=>{
   const b=e.target.closest('[data-today]');if(!b)return;
   document.dispatchEvent(new CustomEvent('qc:nav',{detail:b.dataset.today}));
+});
+/* E2: tap a weekly column to show its numbers under the chart. */
+if(typeof document!=='undefined')document.addEventListener('click',e=>{
+  const col=e.target.closest('#stWeekly .stcol');if(!col||!wkRows.length)return;
+  const i=[...col.parentElement.children].indexOf(col),r=wkRows[i];if(!r)return;
+  const p=document.getElementById('stWkSel');if(!p)return;
+  if(!r.n){p.textContent=tr('No messages that week')}
+  else{
+    const segs=wkSeries.filter(o=>r.c[o]).map(o=>`${r.c[o]} ${tr(OUT_LBL[o])}`);
+    p.textContent=r.wk+': '+segs.join(' · ');
+  }
+  p.hidden=false;
 });

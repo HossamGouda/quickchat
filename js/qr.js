@@ -55,7 +55,7 @@ export function drawQR(){
   }
   h.className='hint ok';
   h.textContent=qrKind==='chat'?tr(label):tr('Clients scan the code and save your number as a contact.');
-  if(typeof qrcode!=='function'){x.fillStyle='#b3261e';x.font='500 24px sans-serif';x.fillText('QR library failed to load',W/2,H/2);return}
+  if(typeof qrcode!=='function'){x.fillStyle='#b3261e';x.font='500 24px sans-serif';x.fillText(tr('QR library failed to load'),W/2,H/2);return}
   const qr=qrcode(0,'M');qr.addData(data);qr.make();
   const mc=qr.getModuleCount(),quiet=4,cell=Math.floor(580/(mc+quiet*2)),size=cell*(mc+quiet*2),ox=Math.round((W-size)/2),oy=20;
   x.fillStyle='#0b1a12';
@@ -86,7 +86,7 @@ export function drawCamp(){
     x.fillStyle='#5d6b63';x.font='500 26px "IBM Plex Sans", system-ui, sans-serif';x.fillText(tr('Pick a template above'),W/2,H/2);return}
   campLink='https://wa.me/?text='+encodeURIComponent(t.body);
   h.className='hint ok';h.textContent=tr('Scanning opens WhatsApp with this message ready to forward.');
-  if(typeof qrcode!=='function'){x.fillStyle='#b3261e';x.font='500 24px sans-serif';x.fillText('QR library failed to load',W/2,H/2);return}
+  if(typeof qrcode!=='function'){x.fillStyle='#b3261e';x.font='500 24px sans-serif';x.fillText(tr('QR library failed to load'),W/2,H/2);return}
   const qr=qrcode(0,'M');qr.addData(campLink);qr.make();
   const mc=qr.getModuleCount(),quiet=4,cell=Math.floor(500/(mc+quiet*2)),size=cell*(mc+quiet*2),ox=Math.round((W-size)/2),oy=20;
   x.fillStyle='#0b1a12';

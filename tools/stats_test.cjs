@@ -60,8 +60,9 @@ eq('src tally skips records without src', srcCounts([{ src: 'Expo' }, { src: 'Ex
   { Expo: 2, Referral: 1 });
 
 /* messagedCount */
-eq('messaged = records with any outcome event', messagedCount(recs), 2);
+eq('messaged = records with any outcome or msg event', messagedCount(recs), 2);
 eq('no recents gives 0', messagedCount([]), 0);
+eq('a msg event alone counts as messaged', messagedCount([{log:[{t:1,e:'msg'}]},{log:[]}]), 1);
 
 
 /* dueOn */

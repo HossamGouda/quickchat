@@ -11,6 +11,7 @@ import {renderAttach, loadSharedFile, renderLib} from './share.js';
 import {APP_VERSION, renderWhatsNew} from './version.js';
 import {setTab} from './tabs.js';
 import {renderQueue, initQueue} from './queue.js';
+import {renderStats} from './stats.js';
 import {drawQR, initQR} from './qr.js';
 import {initSetup} from './setup.js';
 import {initSync} from './sync.js';
@@ -24,7 +25,7 @@ function setLang(l,quiet){
   state.lang=l;store.set('qc_lang',l);
   document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';
   $('langBtn').textContent=l==='ar'?'English':'العربية';
-  if(!quiet){renderTpls();renderRecents();renderFuPrompt();renderBk();update();renderAttach();if(!$('tab-queue').hidden)renderQueue();if(!$('tab-qr').hidden)drawQR()}
+  if(!quiet){renderTpls();renderRecents();renderFuPrompt();renderBk();update();renderAttach();if(!$('tab-queue').hidden)renderQueue();if(!$('tab-qr').hidden)drawQR();if(!$('tab-stats').hidden)renderStats()}
   i18nAll();
 }
 $('langBtn').onclick=()=>setLang(state.lang==='ar'?'en':'ar');
@@ -35,6 +36,9 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 async function boot(){
 await store.ready;
 hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initContacts();initCollapsibles();initSetup();
+  /* E3: shrink the header once the user leaves the top of the page. */
+  const hdr=document.querySelector('.hdr');
+  if(hdr)window.addEventListener('scroll',()=>hdr.classList.toggle('compact',window.scrollY>48),{passive:true});
 document.addEventListener('qc:nav',e=>{e.detail==='settings'?openSettings():setTab(e.detail)});
 document.addEventListener('qc:open-contact',e=>{setTab('fu');openCardFull(e.detail)});
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();

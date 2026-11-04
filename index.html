@@ -42,6 +42,7 @@
   </div>
   <div class="card notice" id="attach" hidden></div>
   <div class="card" id="libCard" hidden></div>
+  <div class="card" id="todayMini" hidden></div>
   <input type="file" id="libFile" hidden>
   <div class="card notice" id="setupCard" hidden>
     <p><b>Welcome to QuickChat</b></p>
@@ -160,8 +161,8 @@
         <div class="row2">
           <button type="button" class="btn small" id="qCampLoad" style="flex:1">Load campaign</button>
           <button type="button" class="btn small" id="qCampDel" style="flex:1">Delete</button>
-          <button type="button" class="btn small" id="qCampSave" style="flex:1">Save current as campaign</button>
         </div>
+        <button type="button" class="btn small" id="qCampSave" style="width:100%">Save current as campaign</button>
         <div class="row2" id="qCampNameRow" hidden>
           <input id="qCampName" class="txt" dir="auto" style="flex:1" autocomplete="off" placeholder="Campaign name">
           <button type="button" class="btn small" id="qCampOk">Save</button>
@@ -335,6 +336,17 @@
     <div class="card" style="gap:10px">
       <label class="chk"><input type="checkbox" id="lockToggle"> <span>Require a PIN to open the app</span></label>
       <p class="bk" id="lockInfo">The app locks itself when you leave it.</p>
+    </div>
+  </section>
+
+  <section class="stack" data-coll="set-appearance">
+    <h2>Appearance</h2>
+    <div class="card" style="gap:10px">
+      <div class="apps" id="thmApps">
+        <button type="button" data-thm="system" aria-pressed="true">System</button>
+        <button type="button" data-thm="light" aria-pressed="false">Light</button>
+        <button type="button" data-thm="dark" aria-pressed="false">Dark</button>
+      </div>
     </div>
   </section>
 

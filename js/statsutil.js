@@ -58,9 +58,11 @@ export function srcCounts(recs){
   return c;
 }
 
-/* How many records carry any outcome log (the "messaged" denominator). */
+/* How many records were ever messaged: a chat-open ('msg') or any outcome
+   log event. Counting message evidence (not outcomes only) keeps the chip
+   consistent with statuses won/lost, which come from card/queue actions. */
 export function messagedCount(recs){
-  return recs.filter(r=>(r.log||[]).some(x=>x.e==='outcome')).length;
+  return recs.filter(r=>(r.log||[]).some(x=>x.e==='msg'||x.e==='outcome')).length;
 }
 
 /* Today screen + weekly summary helpers. */

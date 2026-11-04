@@ -204,7 +204,33 @@ const AR={
 'Company':'الشركة','Lead source':'مصدر العميل','e.g. WhatsApp ad, referral':'مثال: إعلان واتساب، ترشيح',
 'Removed unnamed numbers':'حُذفت الأرقام غير المسمّاة',
 'Merge':'دمج','Merge with which record?':'مع أي سجل تريد الدمج؟','Merged':'تم الدمج','No other records to merge':'لا توجد سجلات أخرى للدمج',
-'Add stale leads':'أضف العملاء المتوقفين','No stale leads right now':'لا يوجد عملاء متوقفون حاليًا'
+'Add stale leads':'أضف العملاء المتوقفين','No stale leads right now':'لا يوجد عملاء متوقفون حاليًا',
+/* v5.7-polish i18n sweep */
+'Expiring quotes':'عروض تنتهي قريبًا','Follow-ups done':'متابعات منجزة',
+'Notifications on, even when the app is closed.':'الإشعارات تعمل حتى عند إغلاق التطبيق.',
+'QR library failed to load':'تعذّر تحميل مكتبة QR','You are offline.':'أنت غير متصل بالإنترنت.',
+'No templates yet. Tap “+ New” to add one.':'لا توجد قوالب بعد. اضغط «+ جديد» لإضافة قالب.',
+'Arabic covers every new string, as always':'الترجمة العربية شاملة لكل نص جديد، كالعادة',
+'Number looks too short.':'الرقم يبدو قصيرًا جدًا.',
+'QuickChat could not start':'تعذّر تشغيل QuickChat',
+'An update may have been only partially saved. Your data is safe.':'ربما حُفّظ تحديث بشكل جزئي. بياناتك آمنة.',
+'Retry':'إعادة المحاولة',
+'If it keeps failing: uninstall the home-screen app and add it again, or clear site data in browser settings (take a backup first if you can open the app on another device).':'إذا استمر الفشل: أزِل تطبيق الشاشة الرئيسية وأضِفه من جديد، أو امسح بيانات الموقع من إعدادات المتصفح (خذ نسخة احتياطية أولًا إن استطعت فتح التطبيق على جهاز آخر).',
+'New follow-up from contacts':'متابعة جديدة من جهات الاتصال','Pace between opens':'الوتيرة بين المحادثات',
+'QR code for a campaign message':'رمز QR لرسالة حملة','Teable token (teable_…)':'رمز Teable (teable_…)',
+'Sync now':'زامن الآن','Disable sync':'إيقاف المزامنة',
+'Teable did not respond in time. Check the connection.':'لم يرد Teable في الوقت المناسب. تحقق من الاتصال.',
+'No network route to Teable.':'لا يوجد مسار شبكة إلى Teable.','network error':'خطأ في الشبكة',
+/* v5.7-polish settings theme */
+'Appearance':'المظهر','System':'حسب النظام','Light':'فاتح','Dark':'داكن',
+/* v5.7-polish stats chart */
+'No messages that week':'لا رسائل في ذلك الأسبوع',
+/* v5.7 what's new */
+'A full interface polish pass: the tab bar, Stats and the follow-up card all got cleaner layouts':'تحسينات شاملة للواجهة: شريط التبويبات والإحصائيات وبطاقة المتابعة أصبحت أنظف',
+'New Appearance setting: force Light or Dark, or follow the system':'إعداد مظهر جديد: فاتح أو داكن أو حسب النظام',
+'Stats tab fixed: "Messaged" now counts everyone you actually messaged, and tapping a weekly bar shows that week\'s numbers':'إصلاح تبويب الإحصائيات: «تمت المراسلة» يحسب الآن كل من راسلته فعلًا، ولمس عمود الأسبوع يعرض أرقامه',
+'A "today" strip on the Chat tab: due follow-ups, expiring quotes and new leads at a glance — tap to jump':'شريط «اليوم» في تبويب المحادثة: المتابعات المستحقة والعروض المنتهية والعملاء الجدد في لمحة — اضغط للانتقال',
+'Arabic translation sweep closed every remaining untranslated string, and switching language re-renders Stats correctly now':'مسح شامل للترجمة العربية أغلق كل النصوص غير المترجمة، وتبديل اللغة يعيد رسم الإحصائيات بشكل صحيح الآن'
 };
 
 const AR_RE=[
@@ -254,7 +280,7 @@ const AR_RE=[
    (h==='No backup yet.'?'لا توجد نسخة احتياطية بعد.':'آخر نسخة احتياطية: '+(/today/.test(h)?'اليوم':'قبل '+parseInt(h.replace(/\D+/g,''))+' يوم')+'.')+' القوالب: '+t+' · جهات محفوظة: '+c+' · حديثة: '+r+'.'],
  [/^(.+) \((\d+)\)$/,(m,a,b)=>{const t=trCore(a);return t===a?m:t+' ('+b+')'}],
  [/^Synced with Teable: (\d+) sent, (\d+) received$/,(m,a,b)=>'تمت المزامنة مع Teable: أُرسل '+a+'، واستُلم '+b+'.'],
- [/^Sync failed: (.+)$/,(m,a)=>'فشلت المزامنة: '+a],
+ [/^Sync failed: (.+)$/,(m,a)=>'فشلت المزامنة: '+trCore(a)],
  [/^Teable error (\d+)$/,(m,a)=>'خطأ في Teable ('+a+')'],
  [/^Cloud sync on · Last sync (.+)$/,(m,a)=>'المزامنة السحابية تعمل · آخر مزامنة '+a],
  [/^Cloud sync on \(auto-sync disabled\) · Last sync (.+)$/,(m,a)=>'المزامنة السحابية تعمل (تلقائيًا معطّل) · آخر مزامنة '+a],
@@ -262,7 +288,12 @@ const AR_RE=[
  [/^Cloud sync on \(auto-sync disabled\) · Not synced yet$/,'المزامنة السحابية تعمل (تلقائيًا معطّل) · لم تتم المزامنة بعد'],
  [/^Sync protocol mismatch: this device v(\d+), cloud v(\d+)\. Update the app on all devices\.$/,(m,a,b)=>'تعارض في إصدار المزامنة: هذا الجهاز v'+a+' والسحابة v'+b+'. حدّث التطبيق على جميع الأجهزة.'],
  [/^Restored from Teable: (\d+) contacts, (\d+) templates$/,(m,a,b)=>'تمت الاستعادة من Teable: '+a+' جهة اتصال، '+b+' قالب'],
- [/^Restore failed: (.+)$/,(m,a)=>'فشلت الاستعادة: '+a],
+ [/^Restore failed: (.+)$/,(m,a)=>'فشلت الاستعادة: '+trCore(a)],
+ [/^Outcome: (.+)$/,(m,a)=>'النتيجة: '+trCore(a)],
+ [/^Lost reason: (.+)$/,(m,a)=>'سبب الخسارة: '+trCore(a)],
+ [/^Sequence: (.+)$/,(m,a)=>'التسلسل: '+a],
+ [/^Quote valid until (.+)$/,(m,a)=>'صلاحية العرض حتى '+a],
+ [/^Do not contact: (on|off)$/,(m,a)=>a==='on'?'عدم التواصل: مفعّل':'عدم التواصل: متوقف'],
  [/^(\d+) updated from another device \((\d+) contacts, (\d+) templates\)$/,(m,a,b,c)=>'تعارض: حُدّث '+a+' عنصر من جهاز آخر ('+b+' جهة اتصال، '+c+' قوالب)'],
  [/^(\d+) updated from another device$/,(m,a)=>'حُدّث '+a+' عنصر من جهاز آخر'],
  [/^Follow-ups due: (\d+)$/,(m,a)=>'متابعات مستحقة: '+a],
