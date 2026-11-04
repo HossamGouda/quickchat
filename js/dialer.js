@@ -2,7 +2,7 @@
 import {$, store, state, COUNTRIES, country, extractNumbers, toast} from './core.js';
 import {renderVars, leftoverVars, applyVars} from './templates.js';
 import {addRecent} from './recents.js';
-import {setDueVal, renderFuPrompt, renderFollowups} from './followups.js';
+import {setDueVal, renderFuPrompt, renderFollowups, stampOutcomeAsk} from './followups.js';
 import {queueState, qParse} from './queue.js';
 import {setTab} from './tabs.js';
 
@@ -90,6 +90,9 @@ export function buildLink(full,txt,app){
    resolve intent:// URLs (Bridge.launchIntent would ACTION_VIEW the raw string),
    so a tiny native plugin (QCOpen) parses the intent URI properly. */
 export function openChat(url,full){
+  /* O1: arm the outcome ask for the next app-foreground. Not while a queue
+     is mid-run — the queue has its own Sent ✓ confirm (writes 'sent'). */
+  if(full){const qs=queueState();if(!qs||qs.idx===null)stampOutcomeAsk(full)}
   const cap=window.Capacitor;
   if(cap&&cap.isNativePlatform&&cap.isNativePlatform()&&cap.Plugins&&cap.Plugins.QCOpen){
     /* Native: QCOpen parses intent:// and launches WhatsApp. On failure

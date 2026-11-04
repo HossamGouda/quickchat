@@ -140,7 +140,8 @@ async function loadPhone(query){
 function loadPeople(query){
   const list=$('ctList');if(!list)return;
   const qd=query.replace(/\D/g,''),ql=query.toLowerCase();
-  const rows=state.recents.filter(r=>!query||(r.label||'').toLowerCase().includes(ql)||(qd&&r.full.includes(qd))).slice(0,200);
+  /* O5: do-not-contact numbers never appear in any picker. */
+  const rows=state.recents.filter(r=>!r.dnc&&(!query||(r.label||'').toLowerCase().includes(ql)||(qd&&r.full.includes(qd)))).slice(0,200);
   if(!rows.length){list.innerHTML=`<p class="qc-ct-empty">${esc(tr('No contacts here yet.'))}</p>`;return}
   list.innerHTML=rows.map(r=>{
     const sub=(r.status?ST_LABEL[r.status]:'')+(r.status?' · ':'')+'+'+(r.code?r.code+' '+r.local:r.full);

@@ -6,10 +6,10 @@ import {$, store, state, COUNTRIES, ST_LABEL, esc, toast, notifyEvent, normalize
   VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow, dueWhen, fmtShort, logEv} from './core.js';
 import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
-import {setDueVal, setStatus, isOpen} from './followups.js';
+import {setDueVal, setStatus, isOpen, logOutcome, openLostSheet} from './followups.js';
 import {tr} from './i18n.js';
 import {pickPeople} from './contacts.js';
-import {retryableSkipped, isoWeekKey, paceMs, SKIP_REASONS} from './qutil.js';
+import {retryableSkipped, isoWeekKey, paceMs, SKIP_REASONS, bumpDayCounter, DAY_WARN_AT} from './qutil.js';
 
 let q=null;
 const qText=$('qText');
@@ -48,13 +48,16 @@ $('qTpl').addEventListener('change',()=>{store.set('qc_qtpl',$('qTpl').value);re
 
 export function qParse(){
   store.set('qc_qdraft',qText.value);
-  qFoundList=extractWithNames(qText.value);
+  /* O5: numbers flagged do-not-contact never enter a queue. */
+  const all=extractWithNames(qText.value);
+  const dnc=all.filter(x=>{const r=state.recents.find(r=>r.full===x.full);return r&&r.dnc}).length;
+  qFoundList=all.filter(x=>{const r=state.recents.find(r=>r.full===x.full);return !r||!r.dnc});
   const named=qFoundList.filter(x=>x.name).length,
     known=qFoundList.filter(x=>state.recents.some(r=>r.full===x.full)).length,
     el=$('qFound');
   el.className='hint'+(qFoundList.length?' ok':'');
   el.textContent=qFoundList.length
-    ?tr(`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name${known?`, ${known} already known`:''}.`)
+    ?tr(`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name${known?`, ${known} already known`:''}${dnc?`, ${dnc} skipped — do not contact`:''}.`)
     :tr('Paste numbers from a sheet, a message or an email.');
   const big=$('qBig');
   if(big){
@@ -82,7 +85,7 @@ $('qStart').onclick=()=>{
   lockUntil=0;
   saveQ();renderQueue();
 };
-function qMessage(it){return q.raw?fillTpl(q.raw,Object.assign(autoVars(q.raw),q.extra,{name:it.name||''})):''}
+function qMessage(it){return q.raw?fillTpl(q.raw,Object.assign(autoVars(q.raw),q.extra,{name:it.name||''}),q.items.indexOf(it)):''}
 
 /* Q5: batch memory — last finished batch + per-ISO-week sent counter. */
 function bumpWeek(){
@@ -144,6 +147,7 @@ function paintQApp(){
 
 export function renderQueue(){
   const setup=$('qSetup'),run=$('qRun'),list=$('qList');
+  paintQWarn(store.get('qc_qday',null));
   if(!q){
     setup.hidden=false;run.hidden=true;list.hidden=true;
     qText.value=qText.value||store.get('qc_qdraft','');
@@ -201,8 +205,26 @@ $('qOpen').onclick=()=>{
   if(left){toast(tr(left.includes('{name}')?'Enter the name first':'Fill '+[...new Set(left)].join(', ')+' first'));const n=$('qName');if(n)n.focus();return}
   if(it.status==='pending'){it.status='opened';saveQ();renderQueue()}
   armLock();
+  bumpQDay();
   openChat(buildLink(it.full,msg,q.app),it.full);
 };
+/* O6: daily opened-chat counter + ban-safety warning banner. */
+function bumpQDay(){
+  const nb=bumpDayCounter(store.get('qc_qday',null),todayStr());
+  store.set('qc_qday',nb);
+  paintQWarn(nb);
+}
+function paintQWarn(c){
+  const el=$('qWarn');if(!el)return;
+  const n=c&&c.n||0;
+  el.hidden=!(n>=DAY_WARN_AT&&store.get('qc_qdayHide','')!==todayStr());
+  if(!el.hidden)el.innerHTML=esc(tr(`${n} chats opened today — WhatsApp restricts accounts that message many people who haven't saved their number.`))+' <button type="button" class="btn small" data-qwarn-x>'+esc(tr('Dismiss'))+'</button>';
+}
+$('qWarn').addEventListener('click',e=>{
+  if(!e.target.closest('[data-qwarn-x]'))return;
+  store.set('qc_qdayHide',todayStr());
+  const el=$('qWarn');if(el)el.hidden=true;
+});
 /* Q1/Q4: confirming sent — advance, weekly counter, history, undo. */
 $('qSent').onclick=()=>{
   if(!q||q.idx===null)return;
@@ -211,7 +233,7 @@ $('qSent').onclick=()=>{
   it.status='sent';it.at=Date.now();
   pushRecent({full:it.full,code:it.code,local:it.local,country:it.country,label:it.name});
   const r=state.recents.find(x=>x.full===it.full);
-  if(r)logEv(r,'queue',it.name||'');
+  if(r){logEv(r,'queue',it.name||'');logOutcome(r,'sent')}
   bumpWeek();
   q.idx=nextPending(q.idx);
   if(q.idx===null)store.set('qc_qlast',{sent:q.items.filter(x=>x.status==='sent').length,skipped:q.items.filter(x=>x.status==='skipped').length,at:Date.now()});
@@ -248,13 +270,15 @@ $('qSkip').onclick=()=>{
     const prevIdx=q.idx,prevStatus=it.status;
     it.why=why;it.status='skipped';
     q.idx=nextPending(q.idx);saveQ();renderQueue();
+    const r=state.recents.find(x=>x.full===it.full);
     if(why==='wrong'){
-      const r=state.recents.find(x=>x.full===it.full);
       toast(tr('Skipped: wrong number'),{type:'info',dur:6000,action:r?{label:tr('Mark as lost'),fn:()=>{
-        if(r.status!=='lost'){setStatus(r,'lost');saveRecents()}
+        if(r.status!=='lost')openLostSheet(r);
       }}:undefined});
     }else{
-      toast(tr('Skipped'),{type:'info',dur:6000,action:{label:tr('Undo'),fn:()=>{
+      /* O5: "Not interested" is a stop — never queue this number again. */
+      if(why==='no'&&r&&!r.dnc){r.dnc=1;r._lu=Date.now();logEv(r,'dnc',1);saveRecents()}
+      toast(why==='no'?tr('Skipped — this number will not be queued again'):tr('Skipped'),{type:'info',dur:6000,action:{label:tr('Undo'),fn:()=>{
         if(!q)return;
         const x=q.items.find(y=>y.full===it.full);
         if(x&&x.status==='skipped'){x.status=prevStatus;x.why=prevStatus==='skipped'?x.why:'';q.idx=prevIdx;saveQ();renderQueue()}

@@ -2,7 +2,8 @@
    v4.0: task-first general follow-ups (not only quotations), recurring intervals,
    undo, grouped due list, batch actions, per-contact reminder mute, next-step chains. */
 import {$, store, state, STATUSES, ST_LABEL, esc, logEv, toast, normalize,
-  ago, todayStr, parseDay, dayDiff, fmtDay, fmtShort, dueTime, dueWhen, dueLow, sar} from './core.js';
+  ago, todayStr, parseDay, dayDiff, fmtDay, fmtShort, dueTime, dueWhen, dueLow, sar,
+  OUT_LBL, OUTCOMES, LOST_REASONS, LOST_LBL} from './core.js';
 import {tr} from './i18n.js';
 import {loadRecent, saveRecents} from './recents.js';
 import {useTemplate} from './templates.js';
@@ -10,6 +11,7 @@ import {renderBk} from './backup.js';
 import {setTab} from './tabs.js';
 import {pickContact} from './contacts.js';
 import {nextRepeatDue} from './ntfutil.js';
+import {seqPlan, SEQ_LBL, lastOutcomeStreak} from './qutil.js';
 
 export function isOpen(r){return r.status!=='won'&&r.status!=='lost'}
 export function who(r){return r.label||('+'+(r.code?r.code+' '+r.local:r.full))}
@@ -22,6 +24,8 @@ export const REPEAT_LBL={d3:'Every 3 days',w1:'Every week',w2:'Every 2 weeks',m1
 export function setStatus(r,s){
   const snap={due:r.due,dueTime:dueTime(r),status:r.status||''};
   if((r.status||'')===s)return;r.status=s;r._lu=Date.now();logEv(r,'status',s);
+  if(s!=='lost')delete r.lostWhy;
+  if(s==='won'||s==='lost')r.seq=null;
   if((s==='won'||s==='lost')&&r.due){r.due='';toast(`Marked ${ST_LABEL[s]}. Follow-up cleared`,{action:undoAction(r,snap)})}
 }
 export function setDueVal(r,ds){if((r.due||'')===ds)return;r.due=ds;r._lu=Date.now();logEv(r,ds?'due':'done',ds)}
@@ -51,11 +55,23 @@ export function completeFollowUp(r,opts){
     const nd=nextRepeatDue(todayStr(),r.fuRepeat);
     if(nd){setDueVal(r,nd);logEv(r,'repeat',REPEAT_LBL[r.fuRepeat])}
   }
+  /* O3: an active sequence schedules the next chase step with its message. */
+  let seqNext=null;
+  if(r.seq&&r.seq.k){
+    seqNext=seqPlan(r.seq.k,(r.seq.step||0)+1,todayStr());
+    if(seqNext){
+      r.seq.step=(r.seq.step||0)+1;
+      setDueVal(r,seqNext.due);
+      r.fuMsg=seqNext.msg;
+      logEv(r,'seq',tr(`Step ${r.seq.step} of ${seqNext.total}`));
+    }else r.seq=null;
+  }
   saveRecents();
   if(!opts.silent){
-    const msg=repeating?tr(`Follow-up done — next: ${dueLow(r.due)}`):tr('Follow-up done');
-    /* One action slot: recurrence offers the next-step chain, one-offs offer undo. */
-    const action=repeating?{label:tr('Next step…'),fn:()=>openFuSheet({task:r.task||''})}:undoAction(r,snap);
+    const msg=seqNext?tr(`Chase step ${r.seq.step} done — next: ${dueLow(r.due)}`):repeating?tr(`Follow-up done — next: ${dueLow(r.due)}`):tr('Follow-up done');
+    /* One action slot: recurrence/sequences offer the next-step chain, one-offs offer undo. */
+    const chain=repeating||seqNext;
+    const action=chain?{label:tr('Next step…'),fn:()=>openFuSheet({task:r.task||''})}:undoAction(r,snap);
     toast(msg,{type:'ok',action});
   }
   renderFollowups();renderFuPrompt();renderBk();
@@ -84,7 +100,7 @@ function fuRow(r,kind){
     const n=dayDiff(r.due);meta=`<span class="due ${n<0?'od':n===0?'td':''}">${dueWhen(r)}</span>`+(r.fuMsg?' · <span>Message ready</span>':'');
     acts=stChip(r)+(kind==='due'?`<button type="button" class="btn small primary" data-act="fu" data-f="${r.full}">Follow up</button><button type="button" class="btn small" data-act="snz" data-f="${r.full}">Snooze</button><button type="button" class="btn small" data-act="fudone" data-f="${r.full}">Done</button>`:'');
   }
-  return `<div class="item">${fuCheck(r)}<button type="button" class="main fuitem" data-act="open" data-f="${r.full}" aria-label="Open details">${lab}${task}${num}<div class="meta">${meta}</div>${extra?`<div class="xtra">${extra}</div>`:''}</button><div class="acts">${acts}</div></div>`;
+  return `<div class="item${r.dnc?' dnc':''}">${fuCheck(r)}<button type="button" class="main fuitem" data-act="open" data-f="${r.full}" aria-label="Open details">${lab}${task}${num}<div class="meta">${r.dnc?`<span class="dnc-badge">${esc(tr('Do not contact'))}</span> · `:''}${meta}</div>${extra?`<div class="xtra">${extra}</div>`:''}</button><div class="acts">${acts}</div></div>`;
 }
 
 /* Monthly pipeline snapshot: keep a rolling 6-month trend beside the stats. */
@@ -110,10 +126,16 @@ function trendText(){
 function renderPipeline(){
   const el=$('pipe'),tracked=state.recents.some(r=>r.status);
   if(!tracked){el.hidden=true;return}
-  const open=state.recents.filter(r=>r.status==='quoted'||r.status==='waiting'),openSum=open.reduce((a,r)=>a+(+r.value||0),0);
+  const open=state.recents.filter(r=>r.status==='quoted'||r.status==='waiting'||r.status==='negotiating'),openSum=open.reduce((a,r)=>a+(+r.value||0),0);
   const now=new Date(),m0=new Date(now.getFullYear(),now.getMonth(),1).getTime();
   const won=state.recents.filter(r=>r.status==='won'),wonM=won.filter(r=>lastStatusTime(r,'won')>=m0),wonSum=wonM.reduce((a,r)=>a+(+r.value||0),0);
-  const lost=state.recents.filter(r=>r.status==='lost').length,rate=won.length+lost?Math.round(won.length/(won.length+lost)*100):null;
+  const lostRows=state.recents.filter(r=>r.status==='lost'),lost=lostRows.length,rate=won.length+lost?Math.round(won.length/(won.length+lost)*100):null;
+  /* O4: quotes whose validity date falls within the next 7 days. */
+  const expiring=state.recents.filter(r=>isOpen(r)&&r.valid&&dayDiff(r.valid)>=0&&dayDiff(r.valid)<=7).length;
+  /* O2: aggregate lost reasons so patterns surface. */
+  const whyAgg={};
+  lostRows.forEach(r=>{if(r.lostWhy)whyAgg[r.lostWhy]=(whyAgg[r.lostWhy]||0)+1});
+  const whyLine=Object.keys(whyAgg).sort((a,b)=>whyAgg[b]-whyAgg[a]).map(k=>tr(LOST_LBL[k]||k)+' ×'+whyAgg[k]).join(' · ');
   snapshot();
   const trend=trendText();
   /* F10: follow-up discipline — done events logged in the trailing 7 days. */
@@ -122,12 +144,14 @@ function renderPipeline(){
   el.innerHTML=`<div class="stat"><span class="k">Open quotes</span><b>${open.length}</b><span class="s">${sar(openSum)}</span></div>
     <div class="stat"><span class="k">Won this month</span><b>${wonM.length}</b><span class="s">${sar(wonSum)}</span></div>
     <div class="stat"><span class="k">Win rate</span><b>${rate===null?'–':rate+'%'}</b><span class="s">${won.length} won · ${lost} lost</span></div>
+    ${expiring?`<div class="stat"><span class="k">Expiring quotes</span><b>${expiring}</b><span class="s">${tr('valid within 7 days')}</span></div>`:''}
     <div class="stat"><span class="k">Follow-ups done</span><b>${done7}</b><span class="s">${tr('last 7 days')}</span></div>
+    ${whyLine?`<div class="stat"><span class="k">Lost reasons</span><span class="s">${whyLine}</span></div>`:''}
     ${trend?`<div class="stat"><span class="k">Last 6 months</span><span class="s">${trend}</span></div>`:''}`;
   el.hidden=false;
 }
 
-const FILTERS=['active','quoted','waiting','won','lost','all'],F_LABEL={active:'Active',quoted:'Quoted',waiting:'Waiting',won:'Won',lost:'Lost',all:'All'};
+const FILTERS=['active','quoted','waiting','negotiating','won','lost','all'],F_LABEL={active:'Active',quoted:'Quoted',waiting:'Waiting',negotiating:'Negotiating',won:'Won',lost:'Lost',all:'All'};
 function renderFilters(){
   const f=state.fuFilter||'active',cnt=k=>k==='active'||k==='all'?'':` <small>${state.recents.filter(r=>r.status===k).length}</small>`;
   $('fuFilters').innerHTML=FILTERS.map(k=>`<button type="button" data-flt="${k}" aria-pressed="${f===k}">${F_LABEL[k]}${cnt(k)}</button>`).join('');
@@ -313,7 +337,9 @@ function saveNewFollowUp(ds){
 
 /* Contact card: status, follow-up date, quote value, note, history */
 const EV_TXT={msg:()=>'Messaged',status:v=>v?'Status: '+ST_LABEL[v]:'Status cleared',due:v=>'Follow-up set for '+fmtDay(v),done:()=>'Follow-up cleared',value:v=>'Quote value: '+sar(v),
-  task:v=>'Task: '+v,time:v=>'Follow-up time: '+v,repeat:v=>'Repeats: '+v,queue:v=>'Queue message sent'+(v?' — '+v:'')};
+  task:v=>'Task: '+v,time:v=>'Follow-up time: '+v,repeat:v=>'Repeats: '+v,queue:v=>'Queue message sent'+(v?' — '+v:''),
+  outcome:v=>'Outcome: '+(OUT_LBL[v]||v),lostwhy:v=>'Lost reason: '+(LOST_LBL[v]||v),seq:v=>'Sequence: '+v,
+  valid:v=>'Quote valid until '+fmtDay(v),dnc:v=>+v?'Do not contact: on':'Do not contact: off'};
 /* Contact card: pure template builder (renderFuPrompt wires state around it). */
 function cardHtml(r,cal,log,head){
   return `<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>
@@ -321,7 +347,8 @@ function cardHtml(r,cal,log,head){
     <div class="numrow-card"><span class="rnum">+${r.code?r.code+' '+r.local:r.full}</span>
       <a class="btn small" href="tel:+${r.full}" aria-label="${esc(tr('Call'))}">${tr('Call')}</a>
       <button type="button" class="btn small" data-x="copynum">${tr('Copy number')}</button></div>
-    <div class="wrapr"><span class="bk">Status</span>${['quoted','waiting','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
+    <div class="wrapr"><span class="bk">Status</span>${['lead','contacted','quoted','waiting','negotiating','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
+    ${r.status==='lost'&&r.lostWhy?`<div class="wrapr"><span class="bk">${esc(tr('Lost reason'))}</span><b>${esc(tr(LOST_LBL[r.lostWhy]||r.lostWhy))}</b></div>`:''}
     <div class="wrapr"><span class="bk">Follow-up date</span>${r.due&&isOpen(r)?`<b class="due">${dueWhen(r)}</b><button type="button" class="btn small danger" data-x="clear">Remove</button>`:''}</div>
     <div class="wrapr"><button type="button" class="chip" data-d="1">Tomorrow</button><button type="button" class="chip" data-d="3">3 days</button><button type="button" class="chip" data-d="7">1 week</button><button type="button" class="chip" data-d="14">2 weeks</button>
       <label class="datechip"><span>Date</span><input type="date" id="fpDate" min="${todayStr(1)}" aria-label="Pick a follow-up date"></label>
@@ -330,9 +357,15 @@ function cardHtml(r,cal,log,head){
       <option value="">${tr('No repeat')}</option>
       ${Object.keys(REPEAT_LBL).map(k=>`<option value="${k}"${r.fuRepeat===k?' selected':''}>${tr(REPEAT_LBL[k])}</option>`).join('')}
     </select></div>
+    <div class="wrapr"><span class="bk">${tr('Sequence')}</span><select id="fpSeq" class="txt" aria-label="${esc(tr('Sequence'))}">
+      <option value="">${tr('No sequence')}</option>
+      ${Object.keys(SEQ_LBL).map(k=>`<option value="${k}"${r.seq&&r.seq.k===k?' selected':''}>${tr(SEQ_LBL[k])}</option>`).join('')}
+    </select></div>
     <label class="chk"><input type="checkbox" id="fpCal" ${cal?'checked':''}> <span>Also add a reminder to my phone calendar</span></label>
     <label class="chk${r.muted?' on':''}"><input type="checkbox" id="fpMute" ${r.muted?'checked':''}> <span>${tr('Mute reminders for this contact')}</span></label>
-    <div class="two"><label class="field"><span class="lbl">Quote value (SAR)</span><input class="txt" id="fpVal" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="0" value="${r.value?Math.round(r.value):''}"></label></div>
+    <label class="chk${r.dnc?' on':''}"><input type="checkbox" id="fpDnc" ${r.dnc?'checked':''}> <span>${tr('Do not contact again')}</span></label>
+    <div class="two"><label class="field"><span class="lbl">Quote value (SAR)</span><input class="txt" id="fpVal" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="0" value="${r.value?Math.round(r.value):''}"></label>
+      <label class="field"><span class="lbl">${tr('Quote valid until')}</span><input type="date" class="txt" id="fpValid" min="${todayStr()}" value="${r.valid||''}" aria-label="${esc(tr('Quote valid until'))}"></label></div>
     <label class="field"><span class="lbl">${tr('What is this follow-up for?')}</span><input class="txt" id="fpTask" dir="auto" autocomplete="off" placeholder="${esc(tr('e.g. Get material test certificate from QC'))}" value="${esc(r.task||'')}"></label>
     <label class="field"><span class="lbl">Message to send (optional)</span><textarea id="fpMsg" dir="auto" rows="3" placeholder="Leave empty to use your Follow-up template">${esc(r.fuMsg||'')}</textarea></label>
     <label class="field"><span class="lbl">Note</span><textarea id="fpNote" dir="auto" rows="2" placeholder="What was quoted, site, products">${esc(r.note||'')}</textarea></label>
@@ -370,7 +403,37 @@ $('fuPrompt').addEventListener('change',e=>{
   const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(!r)return;
   if(e.target.id==='fpCal'){store.set('qc_cal',e.target.checked);return}
   if(e.target.id==='fpMute'){r.muted=e.target.checked?1:0;r._lu=Date.now();saveRecents();renderFollowups();toast(tr(e.target.checked?'Reminders muted for this contact':'Reminders on for this contact'));return}
-  if(e.target.id==='fpRepeat'){r.fuRepeat=e.target.value||'';r._lu=Date.now();logEv(r,'repeat',REPEAT_LBL[r.fuRepeat]||'');saveRecents();return}
+  if(e.target.id==='fpRepeat'){r.fuRepeat=e.target.value||'';if(r.fuRepeat)r.seq=null;r._lu=Date.now();logEv(r,'repeat',REPEAT_LBL[r.fuRepeat]||'');saveRecents();return}
+  /* O3: picking a sequence seeds step 1 (due + message) and clears Repeat —
+     one rescheduler owns the next due date. */
+  if(e.target.id==='fpSeq'){
+    const k=e.target.value||'';
+    if(k){
+      const p=seqPlan(k,1,todayStr());
+      r.seq={k,step:1};r.fuRepeat='';
+      if(p){setDueVal(r,p.due);r.fuMsg=p.msg}
+      logEv(r,'seq',SEQ_LBL[k]);
+      toast(tr(`Sequence started — next: ${dueLow(r.due)}`),{type:'ok'});
+    }else r.seq=null;
+    r._lu=Date.now();saveRecents();renderFollowups();renderFuPrompt();return;
+  }
+  /* O4: quote validity arms a reminder two days before expiry. */
+  if(e.target.id==='fpValid'){
+    r.valid=e.target.value||'';r._lu=Date.now();
+    logEv(r,'valid',r.valid||'cleared');
+    if(r.valid&&r.valid>todayStr()){
+      const d=new Date(r.valid+'T12:00:00');d.setDate(d.getDate()-2);
+      const remind=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(!r.due||r.due>remind){
+        setDueVal(r,remind);
+        if(!r.task)r.task=tr('Quote expires')+' '+fmtDay(r.valid);
+        toast(tr(`Reminder set — quote expires ${fmtDay(r.valid)}`),{type:'ok'});
+      }
+    }
+    saveRecents();renderFollowups();return;
+  }
+  /* O5: do-not-contact flag — queue, picker and suggestions respect it. */
+  if(e.target.id==='fpDnc'){r.dnc=e.target.checked?1:0;r._lu=Date.now();logEv(r,'dnc',r.dnc);saveRecents();renderFollowups();toast(tr(e.target.checked?'This number will not be queued again':'Number can be queued again'));return}
   if(e.target.id==='fpDate'){if(e.target.value)setDue(r,e.target.value);return}
   if(e.target.id==='fpTime'){
     /* F9: time changes write a history entry. */
@@ -385,9 +448,15 @@ $('fuPrompt').addEventListener('click',e=>{
   if(b.dataset.d){setDue(r,todayStr(+b.dataset.d));return}
   saveCardFields(r);
   if(b.dataset.s){
-    const prev={status:r.status||'',due:r.due,dueTime:dueTime(r)};
-    setStatus(r,r.status===b.dataset.s?'':b.dataset.s);saveRecents();renderFuPrompt();
-    if(r.status!==prev.status)toast(`Status: ${ST_LABEL[r.status]}`,{action:{label:tr('Undo'),fn:()=>{Object.assign(r,prev);r._lu=Date.now();saveRecents();renderFuPrompt();renderFollowups()}}});
+    const s=b.dataset.s;
+    /* O2: first time marking lost, ask why (patterns need the reason). */
+    if(s==='lost'&&r.status!=='lost'&&!r.lostWhy){openLostSheet(r);return}
+    const prev={status:r.status||'',due:r.due,dueTime:dueTime(r),lostWhy:r.lostWhy||''};
+    const clearing=r.status===s;
+    setStatus(r,clearing?'':s);
+    if(clearing)r.lostWhy='';
+    saveRecents();renderFuPrompt();
+    if(r.status!==prev.status)toast(`Status: ${ST_LABEL[r.status]||'—'}`,{action:{label:tr('Undo'),fn:()=>{Object.assign(r,prev);r._lu=Date.now();saveRecents();renderFuPrompt();renderFollowups()}}});
     return;
   }
   if(b.dataset.x==='clear'){setDueVal(r,'');toast('Reminder removed');saveRecents();renderFuPrompt();return}
@@ -412,3 +481,106 @@ function calLink(r){
 const fuSelBtn=$('fuSelect'),fuPickBtn=$('fuPick');
 if(fuSelBtn)fuSelBtn.onclick=()=>setSelectMode(!fuSelectMode);
 if(fuPickBtn)fuPickBtn.onclick=()=>openFuSheet({});
+
+/* ---- O2: lost-reason sheet (card chip, cycle, queue shortcut) ---- */
+let lostSheet=null;
+export function closeLostSheet(){if(lostSheet){lostSheet.remove();lostSheet=null}}
+export function openLostSheet(r,cb){
+  if(!r)return;
+  closeLostSheet();
+  lostSheet=document.createElement('div');lostSheet.className='qc-sheet-back';
+  lostSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Why lost?'))}">
+    <div class="qc-ct-head"><b>${esc(tr('Why lost?'))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
+    ${LOST_REASONS.map(([k,l])=>`<button type="button" class="qc-sheet-item" data-lw="${k}">${esc(tr(l))}</button>`).join('')}
+    <input class="txt" id="lwDetail" dir="auto" autocomplete="off" placeholder="${esc(tr('Details (optional)'))}">
+  </div>`;
+  lostSheet.addEventListener('click',e=>{
+    if(e.target===lostSheet||e.target.closest('[data-x]')){closeLostSheet();return}
+    const b=e.target.closest('[data-lw]');if(!b)return;
+    const detail=($('lwDetail')&&$('lwDetail').value.trim().slice(0,80))||'';
+    const why=b.dataset.lw==='other'&&detail?detail:b.dataset.lw;
+    closeLostSheet();
+    const prev={status:r.status||'',due:r.due,dueTime:dueTime(r),lostWhy:r.lostWhy||''};
+    setStatus(r,'lost');
+    r.lostWhy=why;
+    logEv(r,'lostwhy',LOST_LBL[why]||why);
+    saveRecents();renderFollowups();renderFuPrompt();
+    toast(`${tr('Lost reason')}: ${tr(LOST_LBL[why]||why)}`,{action:{label:tr('Undo'),fn:()=>{Object.assign(r,prev);r._lu=Date.now();saveRecents();renderFollowups();renderFuPrompt()}}});
+    if(cb)cb(why);
+  });
+  document.body.appendChild(lostSheet);
+}
+
+/* ---- O1: outcome logging — the one tap that teaches the app what happened ---- */
+const PO_TTL=30*60000;
+export function stampOutcomeAsk(full){
+  if(state.recents.some(x=>x.full===full))store.set('qc_po',{full,t:Date.now()});
+}
+export function clearOutcomeAsk(){store.set('qc_po',null)}
+/* Write an outcome once per contact per day; returns false on a same-day dup. */
+export function logOutcome(r,v){
+  const day=new Date();day.setHours(0,0,0,0);
+  if((r.log||[]).some(x=>x.e==='outcome'&&x.t>=day.getTime()))return false;
+  r.outcome=v;r._lu=Date.now();logEv(r,'outcome',v);saveRecents();renderFollowups();return true;
+}
+let poSheet=null;
+function closePoSheet(){if(poSheet){poSheet.remove();poSheet=null}}
+function poDone(){clearOutcomeAsk();closePoSheet()}
+/* Contextual next step under the outcome chips; one tap, never blocking. */
+function poNextRow(r,v){
+  const chase=tr('Chase in 3 days'),fu3=tr('Follow up in 3 days'),dncLbl=tr("Don't contact again"),neg=tr('Mark as negotiating');
+  if(v==='noreply'){
+    const dnc=lastOutcomeStreak(r.log)>=2&&!r.dnc?`<button type="button" class="btn small danger" data-po="dnc">${esc(dncLbl)}</button>`:'';
+    return `<button type="button" class="btn small primary" data-po="chase">${esc(chase)}</button>${dnc}`;
+  }
+  if(v==='replied')return `<button type="button" class="btn small primary" data-po="fu3">${esc(fu3)}</button>`;
+  if(v==='interested'){
+    const negBtn=r.status!=='negotiating'?`<button type="button" class="btn small" data-po="neg">${esc(neg)}</button>`:'';
+    return `<button type="button" class="btn small primary" data-po="fu3">${esc(fu3)}</button>${negBtn}`;
+  }
+  return '';
+}
+function maybeOutcomeSheet(){
+  const po=store.get('qc_po',null);
+  if(!po)return;
+  if(Date.now()-po.t>PO_TTL){clearOutcomeAsk();return}
+  const r=state.recents.find(x=>x.full===po.full);
+  if(!r){clearOutcomeAsk();return}
+  const day=new Date();day.setHours(0,0,0,0);
+  if((r.log||[]).some(x=>x.e==='outcome'&&x.t>=day.getTime())){clearOutcomeAsk();return}
+  closePoSheet();
+  poSheet=document.createElement('div');poSheet.className='qc-sheet-back';
+  poSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('What happened?'))}">
+    <div class="qc-ct-head"><b>${esc(tr(`What happened with ${r.label||'+'+(r.code?r.code+' '+r.local:r.full)}?`))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
+    <div class="wrapr" id="poChips">${OUTCOMES.map(o=>`<button type="button" class="chip" data-o="${o}">${esc(tr(OUT_LBL[o]))}</button>`).join('')}</div>
+    <div class="wrapr" id="poNext" hidden></div>
+  </div>`;
+  poSheet.addEventListener('click',e=>{
+    if(e.target===poSheet||e.target.closest('[data-x]')){poDone();return}
+    const o=e.target.closest('[data-o]');
+    if(o){
+      logOutcome(r,o.dataset.o);
+      const next=$('poNext');
+      if(next){next.innerHTML=poNextRow(r,o.dataset.o);next.hidden=!next.innerHTML}
+      poSheet.querySelector('#poChips').style.opacity='.45';
+      if(!next||next.hidden)setTimeout(poDone,250);
+      return;
+    }
+    const a=e.target.closest('[data-po]');if(!a)return;
+    if(a.dataset.po==='chase'||a.dataset.po==='fu3'){
+      setDueVal(r,todayStr(3));
+      if(!r.task)r.task=a.dataset.po==='chase'?tr('Chase'):tr('Follow up');
+      saveRecents();
+      toast(tr('Follow-up set: ')+dueLow(r.due),{type:'ok'});
+    }else if(a.dataset.po==='neg'){setStatus(r,'negotiating');saveRecents();toast(tr('Status: ')+ST_LABEL.negotiating)}
+    else if(a.dataset.po==='dnc'){r.dnc=1;r._lu=Date.now();logEv(r,'dnc',1);saveRecents();toast(tr('This number will not be queued again'))}
+    poDone();
+  });
+  document.body.appendChild(poSheet);
+}
+/* Fire on web foreground + Capacitor appStateChange (belt and braces). */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(maybeOutcomeSheet,350)});
+try{
+  if(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App)
+    window.Capacitor.Plugins.App.addListener('appStateChange',s=>{if(s&&s.isActive)setTimeout(maybeOutcomeSheet,350)});
+}catch(_){}

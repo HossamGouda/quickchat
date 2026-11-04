@@ -16,11 +16,29 @@ export const DEFAULT_TPLS = [
   {id:'t4',title:'Location request',body:'Please share the site location pin so we can arrange the visit.'}
 ];
 
-export const STATUSES = ['','quoted','waiting','won','lost'];
-export const ST_LABEL = {quoted:'Quoted',waiting:'Waiting',won:'Won',lost:'Lost'};
+export const STATUSES = ['','lead','contacted','quoted','waiting','negotiating','won','lost'];
+export const ST_LABEL = {lead:'New lead',contacted:'Contacted',quoted:'Quoted',waiting:'Waiting',negotiating:'Negotiating',won:'Won',lost:'Lost'};
 
-/* Template variables: {name}, {greeting}, {date}, or any {word} */
+/* O2: why a deal was lost — asked when marking lost, shown in the card. */
+export const LOST_REASONS = [['price','Price'],['competitor','Competitor'],['timing','Timing'],['budget','No budget'],['other','Other']];
+export const LOST_LBL = Object.fromEntries(LOST_REASONS);
+
+/* O1: one-tap outcomes after returning from WhatsApp. */
+export const OUTCOMES = ['sent','noreply','replied','interested'];
+export const OUT_LBL = {sent:'Sent',noreply:'No reply',replied:'Replied',interested:'Interested'};
+
+/* Template variables: {name}, {greeting}, {date}, or any {word}.
+   O6: message variants {v:option A|option B|option C} — one is picked
+   deterministically per send (seed) so batches are not byte-identical. */
 export const VAR_RE = /\{([A-Za-z_؀-ۿ][\w؀-ۿ]*)\}/g;
+const VAR_V_RE = /\{v:([^}]*)\}/g;
+export function applyVariants(raw,seed){
+  const n=Math.abs(seed|0);
+  return String(raw==null?'':raw).replace(VAR_V_RE,(m,body)=>{
+    const parts=body.split('|').map(s=>s.trim()).filter(s=>s);
+    return parts.length?parts[n%parts.length]:'';
+  });
+}
 
 /* Storage: write-through cache over IndexedDB, with a localStorage fallback.
    store.get reads synchronously from memory; store.set persists in the background.
@@ -343,7 +361,7 @@ export function autoVars(raw){
   const date=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
   return {greeting,date};
 }
-export function fillTpl(raw,vals){return raw.replace(VAR_RE,(m,k)=>vals[k.toLowerCase()]||m)}
+export function fillTpl(raw,vals,seed){return applyVariants(raw,seed).replace(VAR_RE,(m,k)=>vals[k.toLowerCase()]||m)}
 /* Template keys the user must fill (auto-filled {greeting}/{date} and {name} excluded) */
 export function customKeys(raw){const auto=autoVars(raw);return [...new Set([...raw.matchAll(VAR_RE)].map(m=>m[1].toLowerCase()))].filter(k=>!(k in auto)&&k!=='name')}
 

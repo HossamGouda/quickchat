@@ -1,5 +1,6 @@
 /* recents.js — recent numbers list: labels, search, trim, and reuse. */
 import {$, store, state, COUNTRIES, country, ST_LABEL, ago, esc, logEv, toast} from './core.js';
+import {tr} from './i18n.js';
 import {setCountry, update, currentNumber, nameFromLabel, ccIn, numIn, labelIn} from './dialer.js';
 import {renderVars, applyVars} from './templates.js';
 import {renderFollowups, cycleStatus} from './followups.js';
@@ -14,7 +15,7 @@ function deleteRecent(f){
   if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
 }
 
-export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg}
+export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg||r.dnc}
 export function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
 
 export function addRecent(){
@@ -46,7 +47,7 @@ function actsFor(r,f){
 }
 function recentRow(r,c,f){
   const conf=r._conf&&Date.now()-r._conf<864e5;
-  return `<div class="item"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${c?c.name:''} · ${ago(r.at)}${conf?` · <span class="conf">Updated from another device</span>`:''}</div></button><div class="acts">${actsFor(r,f)}</div></div>`;
+  return `<div class="item${r.dnc?' dnc':''}"><button class="main" data-act="reuse" data-f="${f}">${r.label?`<div class="lab" dir="auto">${esc(r.label)}</div>`:''}<div class="rnum">+${r.code} ${r.local}</div><div class="meta">${r.dnc?`<span class="dnc-badge">${esc(tr('Do not contact'))}</span> · `:''}${c?c.name:''} · ${ago(r.at)}${conf?` · <span class="conf">Updated from another device</span>`:''}</div></button><div class="acts">${actsFor(r,f)}</div></div>`;
 }
 
 export function renderRecents(){

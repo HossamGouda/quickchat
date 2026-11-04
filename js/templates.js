@@ -34,7 +34,7 @@ export function renderTpls(){
   const editor=(t)=>`<div class="item editing">
       <input class="txt" id="eTitle" dir="auto" placeholder="Title" value="${esc(t.title)}">
       <textarea id="eBody" dir="auto" placeholder="Message text">${esc(t.body)}</textarea>
-      <div class="hint">Placeholders: {name}, {greeting} (time-based, Arabic if the message is Arabic), {date}, or any {word} you'll fill in when sending.</div>
+      <div class="hint">Placeholders: {name}, {greeting} (time-based, Arabic if the message is Arabic), {date}, or any {word} you'll fill in when sending. Variants {v:Hello|Hi there} pick one option per send.</div>
       <div class="acts"><button class="btn small" data-act="cancel">Cancel</button><button class="btn small primary" data-act="save" data-id="${t.id}">Save</button></div>
     </div>`;
   if(state.editing==='new') html+=editor({id:'new',title:'',body:''});

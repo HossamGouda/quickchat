@@ -17,7 +17,7 @@ export function renderBk(){
   if(!n.hidden)$('nudgeTxt').textContent=last?`Last backup ${days} days ago. You have ${tr} saved contact${tr===1?'':'s'} on this phone only.`:`You have ${tr} saved contact${tr===1?'':'s'} and no backup yet.`;
 }
 
-function backupJson(){return JSON.stringify({app:'quickchat',version:4,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents,deleted:tombstones()},null,2)}
+function backupJson(){return JSON.stringify({app:'quickchat',version:5,exportedAt:new Date().toISOString(),templates:state.tpls,numbers:state.recents,deleted:tombstones()},null,2)}
 function stamp(){return todayStr()}
 function backupDone(){store.set('qc_lastBackup',Date.now());renderBk()}
 function downloadBackup(){dl(new Blob([backupJson()],{type:'application/json'}),'quickchat-backup-'+stamp()+'.json');backupDone();toast('Backup saved to Downloads',{type:'ok'});notifyEvent('ok','Backup saved',{tab:'settings'})}
@@ -33,11 +33,11 @@ $('nudgeGo').onclick=shareBackup;
 $('nudgeLater').onclick=()=>{store.set('qc_nudgeSnooze',Date.now()+864e5);renderBk()};
 $('csvBk').onclick=()=>{
   const cell=v=>{v=String(v==null?'':v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-  const head=['Name','Number','Country','Status','Quote value (SAR)','Note','Follow-up date','Follow-up time','Message to send','Last contact'];
-  const order={quoted:0,waiting:1,won:2,lost:3,'':4};
+  const head=['Name','Number','Country','Status','Quote value (SAR)','Note','Follow-up date','Follow-up time','Message to send','Last contact','Quote valid until','Lost reason','Do not contact'];
+  const order={lead:0,contacted:1,quoted:2,waiting:3,negotiating:4,won:5,lost:6,'':7};
   const rows=state.recents.slice().sort((a,b)=>(order[a.status||'']-order[b.status||''])||(a.label||'').localeCompare(b.label||'')).map(r=>{
     const c=COUNTRIES.find(x=>x.id===r.country);
-    return [r.label||'','+'+r.full,c&&c.id!=='ot'?c.name:'',r.status?ST_LABEL[r.status]:'',r.value||'',r.note||'',r.due||'',r.due?dueTime(r):'',r.fuMsg||'',new Date(r.at).toISOString().slice(0,10)];
+    return [r.label||'','+'+r.full,c&&c.id!=='ot'?c.name:'',r.status?ST_LABEL[r.status]:'',r.value||'',r.note||'',r.due||'',r.due?dueTime(r):'',r.fuMsg||'',new Date(r.at).toISOString().slice(0,10),r.valid||'',r.lostWhy||'',r.dnc?'yes':''];
   });
   dl(new Blob(['﻿'+[head].concat(rows).map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'quickchat-contacts-'+stamp()+'.csv');
   toast('Excel file saved to Downloads',{type:'ok'});
@@ -75,9 +75,14 @@ $('importFile').onchange=async e=>{
       if(!ex.fuMsg&&r.fuMsg){ex.fuMsg=String(r.fuMsg).slice(0,2000);ch=true}
       if(!ex.dueTime&&/^\d\d:\d\d$/.test(r.dueTime||'')){ex.dueTime=r.dueTime;ch=true}
       if(!ex.value&&+r.value){ex.value=Math.round(+r.value);ch=true}
+      if(!ex.valid&&okDay(r.valid)){ex.valid=r.valid;ch=true}
+      if(!ex.lostWhy&&typeof r.lostWhy==='string'&&r.lostWhy){ex.lostWhy=r.lostWhy.slice(0,80);ch=true}
+      if(!ex.dnc&&r.dnc){ex.dnc=1;ch=true}
+      if(!ex.outcome&&typeof r.outcome==='string'){ex.outcome=r.outcome.slice(0,20);ch=true}
+      if(!ex.seq&&r.seq&&r.seq.k==='quote'){ex.seq={k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))};ch=true}
       if(!(ex.log&&ex.log.length)&&r.log){ex.log=okLog(r.log);ch=true}
       if(ch){ex._lu=Date.now();nn++}return}
-    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),_lu:Date.now()});nn++;
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),valid:okDay(r.valid)?r.valid:'',lostWhy:typeof r.lostWhy==='string'?r.lostWhy.slice(0,80):'',dnc:r.dnc?1:0,outcome:typeof r.outcome==='string'?r.outcome.slice(0,20):'',seq:r.seq&&r.seq.k==='quote'?{k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))}:null,_lu:Date.now()});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
   /* Restore deletion tombstones (keep the newer side if we already have one). */
