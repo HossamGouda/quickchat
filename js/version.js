@@ -1,8 +1,8 @@
 /* version.js — app version banner ("what's new"). */
 import {$, store} from './core.js';
 
-export const APP_VERSION='5.1';
-const WHATS_NEW=['Contact picking is fixed and unified: "Add from your people" and the follow-up contact icon now open the same sheet with two sources — your phone contacts (in the app) and your QuickChat people — pick one or many','On the website the phone-book source now says plainly that it needs the Android app, instead of doing nothing','Arabic covers every new string, as always'];
+export const APP_VERSION='5.2';
+const WHATS_NEW=['Fixed Open chat on Android 11 and newer: WhatsApp opens directly again from the Chat tab, follow-ups and the queue — if it cannot open, the app now tells you instead of silently doing nothing','Arabic covers every new string, as always'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}

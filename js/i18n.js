@@ -134,6 +134,9 @@ const AR={
 'no status':'بلا حالة','Queue message sent':'رسالة من القائمة أُرسلت',
 /* v5.1: unified contact picker */
 'Phone contacts':'جهات اتصال الهاتف','QuickChat people':'أشخاص QuickChat','Contact source':'مصدر جهات الاتصال',
+'Could not open WhatsApp. Is it installed?':'تعذّر فتح واتساب. هل هو مثبّت على الهاتف؟',
+/* v5.2 what's new */
+'Fixed Open chat on Android 11 and newer: WhatsApp opens directly again from the Chat tab, follow-ups and the queue — if it cannot open, the app now tells you instead of silently doing nothing':'إصلاح زر «افتح المحادثة» على أندرويد 11 وأحدث: يفتح واتساب مباشرة من تبويب المحادثة والمتابعات والقائمة — وإن تعذّر فتحه يخبرك التطبيق بدلًا من السكوت',
 /* v5.1 what's new */
 'Contact picking is fixed and unified: "Add from your people" and the follow-up contact icon now open the same sheet with two sources — your phone contacts (in the app) and your QuickChat people — pick one or many':'تم إصلاح اختيار جهات الاتصال وتوحيده: زرا «أضف من أشخاصك» وأيقونة المتابعة يفتحان الآن نفس النافذة بمصدرين — جهات اتصال هاتفك (في التطبيق) وأشخاص QuickChat — اختر واحدًا أو أكثر',
 'On the website the phone-book source now says plainly that it needs the Android app, instead of doing nothing':'في موقع الويب يوضح مصدر جهات الهاتف الآن بوضوح أنه يحتاج تطبيق أندرويد بدلًا من عدم فعل شيء',

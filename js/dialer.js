@@ -92,7 +92,10 @@ export function buildLink(full,txt){
 export function openChat(url,full){
   const cap=window.Capacitor;
   if(cap&&cap.isNativePlatform&&cap.isNativePlatform()&&cap.Plugins&&cap.Plugins.QCOpen){
-    cap.Plugins.QCOpen.open({url}).catch(()=>{location.href='https://wa.me/'+full});
+    /* Native: QCOpen parses intent:// and launches WhatsApp. On failure
+       (WhatsApp not installed, or wrong variant selected) say so — do NOT
+       navigate the WebView to wa.me, which leaves the app stuck. */
+    cap.Plugins.QCOpen.open({url}).catch(()=>{toast('Could not open WhatsApp. Is it installed?')});
     return;
   }
   location.href=url;
