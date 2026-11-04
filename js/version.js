@@ -1,8 +1,8 @@
 /* version.js — app version banner ("what's new"). */
 import {$, store} from './core.js';
 
-export const APP_VERSION='5.0';
-const WHATS_NEW=['Queue tells the truth now: Open chat marks a contact "opened" and a Sent ✓ tap confirms it — with Undo if you slip','Skip asks why (wrong number / no answer / not interested); wrong numbers can be marked lost, and try-later skips are resumable','Build batches from your people: pasted numbers merge with saved contacts (names and status remembered), or pick them from a searchable sheet','Pace control (off / 3 / 8 / 15 s) spaces out WhatsApp opens to protect your account, with a warning on big batches','End of batch: retry skipped contacts, attach a task to the whole batch follow-up, and see last-batch + sent-this-week stats','Arabic covers every new string, as always'];
+export const APP_VERSION='5.1';
+const WHATS_NEW=['Contact picking is fixed and unified: "Add from your people" and the follow-up contact icon now open the same sheet with two sources — your phone contacts (in the app) and your QuickChat people — pick one or many','On the website the phone-book source now says plainly that it needs the Android app, instead of doing nothing','Arabic covers every new string, as always'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}

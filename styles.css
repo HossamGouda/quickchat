@@ -79,7 +79,7 @@ section h2{font-size:15px;margin:0;display:flex;justify-content:space-between;al
 .rnum{font:600 15px var(--mono);font-variant-numeric:tabular-nums}
 .confirm{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--danger)}
 /* Toast stack: typed pills with icon, action, close and a countdown bar. */
-.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:60;width:max-content;max-width:calc(100vw - 32px)}
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:95;width:max-content;max-width:calc(100vw - 32px)}
 .toast{position:relative;display:flex;align-items:center;gap:8px;background:var(--fg);color:var(--bg);padding:10px 12px;border-radius:14px;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;cursor:pointer;overflow:hidden;max-width:100%}
 .toast.show{opacity:1;transform:none}
 .toast-ic{display:flex;flex:none}
@@ -248,3 +248,12 @@ select.txt{appearance:auto}
 .qc-ct[data-on="true"]{outline:2px solid var(--accent);background:var(--accent-soft)}
 .qc-ct-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .qc-ct-row .rnum{font-size:13px}
+
+/* v5.1: unified contact picker (phone book + QuickChat people) */
+.qc-src{padding:2px 4px}
+.qc-src .chip{border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:999px;padding:7px 12px;font:600 13px var(--sans);cursor:pointer}
+.qc-src .chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.qc-ct-note{margin:0;font-size:12px;color:var(--muted)}
+.qc-pick{cursor:pointer}
+.qc-pick[data-on="true"]{outline:2px solid var(--accent);background:var(--accent-soft)}
+.qc-pick-tick{color:var(--accent);font-weight:700}

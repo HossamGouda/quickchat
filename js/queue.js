@@ -8,6 +8,7 @@ import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
 import {setDueVal, setStatus, isOpen} from './followups.js';
 import {tr} from './i18n.js';
+import {pickPeople} from './contacts.js';
 import {retryableSkipped, isoWeekKey, paceMs, SKIP_REASONS} from './qutil.js';
 
 let q=null;
@@ -270,56 +271,14 @@ $('qCur').addEventListener('click',e=>{
   saveRecents();const msg=tr(`Follow-up set for ${n} contact${n===1?'':'s'}: ${dueLow(ds)}`);toast(msg,{type:'ok'});notifyEvent('due',msg,{tab:'fu'});
 });
 
-/* Q0: people picker — multi-select over Recents, appends plain lines to the
-   paste box so everything still flows through extract → merge. */
-let peopleSheet=null,pickSet=new Set();
-function closePeopleSheet(){if(peopleSheet){peopleSheet.remove();peopleSheet=null}pickSet=new Set()}
-function paintPickBtn(){
-  const b=$('qpAdd');if(!b)return;
-  b.textContent=pickSet.size?tr(`Add ${pickSet.size} to list`):tr('Add to list');
-  b.setAttribute('aria-disabled',String(!pickSet.size));
-}
-function renderPickList(query){
-  const el=$('qpList');if(!el)return;
-  const qd=query.replace(/\D/g,''),ql=query.toLowerCase();
-  const list=state.recents.filter(r=>!query||(r.label||'').toLowerCase().includes(ql)||(qd&&r.full.includes(qd))).slice(0,200);
-  el.innerHTML=list.length?list.map(r=>`<div class="qc-ct" data-full="${esc(r.full)}" data-on="${pickSet.has(r.full)}" role="button" tabindex="0">
-    <div class="qc-ct-row"><span class="qc-ct-name">${esc(r.label||'+'+r.full)}</span>${r.status?`<span class="chipst st-${r.status}">${esc(ST_LABEL[r.status])}</span>`:''}</div>
-    ${r.label?`<div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div>`:''}
-  </div>`).join(''):`<p class="qc-ct-empty">${esc(tr('No contacts here yet.'))}</p>`;
-  paintPickBtn();
-}
-function openPeopleSheet(){
-  closePeopleSheet();pickSet=new Set();
-  peopleSheet=document.createElement('div');peopleSheet.className='qc-sheet-back';
-  peopleSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Add from your people'))}">
-    <div class="qc-ct-head"><b>${esc(tr('Add from your people'))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
-    <input id="qpSearch" class="txt" type="search" autocomplete="off" placeholder="${esc(tr('Search your contacts'))}" dir="auto">
-    <div class="qc-ct-list" id="qpList"></div>
-    <button type="button" class="btn primary" id="qpAdd" aria-disabled="true">${tr('Add to list')}</button>
-  </div>`;
-  peopleSheet.addEventListener('click',e=>{
-    if(e.target===peopleSheet||e.target.closest('[data-x]')){closePeopleSheet();return}
-    const row=e.target.closest('[data-full]');
-    if(row){
-      const f=row.dataset.full;
-      if(pickSet.has(f)){pickSet.delete(f);row.setAttribute('data-on','false')}
-      else{pickSet.add(f);row.setAttribute('data-on','true')}
-      paintPickBtn();return;
-    }
-    if(e.target.closest('#qpAdd')){
-      if(!pickSet.size)return;
-      const lines=[...pickSet].map(f=>{const r=state.recents.find(x=>x.full===f);return (r&&r.label?r.label+' ':'')+'+'+f});
-      qText.value=(qText.value?qText.value.replace(/\s+$/,'')+'\n':'')+lines.join('\n');
-      closePeopleSheet();qParse();
-      qText.scrollTop=qText.scrollHeight;
-      toast(tr(`${lines.length} added to the list`));
-    }
-  });
-  document.body.appendChild(peopleSheet);
-  renderPickList('');
-  const s=$('qpSearch');let t;
-  s.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>renderPickList(s.value.trim()),200)});
-  s.focus();
-}
-$('qPick').onclick=()=>openPeopleSheet();
+/* Q0: people picker — unified sheet over the phone book + recents; picks
+   append as plain lines to the paste box so everything still flows through
+   extract → merge. */
+$('qPick').onclick=()=>pickPeople(rows=>{
+  const lines=rows.map(r=>(r.name?r.name+' ':'')+'+'+r.digits);
+  if(!lines.length)return;
+  qText.value=(qText.value?qText.value.replace(/\s+$/,'')+'\n':'')+lines.join('\n');
+  qParse();
+  qText.scrollTop=qText.scrollHeight;
+  toast(tr(`${lines.length} added to the list`));
+});

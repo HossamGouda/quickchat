@@ -132,6 +132,11 @@ const AR={
 'Skipped':'تم التخطي','Skipped: wrong number':'تم التخطي: رقم خاطئ','Mark as lost':'علّمه «لم تتم»','Marked sent':'تم تسجيل الإرسال','Sent ✓':'تم الإرسال ✓',
 'Task (optional)':'المهمة (اختياري)','e.g. Price follow-up':'مثال: متابعة السعر','Pace':'الوتيرة','Off':'إيقاف','3 s':'3 ث','8 s':'8 ث','15 s':'15 ث',
 'no status':'بلا حالة','Queue message sent':'رسالة من القائمة أُرسلت',
+/* v5.1: unified contact picker */
+'Phone contacts':'جهات اتصال الهاتف','QuickChat people':'أشخاص QuickChat','Contact source':'مصدر جهات الاتصال',
+/* v5.1 what's new */
+'Contact picking is fixed and unified: "Add from your people" and the follow-up contact icon now open the same sheet with two sources — your phone contacts (in the app) and your QuickChat people — pick one or many':'تم إصلاح اختيار جهات الاتصال وتوحيده: زرا «أضف من أشخاصك» وأيقونة المتابعة يفتحان الآن نفس النافذة بمصدرين — جهات اتصال هاتفك (في التطبيق) وأشخاص QuickChat — اختر واحدًا أو أكثر',
+'On the website the phone-book source now says plainly that it needs the Android app, instead of doing nothing':'في موقع الويب يوضح مصدر جهات الهاتف الآن بوضوح أنه يحتاج تطبيق أندرويد بدلًا من عدم فعل شيء',
 /* v5.0 what's new */
 'Queue tells the truth now: Open chat marks a contact "opened" and a Sent ✓ tap confirms it — with Undo if you slip':'القائمة صادقة الآن: زر «افتح المحادثة» يعلّم جهة الاتصال «قيد الفتح» وزر «تم الإرسال ✓» يؤكد — مع تراجع إذا أخطأت',
 'Skip asks why (wrong number / no answer / not interested); wrong numbers can be marked lost, and try-later skips are resumable':'التخطي يسأل عن السبب (رقم خاطئ / لا رد / غير مهتم)، والأرقام الخاطئة يمكن تعليمها «لم تتم»، والمتخطّى بسبب «لاحقًا» يمكن استئنافه',
