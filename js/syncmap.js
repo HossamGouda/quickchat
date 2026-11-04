@@ -60,8 +60,9 @@ export function contactFromRow(row,ctx){
 }
 
 /* v3 fields that may not exist yet in the Teable base; sync.js creates them
-   on demand (name -> Teable field type). */
+   on demand (name -> Teable field type). Teable has no 'text' type — the API
+   enum is singleLineText/longText/... and rejects 'text' with a 400. */
 export const EXTRA_CONTACT_FIELDS={
-  LostWhy:'text',Valid:'date',Dnc:'checkbox',Outcome:'text',
-  Seq:'text',Company:'text',LeadSource:'text',Vars:'text',
+  LostWhy:'singleLineText',Valid:'date',Dnc:'checkbox',Outcome:'singleLineText',
+  Seq:'singleLineText',Company:'singleLineText',LeadSource:'singleLineText',Vars:'singleLineText',
 };

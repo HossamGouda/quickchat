@@ -38,7 +38,12 @@ async function tb(method, path, body){
   }
   clearTimeout(timer);
   if(res.status===401||res.status===403)throw new Error('Teable rejected the token. Check the token below.');
-  if(!res.ok)throw new Error('Teable error '+res.status);
+  if(!res.ok){
+    /* Teable returns {message,...}: surface it so a 400 is diagnosable. */
+    let detail='';
+    try{const b=JSON.parse(await res.text());if(b&&b.message)detail=': '+b.message}catch(e){}
+    throw new Error('Teable error '+res.status+detail);
+  }
   const txt=await res.text();
   return txt?JSON.parse(txt):{};
 }
