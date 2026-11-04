@@ -2,8 +2,8 @@
 import {$, store, esc} from './core.js';
 import {tr} from './i18n.js';
 
-export const APP_VERSION='5.4';
-const WHATS_NEW=['The app learns what happened: after you message someone, one tap logs Sent / No reply / Replied / Interested — and offers the smart next step','Follow-up sequences: quote chase on day 3, 7 and 14 with a ready message for each step','Pipeline stages New lead → Contacted → Negotiating, lost deals ask why (price, competitor, timing…), quote validity reminders, a do-not-contact list, message variants {v:Hi|Hello}, and a daily-volume warning','Arabic covers every new string, as always'];
+export const APP_VERSION='5.5';
+const WHATS_NEW=['Delete is now instant with an Undo toast — no more confirmation pop-ups in the way','Duplicate records can be merged from any follow-up card: pick which record wins and notes & history combine automatically','New "Add stale leads" button on the Queue tab pulls in everyone quiet for 14+ days so you can re-engage them','Queue setup warns when a number was already messaged recently ("last messaged 3 d ago")','"Save my contact" QR now shares a full business card — name, company and email included','Arabic covers every new string, as always'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}

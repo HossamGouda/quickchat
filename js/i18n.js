@@ -158,6 +158,12 @@ const AR={
 'The app learns what happened: after you message someone, one tap logs Sent / No reply / Replied / Interested — and offers the smart next step':'التطبيق يتعلم ما حدث: بعد مراسلتك لأي شخص، نقرة واحدة تسجّل «أُرسلت / لا ردّ / ردّ / مهتمّ» — ويقترح الخطوة التالية المناسبة',
 'Follow-up sequences: quote chase on day 3, 7 and 14 with a ready message for each step':'تسلسلات المتابعة: مطاردة العرض في اليوم 3 و7 و14 برسالة جاهزة لكل خطوة',
 'Pipeline stages New lead → Contacted → Negotiating, lost deals ask why (price, competitor, timing…), quote validity reminders, a do-not-contact list, message variants {v:Hi|Hello}, and a daily-volume warning':'مراحل جديدة للمسار: عميل جديد ← تم التواصل ← قيد التفاوض، والصفقات الخاسرة تسأل عن السبب (السعر، منافس، التوقيت…)، وتذكير بانتهاء صلاحية العروض، وقائمة عدم التواصل، ومتغيرات للرسالة {v:Hi|Hello}، وتحذير يومي لحجم المراسلات',
+/* v5.5 what's new */
+'Delete is now instant with an Undo toast — no more confirmation pop-ups in the way':'الحذف الآن فوري مع إمكانية التراجع — لا مزيد من نوافذ التأكيد',
+'Duplicate records can be merged from any follow-up card: pick which record wins and notes & history combine automatically':'السجلات المكررة قابلة للدمج من أي بطاقة متابعة: اختر السجل الفائز وتُجمع الملاحظات والسجل تلقائيًا',
+'New "Add stale leads" button on the Queue tab pulls in everyone quiet for 14+ days so you can re-engage them':'زر جديد «أضف العملاء المتوقفين» في تبويب القائمة يجمع كل من سكتّ 14 يومًا أو أكثر لإعادة التواصل معهم',
+'Queue setup warns when a number was already messaged recently ("last messaged 3 d ago")':'إعداد القائمة يحذرك إذا أُرسلت رسالة للرقم مؤخرًا («آخر رسالة قبل 3 أيام»)',
+'"Save my contact" QR now shares a full business card — name, company and email included':'رمز QR «احفظ بياناتي» يشارك الآن بطاقة أعمال كاملة — الاسم والشركة والبريد الإلكتروني',
 /* v5.1 what's new */
 'Contact picking is fixed and unified: "Add from your people" and the follow-up contact icon now open the same sheet with two sources — your phone contacts (in the app) and your QuickChat people — pick one or many':'تم إصلاح اختيار جهات الاتصال وتوحيده: زرا «أضف من أشخاصك» وأيقونة المتابعة يفتحان الآن نفس النافذة بمصدرين — جهات اتصال هاتفك (في التطبيق) وأشخاص QuickChat — اختر واحدًا أو أكثر',
 'On the website the phone-book source now says plainly that it needs the Android app, instead of doing nothing':'في موقع الويب يوضح مصدر جهات الهاتف الآن بوضوح أنه يحتاج تطبيق أندرويد بدلًا من عدم فعل شيء',
