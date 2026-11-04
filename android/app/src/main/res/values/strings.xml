@@ -4,4 +4,8 @@
     <string name="title_activity_main">QuickChat</string>
     <string name="package_name">com.hossamgouda.quickchat</string>
     <string name="custom_url_scheme">com.hossamgouda.quickchat</string>
+    <string name="short_chat">New chat</string>
+    <string name="short_fu">Follow-ups</string>
+    <string name="short_queue">Start queue</string>
+    <string name="short_qr">My QR</string>
 </resources>

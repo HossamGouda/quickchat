@@ -1,6 +1,7 @@
 /* Unit tests for js/statsutil.js pure helpers (stats tab, v5.5). */
 const { outcomeCounts, responseRate, weeklyCounts, statusCounts,
-  lostReasonCounts, srcCounts, messagedCount } = require('../js/statsutil.js');
+  lostReasonCounts, srcCounts, messagedCount,
+  dueOn, expiringQuotes, newLeads, weekSummary } = require('../js/statsutil.js');
 
 let fail = 0;
 const eq = (label, got, want) => {
@@ -61,6 +62,46 @@ eq('src tally skips records without src', srcCounts([{ src: 'Expo' }, { src: 'Ex
 /* messagedCount */
 eq('messaged = records with any outcome event', messagedCount(recs), 2);
 eq('no recents gives 0', messagedCount([]), 0);
+
+
+/* dueOn */
+eq('due today counts only exact date', dueOn([{due:'2026-11-04'},{due:'2026-11-05'},{},{}], '2026-11-04'), 1);
+
+/* expiringQuotes */
+const expNow = new Date(2026, 10, 4, 12).getTime();
+eq('open quote expiring in 3 days counts', expiringQuotes([
+  {status:'quoted', valid:'2026-11-07'},
+  {status:'quoted', valid:'2026-11-08'},   // 4 days: counts
+  {status:'quoted', valid:'2026-11-09'},   // 5 days: counts
+  {status:'quoted', valid:'2026-11-02'},   // past: no
+  {status:'won', valid:'2026-11-06'},      // closed: no
+  {status:'quoted'},                       // no validity: no
+], expNow), 3);
+
+/* newLeads */
+eq('lead with no outcome counts; messaged one does not', newLeads([
+  {status:'lead', log:[]},
+  {status:'lead', log:[{t:1, e:'outcome', v:'sent'}]},
+  {status:'contacted', log:[]},
+]), 1);
+
+/* weekSummary */
+const wsNow = new Date(2026, 10, 4, 12).getTime(); // W45
+{
+  const s = weekSummary([
+    {log: [
+      {t: wsNow - 2 * 864e5, e: 'outcome', v: 'sent'},
+      {t: wsNow - 1 * 864e5, e: 'outcome', v: 'replied'},
+      {t: wsNow, e: 'outcome', v: 'interested'},
+      {t: wsNow, e: 'status', v: 'won'},
+      {t: wsNow, e: 'status', v: 'lost'},
+    ]},
+    {log: [{t: wsNow - 10 * 864e5, e: 'outcome', v: 'sent'}]},  // last week: ignored
+    {log: [{t: wsNow, e: 'note', v: 'x'}]},                      // non-outcome: ignored
+  ], wsNow);
+  eq('week summary tallies outcomes and status changes', s, {sent: 1, replied: 1, interested: 1, won: 1, lost: 1});
+}
+eq('empty week gives zeros', weekSummary([], wsNow), {sent: 0, replied: 0, interested: 0, won: 0, lost: 0});
 
 console.log(fail ? `FAILURES: ${fail}` : 'ALL STATS TESTS PASSED');
 process.exit(fail ? 1 : 0);

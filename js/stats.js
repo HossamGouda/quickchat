@@ -1,9 +1,10 @@
 /* stats.js — statistics dashboard tab renderer.
    Pure compute helpers live in statsutil.js (unit-tested in tools/stats_test.cjs). */
-import {$, state, esc, ST_LABEL, OUTCOMES, OUT_LBL, LOST_LBL} from './core.js';
+import {$, state, esc, ST_LABEL, OUTCOMES, OUT_LBL, LOST_LBL, todayStr} from './core.js';
 import {tr} from './i18n.js';
 import {outcomeCounts, responseRate, weeklyCounts, statusCounts,
-  lostReasonCounts, srcCounts, messagedCount} from './statsutil.js';
+  lostReasonCounts, srcCounts, messagedCount,
+  dueOn, expiringQuotes, newLeads, weekSummary} from './statsutil.js';
 
 /* ---------- renderer ---------- */
 const TOP_N=5;
@@ -81,3 +82,25 @@ export function renderStats(){
     srcEl.hidden=false;
   } else srcEl.hidden=true;
 }
+
+/* Today card: sits at the top of the Follow-ups tab — due today, expiring
+   quotes, untouched new leads, and a this-week summary. */
+export function renderToday(){
+  const el=$('todayCard');if(!el)return;
+  const recs=state.recents;
+  if(!recs.length){el.hidden=true;el.innerHTML='';return}
+  const today=todayStr();
+  const row=(lbl,n,tab)=>`<button type="button" class="strow todayrow" data-today="${tab}" ${n?'':'disabled'}><span class="stlbl">${esc(tr(lbl))}</span><b>${n}</b></button>`;
+  const ws=weekSummary(recs);
+  const replies=ws.replied+ws.interested;
+  el.innerHTML=`<p class="bk">${esc(tr('Today'))}</p>`+
+    row('Follow-ups due today',dueOn(recs,today),'fu')+
+    row('Quotes expiring within 7 days',expiringQuotes(recs),'fu')+
+    row('New leads not yet messaged',newLeads(recs),'fu')+
+    `<p class="bk" style="margin-top:8px">${esc(tr('This week'))}: <b>${ws.sent}</b> ${esc(tr('Sent'))} · <b>${replies}</b> ${esc(tr('Replies'))} · <b>${ws.won}</b> ${esc(tr('Won'))} · <b>${ws.lost}</b> ${esc(tr('Lost'))}${ws.sent?` — ${esc(tr('Response rate'))} <b>${Math.round(replies/ws.sent*100)}%</b>`:''}</p>`;
+  el.hidden=false;
+}
+if(typeof document!=='undefined')document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-today]');if(!b)return;
+  document.dispatchEvent(new CustomEvent('qc:nav',{detail:b.dataset.today}));
+});

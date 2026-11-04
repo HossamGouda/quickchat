@@ -166,6 +166,9 @@ const AR={
 '"Save my contact" QR now shares a full business card — name, company and email included':'رمز QR «احفظ بياناتي» يشارك الآن بطاقة أعمال كاملة — الاسم والشركة والبريد الإلكتروني',
 'New Stats tab: outcomes, response rate, weekly activity, pipeline, lost reasons and lead sources at a glance':'تبويب إحصائيات جديد: النتائج ونسبة الرد والنشاط الأسبوعي والمسار وأسباب الخسارة ومصادر العملاء في لمحة',
 /* v5.5 Q1-Q3: QR hint, campaign QR, first-run setup */
+'Import contacts (CSV)':'استورد جهات الاتصال (CSV)','This file is empty':'هذا الملف فارغ','CSV needs a "Number" column':'يلزم وجود عمود «Number» في ملف CSV',
+'Saved campaigns':'الحملات المحفوظة','Pick a campaign':'اختر حملة','Pick a campaign first':'اختر حملة أولًا','Load campaign':'تحميل الحملة','Save current as campaign':'احفظ الحالية كحملة','Campaign name':'اسم الحملة','Name the campaign first':'سمِّ الحملة أولًا','Campaign saved':'تم حفظ الحملة','Campaign loaded':'تم تحميل الحملة','Campaign deleted':'حذف الحملة',
+'File library':'مكتبة الملفات','Today':'اليوم','This week':'هذا الأسبوع','Follow-ups due today':'متابعات مستحقة اليوم','Quotes expiring within 7 days':'عروض تنتهي خلال 7 أيام','New leads not yet messaged':'عملاء جدد لم تُراسلهم بعد','Add file':'أضف ملفًا','File added':'تمت إضافة الملف','File removed':'حُذف الملف','File missing':'الملف مفقود','File attached':'أُرفق الملف','File library is full':'مكتبة الملفات ممتلئة (20 ملفًا)','Could not store the file':'تعذر تخزين الملف','Use':'استخدام','Send':'إرسال',
 'Some phones need Google Lens to scan contact codes.':'تحتاج بعض الهواتف إلى عدسة Google لمسح رموز جهات الاتصال.',
 'Campaign QR':'رمز QR للحملة','Pick a template':'اختر قالبًا','Pick a template above':'اختر قالبًا أعلاه','Pick a template first':'اختر قالبًا أولًا',
 'Pick a template above — the QR lets anyone forward your campaign message.':'اختر قالبًا أعلاه — يسمح الرمز لأي شخص بإعادة توجيه رسالة حملتك.',
@@ -232,6 +235,7 @@ const AR_RE=[
  [/^Follow-up set: (.+)$/,(m,a)=>'ضُبطت المتابعة: '+trCore(a)],[/^Follow-up set for (\d+) contacts?: (.+)$/,(m,a,b)=>'ضُبطت المتابعة لـ '+a+' جهة اتصال: '+trCore(b)],
  [/^Marked (\w+)\. Follow-up cleared$/,(m,a)=>'الحالة: '+trCore(a)+'. أُلغيت المتابعة'],[/^Marked (\w+)$/,(m,a)=>'الحالة: '+trCore(a)],
  [/^Fill (.+) first$/,(m,a)=>'املأ '+a+' أولًا'],[/^Copy failed\. Long-press to copy: (.+)$/,(m,a)=>'فشل النسخ. اضغط مطولًا للنسخ: '+a],
+ [/^Imported (\d+) contacts$/,(m,a)=>'تم استيراد '+a+' جهة اتصال'],[/^Imported (\d+) contacts with variables$/,(m,a)=>'تم استيراد '+a+' جهة اتصال مع متغيرات'],
  [/^Imported (\d+) templates? and (\d+) numbers?$/,(m,a,b)=>'تم استيراد '+a+' قالب و'+b+' رقم'],
  [/^Link: (\S+)( \+ message)?$/,(m,a,b)=>'الرابط: '+a+(b?' + رسالة':'')],
  [/^(Too short|Too long)\. (.+) mobile numbers have (\d+) digits after the code\.$/,(m,a,c,n)=>(a==='Too short'?'الرقم قصير':'الرقم طويل')+'. أرقام الجوال في '+trCore(c)+' تتكون من '+n+' أرقام بعد رمز الدولة.'],

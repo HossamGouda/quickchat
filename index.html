@@ -41,6 +41,8 @@
     <div class="row2"><button type="button" class="btn primary" id="nudgeGo" style="flex:1">Back up now</button><button type="button" class="btn" id="nudgeLater" style="flex:1">Later</button></div>
   </div>
   <div class="card notice" id="attach" hidden></div>
+  <div class="card" id="libCard" hidden></div>
+  <input type="file" id="libFile" hidden>
   <div class="card notice" id="setupCard" hidden>
     <p><b>Welcome to QuickChat</b></p>
     <p class="bk">Pick your country and your name — used for the example number, greetings and your contact QR.</p>
@@ -115,6 +117,7 @@
   </div>
 
   <div class="tabpane" id="tab-fu" hidden>
+    <div class="card" id="todayCard" hidden></div>
     <div class="card fuprompt" id="fuPrompt" hidden></div>
     <div class="stats" id="pipe" hidden></div>
     <div class="filters" id="fuFilters" role="group" aria-label="Filter by status"></div>
@@ -151,6 +154,20 @@
         <button type="button" class="btn small" id="qStale">Add stale leads</button>
       </div>
       <p class="note" id="qBig" hidden></p>
+      <div class="field" id="qCampField">
+        <label class="lbl" for="qCamp">Saved campaigns</label>
+        <select id="qCamp" class="txt"></select>
+        <div class="row2">
+          <button type="button" class="btn small" id="qCampLoad" style="flex:1">Load campaign</button>
+          <button type="button" class="btn small" id="qCampDel" style="flex:1">Delete</button>
+          <button type="button" class="btn small" id="qCampSave" style="flex:1">Save current as campaign</button>
+        </div>
+        <div class="row2" id="qCampNameRow" hidden>
+          <input id="qCampName" class="txt" dir="auto" style="flex:1" autocomplete="off" placeholder="Campaign name">
+          <button type="button" class="btn small" id="qCampOk">Save</button>
+          <button type="button" class="btn small" id="qCampCancel">Cancel</button>
+        </div>
+      </div>
       <div class="field">
         <label class="lbl" for="qTpl">Message</label>
         <select id="qTpl" class="txt"></select>
@@ -267,7 +284,9 @@
         <button type="button" class="btn" id="importBtn" style="flex:1">Import backup</button>
       </div>
       <button type="button" class="btn" id="csvBk">Export contacts to Excel (CSV)</button>
+      <button type="button" class="btn" id="csvImpBtn">Import contacts (CSV)</button>
       <input type="file" id="importFile" accept="application/json,text/plain,.json,.txt" hidden>
+      <input type="file" id="importCsvFile" accept=".csv,text/csv" hidden>
     </div>
   </section>
 

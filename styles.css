@@ -281,3 +281,8 @@ select.txt{appearance:auto}
 .stbar{flex:1;background:var(--bg);border-radius:6px;height:14px;overflow:hidden}
 .stbar span{display:block;height:100%;border-radius:6px}
 .strow b{font-size:12px;min-width:24px;text-align:end}
+
+/* v5.5: today card rows */
+.todayrow{width:100%;background:none;border:0;cursor:pointer;text-align:start;font:inherit;padding:5px 0}
+.todayrow[disabled]{cursor:default}
+.todayrow[disabled] b{color:var(--muted)}

@@ -1,8 +1,11 @@
-/* backup.js — backup / restore / CSV export, backup nudges, storage persistence. */
-import {$, store, state, COUNTRIES, STATUSES, ST_LABEL, dl, toast, dueTime, todayStr, notifyEvent} from './core.js';
-import {renderRecents, keep, trimRecents} from './recents.js';
+/* backup.js — backup / restore / CSV export + CSV import with per-contact
+   variables, backup nudges, storage persistence. */
+import {$, store, state, COUNTRIES, STATUSES, ST_LABEL, dl, toast, dueTime, todayStr, notifyEvent, normalize} from './core.js';
+import {renderRecents, keep, trimRecents, saveRecents} from './recents.js';
 import {renderTpls} from './templates.js';
 import {tombstones, addTombstone} from './tombstones.js';
+import {parseCsv, classifyHeaders, mapRow} from './csvutil.js';
+import {tr} from './i18n.js';
 
 function tracked(){return state.recents.filter(keep).length}
 export function renderBk(){
@@ -82,9 +85,10 @@ $('importFile').onchange=async e=>{
       if(!ex.company&&r.company){ex.company=String(r.company).slice(0,120);ch=true}
       if(!ex.src&&r.src){ex.src=String(r.src).slice(0,120);ch=true}
       if(!ex.seq&&r.seq&&r.seq.k==='quote'){ex.seq={k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))};ch=true}
+      if(r.vars&&Object.keys(r.vars||{}).length){ex.vars=cleanVars(Object.assign({},ex.vars,r.vars));ch=true}
       if(!(ex.log&&ex.log.length)&&r.log){ex.log=okLog(r.log);ch=true}
       if(ch){ex._lu=Date.now();nn++}return}
-    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),valid:okDay(r.valid)?r.valid:'',lostWhy:typeof r.lostWhy==='string'?r.lostWhy.slice(0,80):'',dnc:r.dnc?1:0,outcome:typeof r.outcome==='string'?r.outcome.slice(0,20):'',seq:r.seq&&r.seq.k==='quote'?{k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))}:null,company:String(r.company||'').slice(0,120),src:String(r.src||'').slice(0,120),_lu:Date.now()});nn++;
+    state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),valid:okDay(r.valid)?r.valid:'',lostWhy:typeof r.lostWhy==='string'?r.lostWhy.slice(0,80):'',dnc:r.dnc?1:0,outcome:typeof r.outcome==='string'?r.outcome.slice(0,20):'',seq:r.seq&&r.seq.k==='quote'?{k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))}:null,company:String(r.company||'').slice(0,120),src:String(r.src||'').slice(0,120),vars:cleanVars(r.vars),_lu:Date.now()});nn++;
   });
   state.recents.sort((a,b)=>b.at-a.at);trimRecents();
   /* Restore deletion tombstones (keep the newer side if we already have one). */
@@ -96,4 +100,66 @@ $('importFile').onchange=async e=>{
   store.set('qc_tpls',state.tpls);store.set('qc_recents',state.recents);
   renderTpls();renderRecents();renderBk();
   toast(`Imported ${nt} template${nt===1?'':'s'} and ${nn} number${nn===1?'':'s'}`);
+};
+
+/* CSV import: known columns fill record fields; any extra column becomes a
+   per-contact {variable} usable in queue messages. */
+const okDayCsv=v=>/^\d{4}-\d\d-\d\d$/.test(v||'');
+const ST_BY_LABEL=Object.fromEntries(STATUSES.filter(s=>s).map(s=>[ST_LABEL[s].toLowerCase(),s]));
+function cleanVars(o){
+  const out={};
+  Object.entries(o||{}).slice(0,20).forEach(([k,v])=>{
+    const key=k.toLowerCase();
+    if(/^[A-Za-z_؀-ۿ][\w؀-ۿ]*$/.test(key))out[key]=String(v).slice(0,200);
+  });
+  return out;
+}
+function csvStatus(v){
+  v=String(v||'').trim().toLowerCase();
+  if(STATUSES.includes(v))return v;
+  return ST_BY_LABEL[v]||'';
+}
+$('csvImpBtn').onclick=()=>$('importCsvFile').click();
+$('importCsvFile').onchange=async e=>{
+  const file=e.target.files[0];e.target.value='';if(!file)return;
+  const {headers,rows}=parseCsv(await file.text());
+  if(!headers.length){toast(tr('This file is empty'));return}
+  const {known,vars}=classifyHeaders(headers);
+  if(!known['number']){toast(tr('CSV needs a "Number" column'));return}
+  let nn=0;
+  rows.forEach(row=>{
+    const {fields,vars:rv}=mapRow(headers,known,vars,row);
+    const n=normalize(String(fields.full||'').replace(/^\+/,''));
+    if(!n)return;
+    const v=cleanVars(rv);
+    const ex=state.recents.find(x=>x.full===n.full);
+    if(ex){let ch=false;
+      if(!ex.label&&fields.label){ex.label=fields.label.slice(0,120);ch=true}
+      if(!ex.note&&fields.note){ex.note=fields.note.slice(0,500);ch=true}
+      if(!ex.company&&fields.company){ex.company=fields.company.slice(0,120);ch=true}
+      if(!ex.src&&fields.src){ex.src=fields.src.slice(0,120);ch=true}
+      if(!ex.status&&csvStatus(fields.status)){ex.status=csvStatus(fields.status);ch=true}
+      if(!ex.due&&okDayCsv(fields.due)){ex.due=fields.due;ch=true}
+      if(!ex.value&&+fields.value){ex.value=Math.round(+fields.value);ch=true}
+      if(!ex.valid&&okDayCsv(fields.valid)){ex.valid=fields.valid;ch=true}
+      if(!ex.lostWhy&&fields.lostWhy){ex.lostWhy=fields.lostWhy.slice(0,80);ch=true}
+      if(!ex.fuMsg&&fields.fuMsg){ex.fuMsg=fields.fuMsg.slice(0,2000);ch=true}
+      if(Object.keys(v).length){ex.vars=Object.assign({},ex.vars,v);ch=true}
+      if(ch){ex._lu=Date.now();nn++}
+      return;
+    }
+    state.recents.push({full:n.full,code:n.code,local:n.local,country:n.country,at:Date.now(),
+      label:fields.label?fields.label.slice(0,120):'',status:csvStatus(fields.status),
+      due:okDayCsv(fields.due)?fields.due:'',dueTime:/^\d\d:\d\d$/.test(fields.dueTime||'')?fields.dueTime:'',
+      note:fields.note?fields.note.slice(0,500):'',fuMsg:fields.fuMsg?fields.fuMsg.slice(0,2000):'',
+      value:Math.round(+fields.value||0),valid:okDayCsv(fields.valid)?fields.valid:'',
+      lostWhy:fields.lostWhy?fields.lostWhy.slice(0,80):'',dnc:/^(yes|true|1|x)$/i.test(fields.dnc||'')?1:0,
+      company:fields.company?fields.company.slice(0,120):'',src:fields.src?fields.src.slice(0,120):'',
+      log:[],vars:v,_lu:Date.now()});
+    nn++;
+  });
+  state.recents.sort((a,b)=>b.at-a.at);trimRecents();
+  store.set('qc_recents',state.recents);
+  renderRecents();renderBk();
+  toast(vars.length?tr(`Imported ${nn} contacts with variables`) + ' {'+vars.join('}, {')+'}':tr(`Imported ${nn} contacts`));
 };

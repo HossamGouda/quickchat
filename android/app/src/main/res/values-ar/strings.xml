@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="short_chat">محادثة جديدة</string>
+    <string name="short_fu">المتابعات</string>
+    <string name="short_queue">ابدأ القائمة</string>
+    <string name="short_qr">رمز QR</string>
+</resources>

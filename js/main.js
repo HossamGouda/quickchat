@@ -7,7 +7,7 @@ import {renderTpls, showPack} from './templates.js';
 import {renderRecents, loadRecent} from './recents.js';
 import {renderBk, checkStorage} from './backup.js';
 import {renderFuPrompt, startFollowUp, openCardFull} from './followups.js';
-import {renderAttach, loadSharedFile} from './share.js';
+import {renderAttach, loadSharedFile, renderLib} from './share.js';
 import {APP_VERSION, renderWhatsNew} from './version.js';
 import {setTab} from './tabs.js';
 import {renderQueue, initQueue} from './queue.js';
@@ -47,11 +47,20 @@ if(shared||action||pack||fu||sf){try{history.replaceState(null,'',location.pathn
 setTab(location.hash.slice(1));
 renderFuPrompt();
 if(sf){setTab('chat');loadSharedFile()}else loadSharedFile();
+renderLib();
 if(fu){const r=state.recents.find(x=>x.full===fu.replace(/\D/g,''));if(r)startFollowUp(r);else{handleText('+'+fu,'');setTab('chat')}}
 else if(pack){setTab('chat');showPack(pack)}
 else if(shared){setTab('chat');if(!sf||extractNumbers(shared).length)handleText(shared,'share')}
 else if(action==='last'){const r=state.recents[0];if(r){loadRecent(r);toast('Last number loaded. Tap Open chat')}else toast('No recent numbers yet')}
 else if(action==='paste'){numIn.focus();pasteFromClipboard()}
+/* App-shortcut navigation: ?qcnav=<tab> on the web, quickchat://nav/<tab> from Android. */
+const qcnav=qs.get('qcnav');
+if(qcnav){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){};store.set('qc_seen',true);store.set('qc_setup_done',true);setTab(qcnav)}
+const navFromUrl=u=>{const m=/^quickchat:\/\/nav\/(\w+)$/.exec(u||'');return m?m[1]:''};
+if(window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App){
+  Capacitor.Plugins.App.getLaunchUrl().then(r=>{const n=navFromUrl(r&&r.url);if(n)setTab(n)}).catch(()=>{});
+  Capacitor.Plugins.App.addListener('appUrlOpen',e=>{const n=navFromUrl(e.url);if(n)setTab(n)});
+}
 renderWhatsNew();
 setLang(state.lang,true);
 if(!store.get('qc_seen',false)){numIn.value='0512345678';update();store.set('qc_seen',true);hint.innerHTML+=' <span style="color:var(--muted)">(example)</span>'}

@@ -17,7 +17,7 @@ let qFoundList=[],qExtra={};
 const WHY_LBL=Object.fromEntries(SKIP_REASONS);
 export function queueState(){return q}
 /* Called once store.ready resolves: restores an in-progress batch queue. */
-export function initQueue(){q=store.get('qc_queue',null)}
+export function initQueue(){q=store.get('qc_queue',null);renderCampSelect()}
 const NOISE=/\b(mob(ile)?|tel|phone|whats ?app|wa|cell|no|number|contact)\b\.?|جوال|واتساب|هاتف|رقم/gi;
 /* Duplicate-warning window: "messaged X ago" shows for contacts messaged in
    the last 30 days; the setup hint turns warn-colored inside 7 days. */
@@ -81,7 +81,12 @@ function nextPending(from){
 }
 $('qStart').onclick=()=>{
   if(!qFoundList.length)return;
-  const raw=qTplRaw(),missing=customKeys(raw).filter(k=>!qExtra[k]);
+  /* A custom key is satisfied by an entered extra var, or by every queued
+     contact carrying it in their per-contact vars (CSV import). */
+  const raw=qTplRaw(),missing=customKeys(raw).filter(k=>{
+    if(qExtra[k])return false;
+    return !qFoundList.every(n=>{const r=state.recents.find(x=>x.full===n.full);return r&&r.vars&&r.vars[k]!==undefined});
+  });
   if(missing.length){toast(tr('Fill {'+missing.join('}, {')+'} first'));return}
   /* Q0: known numbers inherit their saved name when the paste has none. */
   q={items:qFoundList.map(n=>{
@@ -91,7 +96,13 @@ $('qStart').onclick=()=>{
   lockUntil=0;
   saveQ();renderQueue();
 };
-function qMessage(it){return q.raw?fillTpl(q.raw,Object.assign(autoVars(q.raw),q.extra,{name:it.name||''}),q.items.indexOf(it)):''}
+/* Per-contact variables from CSV import (r.vars) fill {placeholders} for that
+   contact; UI-entered extra vars win over CSV, {name} wins over everything. */
+function qMessage(it){
+  if(!q.raw)return'';
+  const rec=state.recents.find(r=>r.full===it.full);
+  return fillTpl(q.raw,Object.assign(autoVars(q.raw),rec&&rec.vars?rec.vars:{},q.extra,{name:it.name||''}),q.items.indexOf(it));
+}
 
 /* Q5: batch memory — last finished batch + per-ISO-week sent counter. */
 function bumpWeek(){
@@ -354,4 +365,40 @@ $('qStale').onclick=()=>{
   qParse();
   qText.scrollTop=qText.scrollHeight;
   toast(tr(`${lines.length} added to the list`));
+};
+
+/* Saved campaigns: snapshot the queue setup (contact list + message template)
+   under a name, load it back later. Persisted in qc_campaigns. */
+const campaigns=()=>store.get('qc_campaigns',[]);
+function saveCampaigns(c){store.set('qc_campaigns',c);renderCampSelect()}
+export function renderCampSelect(){
+  const sel=$('qCamp'),cur=sel.value,c=campaigns();
+  sel.innerHTML='<option value="">'+esc(tr('Pick a campaign'))+'</option>'+
+    c.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  if(cur&&c.some(x=>x.id===cur))sel.value=cur;
+}
+$('qCampSave').onclick=()=>{$('qCampNameRow').hidden=false;$('qCampName').value='';$('qCampName').focus()};
+$('qCampCancel').onclick=()=>{$('qCampNameRow').hidden=true};
+$('qCampOk').onclick=()=>{
+  const name=$('qCampName').value.trim().slice(0,60);
+  if(!name){toast(tr('Name the campaign first'));return}
+  const c=campaigns();
+  c.push({id:'c'+Date.now(),name,text:qText.value,tpl:$('qTpl').value});
+  saveCampaigns(c);$('qCampNameRow').hidden=true;toast(tr('Campaign saved'));
+};
+$('qCampLoad').onclick=()=>{
+  const x=campaigns().find(v=>v.id===$('qCamp').value);
+  if(!x){toast(tr('Pick a campaign first'));return}
+  qText.value=x.text||'';qParse();
+  const sel=$('qTpl');
+  sel.value=x.tpl&&state.tpls.some(t=>t.id===x.tpl)?x.tpl:'';
+  sel.dispatchEvent(new Event('change'));
+  qText.scrollTop=qText.scrollHeight;
+  toast(tr('Campaign loaded'));
+};
+$('qCampDel').onclick=()=>{
+  const id=$('qCamp').value;
+  if(!id){toast(tr('Pick a campaign first'));return}
+  saveCampaigns(campaigns().filter(x=>x.id!==id));
+  toast(tr('Campaign deleted'));
 };
