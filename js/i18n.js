@@ -165,6 +165,14 @@ const AR={
 'Queue setup warns when a number was already messaged recently ("last messaged 3 d ago")':'إعداد القائمة يحذرك إذا أُرسلت رسالة للرقم مؤخرًا («آخر رسالة قبل 3 أيام»)',
 '"Save my contact" QR now shares a full business card — name, company and email included':'رمز QR «احفظ بياناتي» يشارك الآن بطاقة أعمال كاملة — الاسم والشركة والبريد الإلكتروني',
 'New Stats tab: outcomes, response rate, weekly activity, pipeline, lost reasons and lead sources at a glance':'تبويب إحصائيات جديد: النتائج ونسبة الرد والنشاط الأسبوعي والمسار وأسباب الخسارة ومصادر العملاء في لمحة',
+/* v5.6 what's new */
+'Long-press the app icon: shortcuts straight to New chat, Follow-ups, Queue or My QR':'اضغط مطولًا على أيقونة التطبيق: اختصارات مباشرة لمحادثة جديدة أو المتابعات أو القائمة أو رمز QR',
+'Import contacts from a CSV sheet — any extra column becomes a personal {variable} in your messages, like "Hi {name} from {city}"':'استورد جهات الاتصال من ملف CSV — أي عمود إضافي يصبح متغيرًا شخصيًا في رسائلك مثل «مرحبًا {name} من {city}»',
+'Save a queue setup (list + message) as a named campaign and load it any time':'احفظ إعداد القائمة (جهات + رسالة) كحملة باسم وحمّلها في أي وقت',
+'File library: keep catalogues and price lists in the app and attach them with one tap':'مكتبة الملفات: احتفظ بالكتالوجات وقوائم الأسعار في التطبيق وأرفقها بنقرة واحدة',
+'Today card on Follow-ups: due today, expiring quotes, untouched leads and this week\'s numbers at a glance':'بطاقة «اليوم» في المتابعات: المستحق اليوم والعروض المنتهية والعملاء الجدد وأرقام الأسبوع في لمحة',
+'Campaign QR: turn any template into a QR that opens WhatsApp with the message ready to forward':'رمز QR للحملة: حوّل أي قالب إلى رمز يفتح واتساب برسالة جاهزة لإعادة التوجيه',
+'Cloud sync (Teable) now carries every field — including company, lead source and your CSV variables':'المزامنة السحابية (Teable) تنقل الآن كل الحقول — بما فيها الشركة ومصدر العميل ومتغيرات CSV',
 /* v5.5 Q1-Q3: QR hint, campaign QR, first-run setup */
 'Import contacts (CSV)':'استورد جهات الاتصال (CSV)','This file is empty':'هذا الملف فارغ','CSV needs a "Number" column':'يلزم وجود عمود «Number» في ملف CSV',
 'Saved campaigns':'الحملات المحفوظة','Pick a campaign':'اختر حملة','Pick a campaign first':'اختر حملة أولًا','Load campaign':'تحميل الحملة','Save current as campaign':'احفظ الحالية كحملة','Campaign name':'اسم الحملة','Name the campaign first':'سمِّ الحملة أولًا','Campaign saved':'تم حفظ الحملة','Campaign loaded':'تم تحميل الحملة','Campaign deleted':'حذف الحملة',

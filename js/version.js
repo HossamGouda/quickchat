@@ -2,8 +2,8 @@
 import {$, store, esc} from './core.js';
 import {tr} from './i18n.js';
 
-export const APP_VERSION='5.5';
-const WHATS_NEW=['Delete is now instant with an Undo toast — no more confirmation pop-ups in the way','Duplicate records can be merged from any follow-up card: pick which record wins and notes & history combine automatically','New "Add stale leads" button on the Queue tab pulls in everyone quiet for 14+ days so you can re-engage them','Queue setup warns when a number was already messaged recently ("last messaged 3 d ago")','"Save my contact" QR now shares a full business card — name, company and email included','New Stats tab: outcomes, response rate, weekly activity, pipeline, lost reasons and lead sources at a glance','Arabic covers every new string, as always'];
+export const APP_VERSION='5.6';
+const WHATS_NEW=['Long-press the app icon: shortcuts straight to New chat, Follow-ups, Queue or My QR','Import contacts from a CSV sheet — any extra column becomes a personal {variable} in your messages, like "Hi {name} from {city}"','Save a queue setup (list + message) as a named campaign and load it any time','File library: keep catalogues and price lists in the app and attach them with one tap','Today card on Follow-ups: due today, expiring quotes, untouched leads and this week\'s numbers at a glance','Campaign QR: turn any template into a QR that opens WhatsApp with the message ready to forward','Cloud sync (Teable) now carries every field — including company, lead source and your CSV variables','Arabic covers every new string, as always'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}
