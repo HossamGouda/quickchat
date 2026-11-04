@@ -313,7 +313,7 @@ function saveNewFollowUp(ds){
 
 /* Contact card: status, follow-up date, quote value, note, history */
 const EV_TXT={msg:()=>'Messaged',status:v=>v?'Status: '+ST_LABEL[v]:'Status cleared',due:v=>'Follow-up set for '+fmtDay(v),done:()=>'Follow-up cleared',value:v=>'Quote value: '+sar(v),
-  task:v=>'Task: '+v,time:v=>'Follow-up time: '+v,repeat:v=>'Repeats: '+v};
+  task:v=>'Task: '+v,time:v=>'Follow-up time: '+v,repeat:v=>'Repeats: '+v,queue:v=>'Queue message sent'+(v?' — '+v:'')};
 /* Contact card: pure template builder (renderFuPrompt wires state around it). */
 function cardHtml(r,cal,log,head){
   return `<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>

@@ -125,7 +125,19 @@ const AR={
 'Mute reminders for this contact':'كتم التذكيرات لهذه الجهة','Reminders muted for this contact':'تم كتم التذكيرات لهذه الجهة','Reminders on for this contact':'التذكيرات مفعّلة لهذه الجهة',
 'Call':'اتصال','Copy number':'نسخ الرقم','Number copied':'تم نسخ الرقم','last 7 days':'آخر 7 أيام',
 'Pick date & time…':'اختر التاريخ والوقت…','Snooze until then':'تأجيل حتى ذلك الحين','Pick a future date and time':'اختر تاريخًا ووقتًا مستقبليين',
-'Contacts are only available in the Android app':'جهات الاتصال متاحة فقط في تطبيق أندرويد','Pick a date first':'اختر التاريخ أولًا'
+'Contacts are only available in the Android app':'جهات الاتصال متاحة فقط في تطبيق أندرويد','Pick a date first':'اختر التاريخ أولًا',
+/* v5.0: queue polish */
+'Add from your people':'أضف من أشخاصك','Search your contacts':'ابحث في جهات الاتصال','Add to list':'أضف إلى القائمة',
+'Why skip?':'سبب التخطي؟','Wrong number':'رقم خاطئ','No answer — try later':'لا رد — أعد المحاولة لاحقًا','Not interested':'غير مهتم','Skip without reason':'تخطَّ بدون سبب',
+'Skipped':'تم التخطي','Skipped: wrong number':'تم التخطي: رقم خاطئ','Mark as lost':'علّمه «لم تتم»','Marked sent':'تم تسجيل الإرسال','Sent ✓':'تم الإرسال ✓',
+'Task (optional)':'المهمة (اختياري)','e.g. Price follow-up':'مثال: متابعة السعر','Pace':'الوتيرة','Off':'إيقاف','3 s':'3 ث','8 s':'8 ث','15 s':'15 ث',
+'no status':'بلا حالة','Queue message sent':'رسالة من القائمة أُرسلت',
+/* v5.0 what's new */
+'Queue tells the truth now: Open chat marks a contact "opened" and a Sent ✓ tap confirms it — with Undo if you slip':'القائمة صادقة الآن: زر «افتح المحادثة» يعلّم جهة الاتصال «قيد الفتح» وزر «تم الإرسال ✓» يؤكد — مع تراجع إذا أخطأت',
+'Skip asks why (wrong number / no answer / not interested); wrong numbers can be marked lost, and try-later skips are resumable':'التخطي يسأل عن السبب (رقم خاطئ / لا رد / غير مهتم)، والأرقام الخاطئة يمكن تعليمها «لم تتم»، والمتخطّى بسبب «لاحقًا» يمكن استئنافه',
+'Build batches from your people: pasted numbers merge with saved contacts (names and status remembered), or pick them from a searchable sheet':'ابنِ الدفعات من أشخاصك: الأرقام الملصقة تندمج مع جهاتك المحفوظة (الأسماء والحالات محفوظة)، أو اخترها من قائمة قابلة للبحث',
+'Pace control (off / 3 / 8 / 15 s) spaces out WhatsApp opens to protect your account, with a warning on big batches':'التحكم في الوتيرة (إيقاف / 3 / 8 / 15 ثانية) يباعد بين فتحات واتساب لحماية حسابك، مع تحذير من الدفعات الكبيرة',
+'End of batch: retry skipped contacts, attach a task to the whole batch follow-up, and see last-batch + sent-this-week stats':'نهاية الدفعة: أعد محاولة جهات تم تخطيها، وأرفق مهمة بمتابعة الدفعة كلها، واطلع على إحصاءات آخر دفعة وما أُرسل هذا الأسبوع'
 };
 
 const AR_RE=[
@@ -137,7 +149,16 @@ const AR_RE=[
  [/^(\d+) sent, (\d+) skipped\. Tap a contact below to open it again\.$/,(m,a,b)=>'أُرسل '+a+'، وتم تخطي '+b+'. اضغط جهة اتصال بالأسفل لفتحها مجددًا.'],
  [/^Follow up with the (\d+) sent:$/,(m,a)=>'متابعة من أُرسل إليهم ('+a+'):'],
  [/^(\d+) today or overdue$/,(m,a)=>a+' اليوم أو متأخرة'],[/^(\d+) due$/,(m,a)=>a+' مستحقة'],
- [/^(\d+) numbers? found, (\d+) with a name\.$/,(m,a,b)=>'تم العثور على '+a+' رقم، '+b+' منها باسم.'],
+ [/^(\d+) numbers? found, (\d+) with a name(, (\d+) already known)?\.$/,(m,a,b,k)=>'تم العثور على '+a+' رقم، '+b+' منها باسم'+(k?'، و'+k+' منها معروف لديك':'')+'.'],
+ [/^Open chat \((\d+)\)$/,(m,a)=>'افتح المحادثة ('+a+')'],
+ [/^Last batch: (\d+) sent · (\d+) skipped · (.+)$/,(m,a,b,c)=>'آخر دفعة: أُرسل '+a+'، وتم تخطي '+b+' · '+c],
+ [/^(\d+) sent this week$/,(m,a)=>'أُرسل '+a+' هذا الأسبوع'],
+ [/^Resume (\d+)$/,(m,a)=>'استئناف '+a],
+ [/^Add (\d+) to list$/,(m,a)=>'أضف '+a+' إلى القائمة'],
+ [/^(\d+) added to the list$/,(m,a)=>'تمت إضافة '+a+' إلى القائمة'],
+ [/^In your follow-ups: (.+)$/,(m,a)=>'في المتابعات: '+trCore(a)],
+ [/^Big batch \((\d+)\) — consider splitting it to protect your WhatsApp account\.$/,(m,a)=>'دفعة كبيرة ('+a+') — فكّر في تقسيمها لحماية حسابك على واتساب.'],
+ [/^Finished( · WhatsApp Business)?$/,(m,a)=>'انتهت'+(a?' · واتساب للأعمال':'')],
  [/^(\d+) numbers found\. Tap the one to message:$/,(m,a)=>'تم العثور على '+a+' أرقام. اضغط الرقم الذي تريد مراسلته:'],
  [/^Add all (\d+) to follow-up queue$/,(m,a)=>'أضف الكل ('+a+') إلى قائمة المتابعة'],[/^Start queue \((\d+)\)$/,(m,a)=>'ابدأ القائمة ('+a+')'],
  [/^(\d+) shared templates?$/,(m,a)=>'قوالب مشتركة: '+a],[/^· (\d+) you already have$/,(m,a)=>'· لديك منها '+a],[/^Add (\d+)$/,(m,a)=>'أضف '+a],
@@ -175,7 +196,8 @@ const AR_RE=[
 [/^(\d+) snoozed to tomorrow$/,(m,a)=>'أُجلت '+a+' إلى الغد'],[/^(\d+) marked done$/,(m,a)=>'أُنجزت '+a+' متابعة'],[/^(\d+) follow-ups set$/,(m,a)=>'ضُبطت '+a+' متابعات'],
 [/^Follow-up done — next: (.+)$/,(m,a)=>'أُنجزت المتابعة — التالية: '+a],
 [/^Snoozed until (.+)$/,(m,a)=>'مُؤجل حتى '+a],
-[/^Task: (.*)$/,(m,a)=>'المهمة: '+a],[/^Repeats: (.*)$/,(m,a)=>'التكرار: '+a]
+[/^Task: (.*)$/,(m,a)=>'المهمة: '+a],[/^Repeats: (.*)$/,(m,a)=>'التكرار: '+a],
+[/^Queue message sent( — .*)?$/,(m,a)=>'رسالة من القائمة أُرسلت'+(a||'')]
 ];
 
 function trCore(k){

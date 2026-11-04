@@ -124,11 +124,14 @@
 
   <div class="tabpane" id="tab-queue" hidden>
     <div class="card" id="qSetup">
+      <p class="bk" id="qStats" hidden></p>
       <div class="field">
         <label class="lbl" for="qText">Contacts to follow up</label>
         <textarea id="qText" dir="auto" rows="6" placeholder="Paste a list, one contact per line. Names on the same line are picked up.&#10;Ahmed 0551234567&#10;Eng. Saleh +967 771 234 567"></textarea>
         <div class="hint" id="qFound">Paste numbers from a sheet, a message or an email.</div>
+        <button type="button" class="btn small" id="qPick">Add from your people</button>
       </div>
+      <p class="note" id="qBig" hidden></p>
       <div class="field">
         <label class="lbl" for="qTpl">Message</label>
         <select id="qTpl" class="txt"></select>
@@ -138,11 +141,12 @@
       <button type="button" class="go" id="qStart" aria-disabled="true">Start queue</button>
     </div>
     <div class="card" id="qRun" hidden>
-      <div class="qhead"><span id="qProg"></span><button type="button" class="btn small" id="qEnd">End queue</button></div>
+      <div class="qhead"><span id="qProg"></span><label class="datechip qpace"><span>Pace</span><select id="qPace" aria-label="Pace between opens"><option value="0">Off</option><option value="3000">3 s</option><option value="8000">8 s</option><option value="15000">15 s</option></select></label><button type="button" class="btn small" id="qEnd">End queue</button></div>
       <div class="bar"><i id="qBar"></i></div>
       <div id="qCur" class="stack"></div>
       <div id="qActs" class="stack">
         <button type="button" class="go" id="qOpen">Open chat</button>
+        <button type="button" class="go" id="qSent" hidden>Sent ✓</button>
         <div class="row2"><button type="button" class="btn" id="qPrev" style="flex:1">Back</button><button type="button" class="btn" id="qSkip" style="flex:1">Skip</button></div>
       </div>
     </div>

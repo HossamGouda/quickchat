@@ -182,7 +182,7 @@ select.txt{appearance:auto}
 .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
 .qmsg{white-space:pre-wrap;font-size:14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);overflow-wrap:anywhere}
 .st{width:22px;flex-shrink:0;text-align:center;font-weight:700}
-.st.sent{color:var(--accent)} .st.skipped{color:var(--muted)}
+.st.sent{color:var(--accent)} .st.skipped{color:var(--muted)} .st.opened{color:var(--warn)}
 .item.cur{background:var(--accent-soft)}
 .qrbox{align-items:center}
 .qrbox canvas{width:100%;max-width:320px;height:auto;border-radius:10px;border:1px solid var(--line);background:#fff}
@@ -242,3 +242,9 @@ select.txt{appearance:auto}
 .qc-snooze-custom{display:flex;gap:8px;align-items:center;padding:2px 4px 6px}
 .qc-snooze-custom .txt{flex:1;min-width:0}
 .chk.on{color:var(--muted)}
+
+/* v5.0: queue polish — staged send, skip reasons, pacing, people picker */
+.qpace{padding-block:2px}
+.qc-ct[data-on="true"]{outline:2px solid var(--accent);background:var(--accent-soft)}
+.qc-ct-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.qc-ct-row .rnum{font-size:13px}

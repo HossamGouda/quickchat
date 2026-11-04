@@ -1,8 +1,8 @@
 /* version.js — app version banner ("what's new"). */
 import {$, store} from './core.js';
 
-export const APP_VERSION='4.0';
-const WHATS_NEW=['Follow-ups are for anything now, not just deals: a task line ("get the test certificate from QC"), create one for anyone straight from your phone book, and Done offers a "Next step…" that chains the follow-up to the client','Recurring follow-ups: set "every week" (or 3 days / 2 weeks / monthly) and Done automatically schedules the next one','Due list is grouped — Overdue / Today / Tomorrow / Later this week — with batch Select: snooze many to tomorrow, mark many done, or set one date for all','Snooze any reminder to a custom date and time; mute reminders per contact; undo Done and status changes; call or copy a number from the contact card','Follow-ups done in the last 7 days now sit in the stats strip, and the Android app fires reminders at the exact due time even for future dates','Arabic covers every new string, as always'];
+export const APP_VERSION='5.0';
+const WHATS_NEW=['Queue tells the truth now: Open chat marks a contact "opened" and a Sent ✓ tap confirms it — with Undo if you slip','Skip asks why (wrong number / no answer / not interested); wrong numbers can be marked lost, and try-later skips are resumable','Build batches from your people: pasted numbers merge with saved contacts (names and status remembered), or pick them from a searchable sheet','Pace control (off / 3 / 8 / 15 s) spaces out WhatsApp opens to protect your account, with a warning on big batches','End of batch: retry skipped contacts, attach a task to the whole batch follow-up, and see last-batch + sent-this-week stats','Arabic covers every new string, as always'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}

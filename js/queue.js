@@ -1,13 +1,19 @@
-/* queue.js — batch follow-up queue: paste a list, message one by one. */
-import {$, store, state, COUNTRIES, esc, toast, notifyEvent, normalize,
-  VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow} from './core.js';
+/* queue.js — batch follow-up queue: paste a list, message one by one.
+   v5.0: staged send (pending → opened → sent/skipped) so "sent" is truthful,
+   skip reasons, undo, pacing between opens, people picker + recents merge,
+   resume + batch memory at the finish line. */
+import {$, store, state, COUNTRIES, ST_LABEL, esc, toast, notifyEvent, normalize,
+  VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow, dueWhen, fmtShort, logEv} from './core.js';
 import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
 import {setDueVal, setStatus, isOpen} from './followups.js';
+import {tr} from './i18n.js';
+import {retryableSkipped, isoWeekKey, paceMs, SKIP_REASONS} from './qutil.js';
 
 let q=null;
 const qText=$('qText');
 let qFoundList=[],qExtra={};
+const WHY_LBL=Object.fromEntries(SKIP_REASONS);
 export function queueState(){return q}
 /* Called once store.ready resolves: restores an in-progress batch queue. */
 export function initQueue(){q=store.get('qc_queue',null)}
@@ -25,7 +31,7 @@ function extractWithNames(text){
 }
 export function fillTplSelect(){
   const sel=$('qTpl'),cur=sel.value||store.get('qc_qtpl','');
-  sel.innerHTML='<option value="">No message (just open the chat)</option>'+state.tpls.map(t=>`<option value="${esc(t.id)}">${esc(t.title)}</option>`).join('');
+  sel.innerHTML='<option value="">'+esc(tr('No message (just open the chat)'))+'</option>'+state.tpls.map(t=>`<option value="${esc(t.id)}">${esc(t.title)}</option>`).join('');
   sel.value=state.tpls.some(t=>t.id===cur)?cur:'';
   renderQVars();
 }
@@ -33,7 +39,7 @@ function qTplRaw(){const t=state.tpls.find(x=>x.id===$('qTpl').value);return t?t
 function renderQVars(){
   const v=$('qVars'),keys=customKeys(qTplRaw());
   if(!keys.length){v.hidden=true;v.innerHTML='';return}
-  v.innerHTML='<p>Same value for everyone in this queue:</p>'+keys.map(k=>`<label class="var"><span>{${esc(k)}}</span><input class="txt" dir="auto" data-k="${esc(k)}" value="${esc(qExtra[k]||'')}"></label>`).join('');
+  v.innerHTML='<p>'+esc(tr('Same value for everyone in this queue:'))+'</p>'+keys.map(k=>`<label class="var"><span>{${esc(k)}}</span><input class="txt" dir="auto" data-k="${esc(k)}" value="${esc(qExtra[k]||'')}"></label>`).join('');
   v.hidden=false;
 }
 $('qVars').addEventListener('input',e=>{const k=e.target.dataset.k;if(k)qExtra[k]=e.target.value.trim()});
@@ -42,11 +48,20 @@ $('qTpl').addEventListener('change',()=>{store.set('qc_qtpl',$('qTpl').value);re
 export function qParse(){
   store.set('qc_qdraft',qText.value);
   qFoundList=extractWithNames(qText.value);
-  const named=qFoundList.filter(x=>x.name).length,el=$('qFound');
+  const named=qFoundList.filter(x=>x.name).length,
+    known=qFoundList.filter(x=>state.recents.some(r=>r.full===x.full)).length,
+    el=$('qFound');
   el.className='hint'+(qFoundList.length?' ok':'');
-  el.textContent=qFoundList.length?`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name.`:'Paste numbers from a sheet, a message or an email.';
+  el.textContent=qFoundList.length
+    ?tr(`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name${known?`, ${known} already known`:''}.`)
+    :tr('Paste numbers from a sheet, a message or an email.');
+  const big=$('qBig');
+  if(big){
+    big.hidden=qFoundList.length<=25;
+    big.textContent=tr(`Big batch (${qFoundList.length}) — consider splitting it to protect your WhatsApp account.`);
+  }
   $('qStart').setAttribute('aria-disabled',!qFoundList.length);
-  $('qStart').textContent=qFoundList.length?`Start queue (${qFoundList.length})`:'Start queue';
+  $('qStart').textContent=qFoundList.length?tr(`Start queue (${qFoundList.length})`):tr('Start queue');
 }
 qText.addEventListener('input',qParse);
 function saveQ(){store.set('qc_queue',q)}
@@ -57,57 +72,254 @@ function nextPending(from){
 $('qStart').onclick=()=>{
   if(!qFoundList.length)return;
   const raw=qTplRaw(),missing=customKeys(raw).filter(k=>!qExtra[k]);
-  if(missing.length){toast('Fill {'+missing.join('}, {')+'} first');return}
-  q={items:qFoundList.map(n=>({full:n.full,code:n.code,local:n.local,country:n.country,name:n.name,status:'pending'})),raw,extra:Object.assign({},qExtra),idx:0,arm:false};
+  if(missing.length){toast(tr('Fill {'+missing.join('}, {')+'} first'));return}
+  /* Q0: known numbers inherit their saved name when the paste has none. */
+  q={items:qFoundList.map(n=>{
+    const kr=state.recents.find(x=>x.full===n.full);
+    return {full:n.full,code:n.code,local:n.local,country:n.country,name:n.name||(kr&&kr.label)||'',status:'pending'};
+  }),raw,extra:Object.assign({},qExtra),idx:0,arm:false,pace:paceMs(store.get('qc_qpace',3000))};
+  lockUntil=0;
   saveQ();renderQueue();
 };
 function qMessage(it){return q.raw?fillTpl(q.raw,Object.assign(autoVars(q.raw),q.extra,{name:it.name||''})):''}
+
+/* Q5: batch memory — last finished batch + per-ISO-week sent counter. */
+function bumpWeek(){
+  const wk=isoWeekKey(new Date()),cur=store.get('qc_qweek',null);
+  store.set('qc_qweek',cur&&cur.wk===wk?{wk,n:cur.n+1}:{wk,n:1});
+}
+function renderQStats(){
+  const el=$('qStats');if(!el)return;
+  const last=store.get('qc_qlast',null),wk=store.get('qc_qweek',null),parts=[];
+  if(last)parts.push(tr(`Last batch: ${last.sent} sent · ${last.skipped} skipped · ${fmtShort(last.at)}`));
+  if(wk&&wk.wk===isoWeekKey(new Date())&&wk.n)parts.push(tr(`${wk.n} sent this week`));
+  el.hidden=!parts.length;
+  el.textContent=parts.join(' — ');
+}
+
+/* Q2: pacing — lock Open chat for q.pace ms after each fire. */
+let lockUntil=0,lockTimer=null,lockIv=null;
+function clearLock(){clearTimeout(lockTimer);clearInterval(lockIv);lockUntil=0}
+function paintLock(){
+  const b=$('qOpen');if(!b)return;
+  if(q&&lockUntil>Date.now()){
+    b.textContent=tr(`Open chat (${Math.ceil((lockUntil-Date.now())/1000)})`);
+    b.setAttribute('aria-disabled','true');
+  }else{
+    b.textContent=tr('Open chat');
+    b.setAttribute('aria-disabled','false');
+  }
+}
+function armLock(){
+  clearLock();
+  const p=q?q.pace:0;
+  if(!p){paintLock();return}
+  lockUntil=Date.now()+p;
+  lockIv=setInterval(()=>{if(Date.now()>=lockUntil){clearInterval(lockIv);paintLock()}else paintLock()},250);
+  lockTimer=setTimeout(()=>{lockUntil=0;paintLock()},p+80);
+}
+$('qPace').addEventListener('change',()=>{
+  const v=paceMs(+($('qPace').value)||0);
+  store.set('qc_qpace',v);
+  if(q){q.pace=v;saveQ()}
+});
+
 export function renderQueue(){
   const setup=$('qSetup'),run=$('qRun'),list=$('qList');
-  if(!q){setup.hidden=false;run.hidden=true;list.hidden=true;qText.value=qText.value||store.get('qc_qdraft','');qParse();return}
+  if(!q){
+    setup.hidden=false;run.hidden=true;list.hidden=true;
+    qText.value=qText.value||store.get('qc_qdraft','');
+    const ps=$('qPace');if(ps)ps.value=String(store.get('qc_qpace',3000));
+    renderQStats();
+    qParse();return;
+  }
   setup.hidden=true;run.hidden=false;list.hidden=false;
   const sent=q.items.filter(x=>x.status==='sent').length,sk=q.items.filter(x=>x.status==='skipped').length,tot=q.items.length;
   $('qBar').style.width=Math.round((sent+sk)/tot*100)+'%';
-  const via=state.app==='wb'?' · WhatsApp Business':'';
-  $('qEnd').textContent=q.idx===null?'New queue':'End queue';
+  const via=state.app==='wb'?tr(' · WhatsApp Business'):'';
+  $('qEnd').textContent=q.idx===null?tr('New queue'):tr('End queue');
+  const ps=$('qPace');if(ps)ps.value=String(q.pace||0);
   if(q.idx===null){
-    $('qProg').textContent=`Finished${via}`;
-    $('qCur').innerHTML=`<p style="margin:0">${sent} sent, ${sk} skipped. Tap a contact below to open it again.</p>`+(sent?`<div class="wrapr"><span class="bk">Follow up with the ${sent} sent:</span><button type="button" class="btn small" data-qfu="3">in 3 days</button><button type="button" class="btn small" data-qfu="7">in 1 week</button></div>`:'');
+    $('qProg').textContent=tr(`Finished${via}`);
+    /* Q5: resume covers jumped-away opened items and retryable skips. */
+    const resume=q.items.filter(x=>x.status==='opened'||(x.status==='skipped'&&retryableSkipped(x.why))).length;
+    $('qCur').innerHTML=`<p style="margin:0">${tr(`${sent} sent, ${sk} skipped. Tap a contact below to open it again.`)}</p>`
+      +(sent?`<label class="field"><span class="lbl">${tr('Task (optional)')}</span><input class="txt" id="qTask" dir="auto" autocomplete="off" placeholder="${esc(tr('e.g. Price follow-up'))}"></label>
+        <div class="wrapr"><span class="bk">${tr(`Follow up with the ${sent} sent:`)}</span><button type="button" class="btn small" data-qfu="3">${tr('in 3 days')}</button><button type="button" class="btn small" data-qfu="7">${tr('in 1 week')}</button></div>`:'')
+      +(resume?`<button type="button" class="btn small" data-qretry>${tr(`Resume ${resume}`)}</button>`:'');
     $('qActs').hidden=true;
   }else{
     const it=q.items[q.idx],c=COUNTRIES.find(x=>x.id===it.country);
+    /* Q0: known line — remember who you're refreshing before opening. */
+    const kr=state.recents.find(x=>x.full===it.full);
+    const known=kr&&(kr.status||kr.due)?`<div class="meta">${esc(tr(`In your follow-ups: ${kr.status?ST_LABEL[kr.status]:tr('no status')}${kr.due&&isOpen(kr)?' · '+dueWhen(kr):''}`))}</div>`:'';
     $('qProg').textContent=`${q.idx+1} of ${tot} · ${sent} sent${via}`;
     $('qCur').innerHTML=`<div class="field"><label class="lbl" for="qName">Name</label><input id="qName" class="txt" dir="auto" autocomplete="off" value="${esc(it.name||'')}" placeholder="Client name"></div>
-      <div class="rnum">+${it.code?it.code+' '+it.local:it.full} <span class="meta">${c&&c.id!=='ot'?c.name:''}</span></div>
+      <div class="rnum">+${it.code?it.code+' '+it.local:it.full} <span class="meta">${c&&c.id!=='ot'?tr(c.name):''}</span></div>
+      ${known}
       ${q.raw?`<div class="qmsg" id="qMsg" dir="auto">${esc(qMessage(it))}</div>`:''}`;
+    const opened=it.status==='opened';
+    $('qOpen').hidden=opened;
+    $('qSent').hidden=!opened;
     $('qActs').hidden=false;
+    paintLock();
     $('qName').addEventListener('input',e=>{it.name=e.target.value.trim();saveQ();const m=$('qMsg');if(m)m.textContent=qMessage(it)});
   }
-  list.innerHTML=q.items.map((x,i)=>`<div class="item${i===q.idx?' cur':''}"><span class="st ${x.status}">${x.status==='sent'?'✓':x.status==='skipped'?'–':i+1}</span><button class="main" data-qi="${i}">${x.name?`<div class="lab" dir="auto">${esc(x.name)}</div>`:''}<div class="rnum">+${x.code?x.code+' '+x.local:x.full}</div></button></div>`).join('');
+  list.innerHTML=q.items.map((x,i)=>{
+    const tag=x.status==='skipped'&&x.why?` <small>(${esc(tr(WHY_LBL[x.why]||x.why))})</small>`:'';
+    return `<div class="item${i===q.idx?' cur':''}"><span class="st ${x.status==='pending'?'':x.status}">${x.status==='sent'?'✓':x.status==='skipped'?'–':x.status==='opened'?'…':i+1}</span><button class="main" data-qi="${i}">${x.name?`<div class="lab" dir="auto">${esc(x.name)}</div>`:''}<div class="rnum">+${x.code?x.code+' '+x.local:x.full}${tag}</div></button></div>`;
+  }).join('');
 }
 $('qList').addEventListener('click',e=>{const b=e.target.closest('[data-qi]');if(!b||!q)return;q.idx=+b.dataset.qi;saveQ();renderQueue();window.scrollTo({top:0,behavior:'smooth'})});
+
+/* Q1: Open chat stages the item (pending → opened) and opens WhatsApp.
+   Sent/skipped rows: reopen only — no state rewrite, no Recent re-push. */
 $('qOpen').onclick=()=>{
   if(!q||q.idx===null)return;
+  if(Date.now()<lockUntil)return;
   const it=q.items[q.idx],msg=qMessage(it),left=msg.match(VAR_RE);
-  if(left){toast(left.includes('{name}')?'Enter the name first':'Fill '+[...new Set(left)].join(', ')+' first');const n=$('qName');if(n)n.focus();return}
+  if(left){toast(tr(left.includes('{name}')?'Enter the name first':'Fill '+[...new Set(left)].join(', ')+' first'));const n=$('qName');if(n)n.focus();return}
+  if(it.status==='pending'){it.status='opened';saveQ();renderQueue()}
+  armLock();
+  openChat(buildLink(it.full,msg),it.full);
+};
+/* Q1/Q4: confirming sent — advance, weekly counter, history, undo. */
+$('qSent').onclick=()=>{
+  if(!q||q.idx===null)return;
+  const it=q.items[q.idx],prevIdx=q.idx;
+  if(it.status!=='opened')return;
   it.status='sent';it.at=Date.now();
   pushRecent({full:it.full,code:it.code,local:it.local,country:it.country,label:it.name});
-  const link=buildLink(it.full,msg);
-  q.idx=nextPending(q.idx);saveQ();renderQueue();
-  openChat(link,it.full);
+  const r=state.recents.find(x=>x.full===it.full);
+  if(r)logEv(r,'queue',it.name||'');
+  bumpWeek();
+  q.idx=nextPending(q.idx);
+  if(q.idx===null)store.set('qc_qlast',{sent:q.items.filter(x=>x.status==='sent').length,skipped:q.items.filter(x=>x.status==='skipped').length,at:Date.now()});
+  saveQ();renderQueue();
+  toast(tr('Marked sent'),{type:'ok',dur:6000,action:{label:tr('Undo'),fn:()=>{
+    if(!q)return;
+    const x=q.items.find(y=>y.full===it.full);
+    if(x&&x.status==='sent'){x.status='opened';q.idx=prevIdx;saveQ();renderQueue()}
+  }}});
 };
-$('qSkip').onclick=()=>{if(!q||q.idx===null)return;const it=q.items[q.idx];if(it.status==='pending')it.status='skipped';q.idx=nextPending(q.idx);saveQ();renderQueue()};
+/* Q3: skip always asks why; 'wrong' offers to mark the Recent lost. */
+let whySheet=null;
+function closeWhySheet(){if(whySheet){whySheet.remove();whySheet=null}}
+function openWhySheet(cb){
+  closeWhySheet();
+  whySheet=document.createElement('div');whySheet.className='qc-sheet-back';
+  whySheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Why skip?'))}">
+    <div class="qc-ct-head"><b>${esc(tr('Why skip?'))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
+    ${SKIP_REASONS.map(([k,l])=>`<button type="button" class="qc-sheet-item" data-why="${k}">${esc(tr(l))}</button>`).join('')}
+    <button type="button" class="qc-sheet-item cancel" data-why="">${esc(tr('Skip without reason'))}</button>
+  </div>`;
+  whySheet.addEventListener('click',e=>{
+    if(e.target===whySheet||e.target.closest('[data-x]')){closeWhySheet();return}
+    const b=e.target.closest('[data-why]');if(!b)return;
+    closeWhySheet();if(cb)cb(b.dataset.why);
+  });
+  document.body.appendChild(whySheet);
+}
+$('qSkip').onclick=()=>{
+  if(!q||q.idx===null)return;
+  const it=q.items[q.idx];
+  if(it.status==='sent')return;
+  openWhySheet(why=>{
+    const prevIdx=q.idx,prevStatus=it.status;
+    it.why=why;it.status='skipped';
+    q.idx=nextPending(q.idx);saveQ();renderQueue();
+    if(why==='wrong'){
+      const r=state.recents.find(x=>x.full===it.full);
+      toast(tr('Skipped: wrong number'),{type:'info',dur:6000,action:r?{label:tr('Mark as lost'),fn:()=>{
+        if(r.status!=='lost'){setStatus(r,'lost');saveRecents()}
+      }}:undefined});
+    }else{
+      toast(tr('Skipped'),{type:'info',dur:6000,action:{label:tr('Undo'),fn:()=>{
+        if(!q)return;
+        const x=q.items.find(y=>y.full===it.full);
+        if(x&&x.status==='skipped'){x.status=prevStatus;x.why=prevStatus==='skipped'?x.why:'';q.idx=prevIdx;saveQ();renderQueue()}
+      }}});
+    }
+  });
+};
 $('qPrev').onclick=()=>{if(!q)return;q.idx=Math.max(0,(q.idx===null?q.items.length:q.idx)-1);saveQ();renderQueue()};
 let endTimer;
 $('qEnd').onclick=()=>{
   if(!q)return;
-  if(q.idx!==null&&!q.arm){q.arm=true;$('qEnd').textContent='Tap again to end';$('qEnd').classList.add('danger');clearTimeout(endTimer);endTimer=setTimeout(()=>{if(q){q.arm=false;$('qEnd').classList.remove('danger');renderQueue()}},3000);return}
+  if(q.idx!==null&&!q.arm){q.arm=true;$('qEnd').textContent=tr('Tap again to end');$('qEnd').classList.add('danger');clearTimeout(endTimer);endTimer=setTimeout(()=>{if(q){q.arm=false;$('qEnd').classList.remove('danger');renderQueue()}},3000);return}
   clearTimeout(endTimer);$('qEnd').classList.remove('danger');
+  clearLock();
   q=null;saveQ();qText.value='';qParse();renderQueue();
 };
-/* Set a follow-up date for everyone already messaged in this queue */
+/* Finish-line actions: batch follow-up (Q5, with optional task text) and
+   resume of opened + retryable-skipped items. */
 $('qCur').addEventListener('click',e=>{
-  const b=e.target.closest('[data-qfu]');if(!b||!q)return;const ds=todayStr(+b.dataset.qfu);let n=0;
-  q.items.filter(i=>i.status==='sent').forEach(i=>{const r=state.recents.find(x=>x.full===i.full);if(r){setDueVal(r,ds);if(!isOpen(r)||!r.status)setStatus(r,'waiting');n++}});
-  saveRecents();const msg='Follow-up set for '+n+' contact'+(n===1?'':'s')+': '+dueLow(ds);toast(msg,{type:'ok'});notifyEvent('due',msg,{tab:'fu'});
+  if(!q)return;
+  const rb=e.target.closest('[data-qretry]');
+  if(rb){
+    q.items.forEach(x=>{if(x.status==='opened'||(x.status==='skipped'&&retryableSkipped(x.why))){x.status='pending';delete x.why}});
+    q.idx=q.items.findIndex(x=>x.status==='pending');
+    saveQ();renderQueue();return;
+  }
+  const b=e.target.closest('[data-qfu]');if(!b)return;
+  const ds=todayStr(+b.dataset.qfu),taskEl=$('qTask'),task=taskEl?taskEl.value.trim().slice(0,140):'';let n=0;
+  q.items.filter(i=>i.status==='sent').forEach(i=>{const r=state.recents.find(x=>x.full===i.full);if(r){
+    setDueVal(r,ds);
+    if(task){r.task=task;logEv(r,'task',task)}
+    if(!isOpen(r)||!r.status)setStatus(r,'waiting');n++}});
+  saveRecents();const msg=tr(`Follow-up set for ${n} contact${n===1?'':'s'}: ${dueLow(ds)}`);toast(msg,{type:'ok'});notifyEvent('due',msg,{tab:'fu'});
 });
+
+/* Q0: people picker — multi-select over Recents, appends plain lines to the
+   paste box so everything still flows through extract → merge. */
+let peopleSheet=null,pickSet=new Set();
+function closePeopleSheet(){if(peopleSheet){peopleSheet.remove();peopleSheet=null}pickSet=new Set()}
+function paintPickBtn(){
+  const b=$('qpAdd');if(!b)return;
+  b.textContent=pickSet.size?tr(`Add ${pickSet.size} to list`):tr('Add to list');
+  b.setAttribute('aria-disabled',String(!pickSet.size));
+}
+function renderPickList(query){
+  const el=$('qpList');if(!el)return;
+  const qd=query.replace(/\D/g,''),ql=query.toLowerCase();
+  const list=state.recents.filter(r=>!query||(r.label||'').toLowerCase().includes(ql)||(qd&&r.full.includes(qd))).slice(0,200);
+  el.innerHTML=list.length?list.map(r=>`<div class="qc-ct" data-full="${esc(r.full)}" data-on="${pickSet.has(r.full)}" role="button" tabindex="0">
+    <div class="qc-ct-row"><span class="qc-ct-name">${esc(r.label||'+'+r.full)}</span>${r.status?`<span class="chipst st-${r.status}">${esc(ST_LABEL[r.status])}</span>`:''}</div>
+    ${r.label?`<div class="rnum">+${r.code?r.code+' '+r.local:r.full}</div>`:''}
+  </div>`).join(''):`<p class="qc-ct-empty">${esc(tr('No contacts here yet.'))}</p>`;
+  paintPickBtn();
+}
+function openPeopleSheet(){
+  closePeopleSheet();pickSet=new Set();
+  peopleSheet=document.createElement('div');peopleSheet.className='qc-sheet-back';
+  peopleSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Add from your people'))}">
+    <div class="qc-ct-head"><b>${esc(tr('Add from your people'))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
+    <input id="qpSearch" class="txt" type="search" autocomplete="off" placeholder="${esc(tr('Search your contacts'))}" dir="auto">
+    <div class="qc-ct-list" id="qpList"></div>
+    <button type="button" class="btn primary" id="qpAdd" aria-disabled="true">${tr('Add to list')}</button>
+  </div>`;
+  peopleSheet.addEventListener('click',e=>{
+    if(e.target===peopleSheet||e.target.closest('[data-x]')){closePeopleSheet();return}
+    const row=e.target.closest('[data-full]');
+    if(row){
+      const f=row.dataset.full;
+      if(pickSet.has(f)){pickSet.delete(f);row.setAttribute('data-on','false')}
+      else{pickSet.add(f);row.setAttribute('data-on','true')}
+      paintPickBtn();return;
+    }
+    if(e.target.closest('#qpAdd')){
+      if(!pickSet.size)return;
+      const lines=[...pickSet].map(f=>{const r=state.recents.find(x=>x.full===f);return (r&&r.label?r.label+' ':'')+'+'+f});
+      qText.value=(qText.value?qText.value.replace(/\s+$/,'')+'\n':'')+lines.join('\n');
+      closePeopleSheet();qParse();
+      qText.scrollTop=qText.scrollHeight;
+      toast(tr(`${lines.length} added to the list`));
+    }
+  });
+  document.body.appendChild(peopleSheet);
+  renderPickList('');
+  const s=$('qpSearch');let t;
+  s.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>renderPickList(s.value.trim()),200)});
+  s.focus();
+}
+$('qPick').onclick=()=>openPeopleSheet();
