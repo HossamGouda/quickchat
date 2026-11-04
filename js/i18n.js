@@ -3,7 +3,7 @@
 import {state, setTranslator} from './core.js';
 
 const AR={
-'(example)':'(مثال)','+ New':'+ جديد','+ Status':'+ الحالة','1 week':'أسبوع','3 days':'3 أيام','in 1 week':'بعد أسبوع','in 3 days':'بعد 3 أيام',
+'(example)':'(مثال)','+ New':'+ جديد','+ Status':'+ الحالة','1 week':'أسبوع','3 days':'3 أيام','2 weeks':'أسبوعان','in 1 week':'بعد أسبوع','in 3 days':'بعد 3 أيام',
 'Active':'النشطة','All':'الكل','History':'السجل',
 'Settings':'الإعدادات','Cloud sync (Teable)':'المزامنة السحابية (Teable)','Reminders':'التذكيرات','Privacy':'الخصوصية','About':'عن التطبيق',
 'Notifications':'الإشعارات','Clear all':'مسح الكل','No notifications yet':'لا إشعارات بعد',
@@ -169,10 +169,11 @@ const AR={
 'End of batch: retry skipped contacts, attach a task to the whole batch follow-up, and see last-batch + sent-this-week stats':'نهاية الدفعة: أعد محاولة جهات تم تخطيها، وأرفق مهمة بمتابعة الدفعة كلها، واطلع على إحصاءات آخر دفعة وما أُرسل هذا الأسبوع',
 /* v5.5-quick */
 'WhatsApp chat':'محادثة واتساب','Save my contact':'احفظ رقمي','QR type':'نوع الرمز',
-'Your name (optional)':'اسمك (اختياري)','Company (optional)':'الشركة (اختياري)',
-'e.g. Hossam Gouda':'مثال: حسام جودة','e.g. Gouda Trading':'مثال: شركة جودة للتجارة',
+'Your name (optional)':'اسمك (اختياري)','Company (optional)':'الشركة (اختياري)','Email (optional)':'البريد الإلكتروني (اختياري)',
+'e.g. Hossam Gouda':'مثال: حسام جودة','e.g. Gouda Trading':'مثال: شركة جودة للتجارة','e.g. name@company.com':'مثال: name@company.com',
 'Clients scan the code and save your number as a contact.':'يمسح العميل الرمز فيحفظ رقمك كجهة اتصال.',
-'QR code to save my contact':'رمز QR لحفظ رقمي'
+'QR code to save my contact':'رمز QR لحفظ رقمي',
+'Company':'الشركة','Lead source':'مصدر العميل','e.g. WhatsApp ad, referral':'مثال: إعلان واتساب، ترشيح'
 };
 
 const AR_RE=[

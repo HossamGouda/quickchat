@@ -3,21 +3,21 @@
 import {$, store, normalize, toast} from './core.js';
 import {tr} from './i18n.js';
 
-const qrNum=$('qrNum'),qrMsg=$('qrMsg'),qrCap=$('qrCap'),qrVn=$('qrVn'),qrOrg=$('qrOrg');
+const qrNum=$('qrNum'),qrMsg=$('qrMsg'),qrCap=$('qrCap'),qrVn=$('qrVn'),qrOrg=$('qrOrg'),qrMail=$('qrMail');
 let qrLink=null,qrKind='chat';
 /* vCard text values escape ,\ ; and newlines per RFC 2426. */
 const escV=s=>s.replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
 /* Called once store.ready resolves: restores saved QR fields into the inputs. */
 export function initQR(){
-  const s=store.get('qc_qr',{num:'',msg:"Hello, I'd like a quotation.",cap:'Scan to chat on WhatsApp',vn:'',org:''});
-  qrNum.value=s.num;qrMsg.value=s.msg;qrCap.value=s.cap;qrVn.value=s.vn||'';qrOrg.value=s.org||'';
+  const s=store.get('qc_qr',{num:'',msg:"Hello, I'd like a quotation.",cap:'Scan to chat on WhatsApp',vn:'',org:'',mail:''});
+  qrNum.value=s.num;qrMsg.value=s.msg;qrCap.value=s.cap;qrVn.value=s.vn||'';qrOrg.value=s.org||'';qrMail.value=s.mail||'';
   qrKind=s.kind==='vcard'?'vcard':'chat';
   paintKind();
 }
 function paintKind(){
   document.querySelectorAll('[data-qrkind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.qrkind===qrKind)));
   const vc=qrKind==='vcard';
-  $('qrMsgField').hidden=vc;$('qrVnField').hidden=!vc;$('qrOrgField').hidden=!vc;
+  $('qrMsgField').hidden=vc;$('qrVnField').hidden=!vc;$('qrOrgField').hidden=!vc;$('qrMailField').hidden=!vc;
   qrCap.placeholder=tr(vc?'Save my contact':'Scan to chat on WhatsApp');
   $('qrCopy').textContent=tr(vc?'Copy number':'Copy link');
   $('qrCanvas').setAttribute('aria-label',tr(vc?'QR code to save my contact':'QR code for your WhatsApp chat link'));
@@ -28,7 +28,7 @@ $('qrKinds').addEventListener('click',e=>{
 });
 export function drawQR(){
   const cv=$('qrCanvas'),x=cv.getContext('2d'),W=cv.width,H=cv.height;
-  store.set('qc_qr',{kind:qrKind,num:qrNum.value,msg:qrMsg.value,cap:qrCap.value,vn:qrVn.value,org:qrOrg.value});
+  store.set('qc_qr',{kind:qrKind,num:qrNum.value,msg:qrMsg.value,cap:qrCap.value,vn:qrVn.value,org:qrOrg.value,mail:qrMail.value});
   x.fillStyle='#ffffff';x.fillRect(0,0,W,H);x.textAlign='center';
   const raw=qrNum.value.trim(),n=raw?normalize(raw):null;
   const h=$('qrHint');
@@ -40,10 +40,11 @@ export function drawQR(){
     data=qrLink='https://wa.me/'+n.full+(m?'?text='+encodeURIComponent(m):'');
     label='Link: wa.me/'+n.full+(m?' + message':'');
   }else{
-    const vn=qrVn.value.trim().slice(0,60),org=qrOrg.value.trim().slice(0,60);
+    const vn=qrVn.value.trim().slice(0,60),org=qrOrg.value.trim().slice(0,60),mail=qrMail.value.trim().slice(0,80);
     let vc='BEGIN:VCARD\nVERSION:3.0\n';
     if(vn)vc+='FN:'+escV(vn)+'\nN:;'+escV(vn)+';;;\n';
     if(org)vc+='ORG:'+escV(org)+'\n';
+    if(mail&&mail.includes('@'))vc+='EMAIL;TYPE=INTERNET:'+escV(mail)+'\n';
     vc+='TEL;TYPE=CELL,VOICE:+'+n.full+'\nEND:VCARD';
     data=vc;qrLink=null;
     label='vCard: '+(vn?vn:'')+(vn&&org?' · ':'')+(org?org:'')+(vn||org?' — ':'')+'+'+(n.code?n.code+' '+n.local:n.full);
@@ -61,7 +62,7 @@ export function drawQR(){
   x.direction='ltr';x.fillStyle='#12704a';x.font='600 30px "IBM Plex Mono", ui-monospace, monospace';
   x.fillText('+'+(n.code?n.code+' '+n.local:n.full),W/2,cap?ty+48:ty,W-60);
 }
-[qrNum,qrMsg,qrCap,qrVn,qrOrg].forEach(el=>el.addEventListener('input',drawQR));
+[qrNum,qrMsg,qrCap,qrVn,qrOrg,qrMail].forEach(el=>el.addEventListener('input',drawQR));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(!$('tab-qr').hidden)drawQR()});
 $('qrSave').onclick=()=>{
   if(!qrNum.value.trim()){toast('Enter your number first');qrNum.focus();return}

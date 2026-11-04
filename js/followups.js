@@ -234,7 +234,7 @@ function renderActiveView(all,due,up){
 function renderFilterView(f){
   const s=$('fltSearch').value.trim().toLowerCase(),sd=s.replace(/\D/g,'');
   let list=state.recents.filter(r=>f==='all'||r.status===f);
-  if(s)list=list.filter(r=>(r.label||'').toLowerCase().includes(s)||(r.note||'').toLowerCase().includes(s)||(r.task||'').toLowerCase().includes(s)||(sd&&r.full.includes(sd)));
+  if(s)list=list.filter(r=>(r.label||'').toLowerCase().includes(s)||(r.note||'').toLowerCase().includes(s)||(r.task||'').toLowerCase().includes(s)||(r.company||'').toLowerCase().includes(s)||(r.src||'').toLowerCase().includes(s)||(sd&&r.full.includes(sd)));
   list.sort((a,b)=>b.at-a.at);
   const sum=list.reduce((a,r)=>a+(+r.value||0),0);
   $('fltTitle').textContent=F_LABEL[f]+' ('+list.length+')'+(sum?' · '+sar(sum):'');
@@ -347,6 +347,8 @@ function cardHtml(r,cal,log,head){
     <div class="numrow-card"><span class="rnum">+${r.code?r.code+' '+r.local:r.full}</span>
       <a class="btn small" href="tel:+${r.full}" aria-label="${esc(tr('Call'))}">${tr('Call')}</a>
       <button type="button" class="btn small" data-x="copynum">${tr('Copy number')}</button></div>
+    <div class="two"><label class="field"><span class="lbl">${tr('Company')}</span><input class="txt" id="fpCo" dir="auto" autocomplete="organization" placeholder="${esc(tr('e.g. Gouda Trading'))}" value="${esc(r.company||'')}"></label>
+      <label class="field"><span class="lbl">${tr('Lead source')}</span><input class="txt" id="fpSrc" dir="auto" autocomplete="off" placeholder="${esc(tr('e.g. WhatsApp ad, referral'))}" value="${esc(r.src||'')}"></label></div>
     <div class="wrapr"><span class="bk">Status</span>${['lead','contacted','quoted','waiting','negotiating','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
     ${r.status==='lost'&&r.lostWhy?`<div class="wrapr"><span class="bk">${esc(tr('Lost reason'))}</span><b>${esc(tr(LOST_LBL[r.lostWhy]||r.lostWhy))}</b></div>`:''}
     <div class="wrapr"><span class="bk">Follow-up date</span>${r.due&&isOpen(r)?`<b class="due">${dueWhen(r)}</b><button type="button" class="btn small danger" data-x="clear">Remove</button>`:''}</div>
@@ -386,6 +388,9 @@ function saveCardFields(r){
   const val=Math.round(parseFloat(String(v.value).replace(/[^\d.]/g,''))||0);
   if(val!==(+r.value||0)){r.value=val;if(val)logEv(r,'value',val)}
   r.note=no.value.trim().slice(0,500);
+  const co=$('fpCo'),src=$('fpSrc');
+  if(co)r.company=co.value.trim().slice(0,120);
+  if(src)r.src=src.value.trim().slice(0,120);
   const tm=$('fpTime'),fm=$('fpMsg'),tk=$('fpTask');
   r._lu=Date.now();
   if(tm&&/^\d\d:\d\d$/.test(tm.value))r.dueTime=tm.value;

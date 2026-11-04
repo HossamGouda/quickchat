@@ -15,7 +15,7 @@ function deleteRecent(f){
   if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
 }
 
-export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg||r.dnc}
+export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg||r.dnc||r.company||r.src}
 export function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
 
 export function addRecent(){
@@ -60,7 +60,7 @@ export function renderRecents(){
     ?`<span class="confirm">Remove numbers without a name or follow-up? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
     :(hasUnl?`<button class="btn small" data-act="clearall">Clear unnamed</button>`:'');
   const q=sIn.hidden?'':sIn.value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
-  const list=state.recents.filter(r=>!q||(r.label||'').toLowerCase().includes(q)||(qd&&r.full.includes(qd))||(ST_LABEL[r.status]||'').toLowerCase()===q);
+  const list=state.recents.filter(r=>!q||(r.label||'').toLowerCase().includes(q)||(r.company||'').toLowerCase().includes(q)||(qd&&r.full.includes(qd))||(ST_LABEL[r.status]||'').toLowerCase()===q);
   if(!list.length){el.innerHTML='<div class="empty">No numbers match “'+esc(q)+'”.</div>';return}
   el.innerHTML=list.map(r=>{
     const c=COUNTRIES.find(x=>x.id===r.country),f=r.full;
