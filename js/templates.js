@@ -2,7 +2,8 @@
 import {$ ,store, state, esc, VAR_RE, autoVars, fillTpl, b64uEnc, b64uDec, toast} from './core.js';
 import {nameFromLabel, msgIn, update} from './dialer.js';
 import {renderBk} from './backup.js';
-import {addTombstone} from './tombstones.js';
+import {addTombstone, removeTombstone} from './tombstones.js';
+import {tr} from './i18n.js';
 
 export function useTemplate(t){
   const auto=autoVars(t.body);
@@ -41,9 +42,7 @@ export function renderTpls(){
   const sorted=state.tpls.filter(t=>t.pinned).concat(state.tpls.filter(t=>!t.pinned));
   sorted.forEach(t=>{
     if(state.editing===t.id){html+=editor(t);return}
-    const acts=state.confirmDel===t.id
-      ?`<span class="confirm">Delete? <button class="btn small" data-act="nodel">No</button><button class="btn small danger solid" data-act="yesdel" data-id="${t.id}">Yes</button></span>`
-      :`<button class="btn small pin" data-act="pin" data-id="${t.id}" aria-pressed="${!!t.pinned}" aria-label="${t.pinned?'Unpin':'Pin to top'}">${t.pinned?'★':'☆'}</button><button class="btn small" data-act="edit" data-id="${t.id}">Edit</button><button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>`;
+    const acts=`<button class="btn small pin" data-act="pin" data-id="${t.id}" aria-pressed="${!!t.pinned}" aria-label="${t.pinned?'Unpin':'Pin to top'}">${t.pinned?'★':'☆'}</button><button class="btn small" data-act="edit" data-id="${t.id}">Edit</button><button class="btn small danger" data-act="del" data-id="${t.id}">Delete</button>`;
     html+=`<div class="item"><button class="main" data-act="use" data-id="${t.id}"><div class="t" dir="auto">${esc(t.title)}</div><div class="b" dir="auto">${esc(t.body)}</div></button><div class="acts">${acts}</div></div>`;
   });
   el.innerHTML=html;
@@ -54,10 +53,27 @@ $('tpls').addEventListener('click',e=>{
   const id=b.dataset.id,act=b.dataset.act;
   if(act==='use'){const t=state.tpls.find(x=>x.id===id);useTemplate(t);toast(state.pending.keys.length?'Fill in the highlighted fields':'Template added to message');$('msg').scrollIntoView({behavior:'smooth',block:'center'});return}
   if(act==='pin'){state.tpls=state.tpls.map(x=>x.id===id?Object.assign({},x,{pinned:!x.pinned,_lu:Date.now()}):x);store.set('qc_tpls',state.tpls)}
-  if(act==='edit'){state.editing=id;state.confirmDel=null}
-  if(act==='del'){state.confirmDel=id}
-  if(act==='nodel'){state.confirmDel=null}
-  if(act==='yesdel'){addTombstone('t',id);if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));state.tpls=state.tpls.filter(x=>x.id!==id);state.confirmDel=null;store.set('qc_tpls',state.tpls);renderBk();toast('Template deleted')}
+  if(act==='edit'){state.editing=id}
+  /* U1: instant delete with undo — restores at the old slot and lifts
+     the tombstone so cloud sync re-uploads the template. */
+  if(act==='del'){
+    const t=state.tpls.find(x=>x.id===id);
+    if(!t)return;
+    const i=state.tpls.indexOf(t);
+    addTombstone('t',id);
+    if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+    state.tpls=state.tpls.filter(x=>x.id!==id);
+    store.set('qc_tpls',state.tpls);renderBk();
+    toast(tr('Template deleted'),{type:'info',dur:6000,action:{label:tr('Undo'),fn:()=>{
+      if(state.tpls.some(x=>x.id===id))return;
+      removeTombstone('t',id);
+      t._lu=Date.now();
+      state.tpls.splice(Math.min(i,state.tpls.length),0,t);
+      store.set('qc_tpls',state.tpls);
+      if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+      renderTpls();renderBk();
+    }}});
+  }
   if(act==='cancel'){state.editing=null}
   if(act==='save'){
     const title=$('eTitle').value.trim(),body=$('eBody').value.trim();
@@ -69,7 +85,7 @@ $('tpls').addEventListener('click',e=>{
   }
   renderTpls();
 });
-$('addTpl').onclick=()=>{state.editing='new';state.confirmDel=null;renderTpls()};
+$('addTpl').onclick=()=>{state.editing='new';renderTpls()};
 
 /* ---------- Team template packs (shared by link) ---------- */
 $('shareTpl').onclick=()=>{

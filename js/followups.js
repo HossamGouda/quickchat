@@ -12,6 +12,7 @@ import {setTab} from './tabs.js';
 import {pickContact} from './contacts.js';
 import {nextRepeatDue} from './ntfutil.js';
 import {seqPlan, SEQ_LBL, lastOutcomeStreak} from './qutil.js';
+import {addTombstone} from './tombstones.js';
 
 export function isOpen(r){return r.status!=='won'&&r.status!=='lost'}
 export function who(r){return r.label||('+'+(r.code?r.code+' '+r.local:r.full))}
@@ -339,14 +340,16 @@ function saveNewFollowUp(ds){
 const EV_TXT={msg:()=>'Messaged',status:v=>v?'Status: '+ST_LABEL[v]:'Status cleared',due:v=>'Follow-up set for '+fmtDay(v),done:()=>'Follow-up cleared',value:v=>'Quote value: '+sar(v),
   task:v=>'Task: '+v,time:v=>'Follow-up time: '+v,repeat:v=>'Repeats: '+v,queue:v=>'Queue message sent'+(v?' — '+v:''),
   outcome:v=>'Outcome: '+(OUT_LBL[v]||v),lostwhy:v=>'Lost reason: '+(LOST_LBL[v]||v),seq:v=>'Sequence: '+v,
-  valid:v=>'Quote valid until '+fmtDay(v),dnc:v=>+v?'Do not contact: on':'Do not contact: off'};
+  valid:v=>'Quote valid until '+fmtDay(v),dnc:v=>+v?'Do not contact: on':'Do not contact: off',
+  merge:v=>'Merged with '+v};
 /* Contact card: pure template builder (renderFuPrompt wires state around it). */
 function cardHtml(r,cal,log,head){
   return `<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>
     <input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name" value="${esc(r.label||'')}" aria-label="Name">
     <div class="numrow-card"><span class="rnum">+${r.code?r.code+' '+r.local:r.full}</span>
       <a class="btn small" href="tel:+${r.full}" aria-label="${esc(tr('Call'))}">${tr('Call')}</a>
-      <button type="button" class="btn small" data-x="copynum">${tr('Copy number')}</button></div>
+      <button type="button" class="btn small" data-x="copynum">${tr('Copy number')}</button>
+      <button type="button" class="btn small" data-x="merge">${tr('Merge')}</button></div>
     <div class="two"><label class="field"><span class="lbl">${tr('Company')}</span><input class="txt" id="fpCo" dir="auto" autocomplete="organization" placeholder="${esc(tr('e.g. Gouda Trading'))}" value="${esc(r.company||'')}"></label>
       <label class="field"><span class="lbl">${tr('Lead source')}</span><input class="txt" id="fpSrc" dir="auto" autocomplete="off" placeholder="${esc(tr('e.g. WhatsApp ad, referral'))}" value="${esc(r.src||'')}"></label></div>
     <div class="wrapr"><span class="bk">Status</span>${['lead','contacted','quoted','waiting','negotiating','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
@@ -472,6 +475,7 @@ $('fuPrompt').addEventListener('click',e=>{
     return;
   }
   if(b.dataset.x==='go'){saveRecents();closeCard();startFollowUp(r);return}
+  if(b.dataset.x==='merge'){openMergeSheet(r);return}
   if(b.dataset.x){saveRecents();closeCard()}
 });
 function calLink(r){
@@ -514,6 +518,50 @@ export function openLostSheet(r,cb){
     if(cb)cb(why);
   });
   document.body.appendChild(lostSheet);
+}
+
+/* U2: merge a duplicate record into the open card. The loser gives up any
+   field the winner lacks (notes append, never overwrite), histories join,
+   and the loser is tombstoned so cloud sync purges it everywhere. */
+let mergeSheet=null;
+function closeMergeSheet(){if(mergeSheet){mergeSheet.remove();mergeSheet=null}}
+function openMergeSheet(r){
+  closeMergeSheet();
+  const cand=state.recents.filter(x=>x.full!==r.full);
+  if(!cand.length){toast(tr('No other records to merge'));return}
+  mergeSheet=document.createElement('div');mergeSheet.className='qc-sheet-back';
+  mergeSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Merge with which record?'))}">
+    <div class="qc-ct-head"><b>${esc(tr('Merge with which record?'))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
+    ${cand.map(x=>`<button type="button" class="qc-sheet-item" data-mf="${esc(x.full)}"><div class="lab" dir="auto">${esc(x.label||'—')}</div><div class="rnum">+${x.code?x.code+' '+x.local:x.full}</div><div class="meta">${x.status?esc(tr(ST_LABEL[x.status]))+' · ':''}${esc(ago(x.at||0))}</div></button>`).join('')}
+  </div>`;
+  mergeSheet.addEventListener('click',e=>{
+    if(e.target===mergeSheet||e.target.closest('[data-x]')){closeMergeSheet();return}
+    const b=e.target.closest('[data-mf]');if(!b)return;
+    const l=state.recents.find(x=>x.full===b.dataset.mf);
+    closeMergeSheet();
+    if(l)doMerge(r,l);
+  });
+  document.body.appendChild(mergeSheet);
+}
+function doMerge(r,l){
+  ['label','company','src','task','fuMsg','dueTime','valid','lostWhy','fuRepeat'].forEach(k=>{if(!r[k]&&l[k])r[k]=l[k]});
+  if(!r.status&&l.status)r.status=l.status;
+  if(!r.due&&l.due){r.due=l.due;if(l.dueTime)r.dueTime=l.dueTime}
+  if(!r.value&&l.value)r.value=l.value;
+  if(!r.outcome&&l.outcome)r.outcome=l.outcome;
+  if(!r.seq&&l.seq)r.seq=l.seq;
+  if(l.note&&l.note!==(r.note||'')&&!(r.note||'').includes(l.note))r.note=((r.note?r.note+'\n':'')+l.note).slice(0,500);
+  r.log=(r.log||[]).concat(l.log||[]).filter((x,i,a)=>a.findIndex(y=>y.t===x.t&&y.e===x.e)===i).sort((a,b)=>a.t-b.t).slice(-40);
+  r.dnc=r.dnc||l.dnc||0;
+  r.muted=r.muted||l.muted||0;
+  r.at=Math.max(r.at||0,l.at||0);
+  logEv(r,'merge','+'+(l.code?l.code+' '+l.local:l.full));
+  addTombstone('c',l.full);
+  state.recents=state.recents.filter(x=>x.full!==l.full);
+  if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+  r._lu=Date.now();
+  saveRecents();renderFollowups();renderFuPrompt();
+  toast(tr('Merged'),{type:'ok'});
 }
 
 /* ---- O1: outcome logging — the one tap that teaches the app what happened ---- */

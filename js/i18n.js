@@ -173,7 +173,10 @@ const AR={
 'e.g. Hossam Gouda':'مثال: حسام جودة','e.g. Gouda Trading':'مثال: شركة جودة للتجارة','e.g. name@company.com':'مثال: name@company.com',
 'Clients scan the code and save your number as a contact.':'يمسح العميل الرمز فيحفظ رقمك كجهة اتصال.',
 'QR code to save my contact':'رمز QR لحفظ رقمي',
-'Company':'الشركة','Lead source':'مصدر العميل','e.g. WhatsApp ad, referral':'مثال: إعلان واتساب، ترشيح'
+'Company':'الشركة','Lead source':'مصدر العميل','e.g. WhatsApp ad, referral':'مثال: إعلان واتساب، ترشيح',
+'Removed unnamed numbers':'حُذفت الأرقام غير المسمّاة',
+'Merge':'دمج','Merge with which record?':'مع أي سجل تريد الدمج؟','Merged':'تم الدمج','No other records to merge':'لا توجد سجلات أخرى للدمج',
+'Add stale leads':'أضف العملاء المتوقفين','No stale leads right now':'لا يوجد عملاء متوقفون حاليًا'
 };
 
 const AR_RE=[
@@ -239,7 +242,8 @@ const AR_RE=[
 [/^Follow-up done — next: (.+)$/,(m,a)=>'أُنجزت المتابعة — التالية: '+a],
 [/^Snoozed until (.+)$/,(m,a)=>'مُؤجل حتى '+a],
 [/^Task: (.*)$/,(m,a)=>'المهمة: '+a],[/^Repeats: (.*)$/,(m,a)=>'التكرار: '+a],
-[/^Queue message sent( — .*)?$/,(m,a)=>'رسالة من القائمة أُرسلت'+(a||'')]
+[/^Queue message sent( — .*)?$/,(m,a)=>'رسالة من القائمة أُرسلت'+(a||'')],
+[/^Merged with (.+)$/,(m,a)=>'تم الدمج مع '+a]
 ];
 
 function trCore(k){

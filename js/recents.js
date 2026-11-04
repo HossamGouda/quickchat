@@ -5,7 +5,7 @@ import {setCountry, update, currentNumber, nameFromLabel, ccIn, numIn, labelIn} 
 import {renderVars, applyVars} from './templates.js';
 import {renderFollowups, cycleStatus} from './followups.js';
 import {renderBk} from './backup.js';
-import {addTombstone} from './tombstones.js';
+import {addTombstone, removeTombstone} from './tombstones.js';
 
 /* Deletion bookkeeping: tombstone for cloud sync + nudge sync to propagate. */
 function deleteRecent(f){
@@ -41,9 +41,7 @@ function editingRow(r,f){
     <div class="acts"><button class="btn small" data-act="lcancel">Cancel</button><button class="btn small primary" data-act="lsave" data-f="${f}">Save</button></div></div>`;
 }
 function actsFor(r,f){
-  return state.confirmRm===f
-    ?`<span class="confirm">Delete? <button class="btn small" data-act="normv">No</button><button class="btn small danger solid" data-act="yesrm" data-f="${f}">Yes</button></span>`
-    :`<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
+  return `<button class="btn small" data-act="ledit" data-f="${f}">${r.label?'Rename':'Name'}</button><button class="btn small" data-act="rm" data-f="${f}" aria-label="Remove">✕</button>`;
 }
 function recentRow(r,c,f){
   const conf=r._conf&&Date.now()-r._conf<864e5;
@@ -56,9 +54,7 @@ export function renderRecents(){
   sIn.hidden=state.recents.length<6;
   if(!state.recents.length){el.innerHTML='<div class="empty">Numbers you open will appear here. Add a name to keep a number permanently.</div>';w.innerHTML='';return}
   const hasUnl=state.recents.some(r=>!keep(r));
-  w.innerHTML=state.confirmClear
-    ?`<span class="confirm">Remove numbers without a name or follow-up? <button class="btn small" data-act="noclear">No</button><button class="btn small danger solid" data-act="yesclear">Yes</button></span>`
-    :(hasUnl?`<button class="btn small" data-act="clearall">Clear unnamed</button>`:'');
+  w.innerHTML=hasUnl?`<button class="btn small" data-act="clearall">Clear unnamed</button>`:'';
   const q=sIn.hidden?'':sIn.value.trim().toLowerCase(),qd=q.replace(/\D/g,'');
   const list=state.recents.filter(r=>!q||(r.label||'').toLowerCase().includes(q)||(r.company||'').toLowerCase().includes(q)||(qd&&r.full.includes(qd))||(ST_LABEL[r.status]||'').toLowerCase()===q);
   if(!list.length){el.innerHTML='<div class="empty">No numbers match “'+esc(q)+'”.</div>';return}
@@ -76,24 +72,49 @@ export function loadRecent(r){
 
 /* Row actions as a registry; handlers that don't need the record use the
    button's data-f directly via the wrapper below. */
+/* U1: deletion is instant and reversible — the undo toast restores the
+   record at its old slot and lifts its tombstone so sync re-uploads it. */
+function deleteRecentUndo(r){
+  const i=state.recents.indexOf(r);
+  deleteRecent(r.full);
+  toast(tr('Number deleted'),{type:'info',dur:6000,action:{label:tr('Undo'),fn:()=>{
+    if(state.recents.some(x=>x.full===r.full))return;
+    removeTombstone('c',r.full);
+    r._lu=Date.now();
+    state.recents.splice(Math.min(i,state.recents.length),0,r);
+    store.set('qc_recents',state.recents);
+    if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+    renderRecents();renderBk();
+  }}});
+}
+function clearUnnamed(){
+  const removed=state.recents.filter(r=>!keep(r));
+  removed.forEach(r=>addTombstone('c',r.full));
+  if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+  state.recents=state.recents.filter(keep);
+  store.set('qc_recents',state.recents);
+  if(removed.length)toast(tr('Removed unnamed numbers'),{type:'info',dur:6000,action:{label:tr('Undo'),fn:()=>{
+    removed.forEach(r=>removeTombstone('c',r.full));
+    state.recents=removed.concat(state.recents);
+    store.set('qc_recents',state.recents);
+    if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
+    renderRecents();renderBk();
+  }}});
+}
 const RECENT_ACTIONS={
   reuse:r=>{loadRecent(r);window.scrollTo({top:0,behavior:'smooth'})},
-  ledit:r=>{state.labelEditing=r.full;state.confirmRm=null},
+  ledit:r=>{state.labelEditing=r.full},
   lcancel:()=>{state.labelEditing=null},
   lsave:r=>{r.label=$('eLabel').value.trim();r._lu=Date.now();state.labelEditing=null;trimRecents();store.set('qc_recents',state.recents);renderBk();toast(r.label?'Name saved':'Name removed')},
-  rm:r=>{if(r.label)state.confirmRm=r.full;else deleteRecent(r.full)},
-  normv:()=>{state.confirmRm=null},
-  yesrm:r=>{deleteRecent(r.full);state.confirmRm=null;renderBk();toast('Number deleted')},
-  clearall:()=>{state.confirmClear=true},
-  noclear:()=>{state.confirmClear=false},
+  rm:r=>deleteRecentUndo(r),
   cyc:r=>cycleStatus(r),
-  yesclear:()=>{state.recents.filter(r=>!keep(r)).forEach(r=>addTombstone('c',r.full));if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));state.recents=state.recents.filter(keep);state.confirmClear=false;store.set('qc_recents',state.recents)},
+  clearall:()=>clearUnnamed(),
 };
 function recentClick(e){
   const b=e.target.closest('[data-act]');if(!b)return;
   const act=b.dataset.act,f=b.dataset.f,r=state.recents.find(x=>x.full===f);
   const h=RECENT_ACTIONS[act];if(!h)return;
-  if(r||act==='clearall'||act==='noclear'||act==='yesclear'||act==='lcancel'||act==='normv')h(r||{full:f});
+  if(r||act==='clearall'||act==='lcancel')h(r||{full:f});
   renderRecents();
 }
 

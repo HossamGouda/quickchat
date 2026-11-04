@@ -334,3 +334,24 @@ $('qPick').onclick=()=>pickPeople(rows=>{
   qText.scrollTop=qText.scrollHeight;
   toast(tr(`${lines.length} added to the list`));
 });
+
+/* U3: stale-lead builder — open leads (not won/lost, not DNC) that have
+   been quiet for 14+ days: neither messaged nor any outcome logged since. */
+const STALE_MS=14*864e5;
+function staleLeads(){
+  const now=Date.now();
+  return state.recents.filter(r=>{
+    if(!isOpen(r)||r.dnc)return false;
+    const lastOut=(r.log||[]).filter(x=>x.e==='outcome').reduce((m,x)=>Math.max(m,x.t),0);
+    return now-Math.max(r.at||0,lastOut)>=STALE_MS;
+  });
+}
+$('qStale').onclick=()=>{
+  const list=staleLeads();
+  if(!list.length){toast(tr('No stale leads right now'));return}
+  const lines=list.map(r=>(r.label?r.label+' ':'')+'+'+r.full);
+  qText.value=(qText.value?qText.value.replace(/\s+$/,'')+'\n':'')+lines.join('\n');
+  qParse();
+  qText.scrollTop=qText.scrollHeight;
+  toast(tr(`${lines.length} added to the list`));
+};

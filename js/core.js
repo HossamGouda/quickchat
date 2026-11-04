@@ -113,7 +113,7 @@ export const state = {lang:'en',
   app:'wa',
   tpls:DEFAULT_TPLS.slice(),
   recents:[],
-  editing:null, confirmDel:null, confirmClear:false
+  editing:null
 };
 
 /* Called once store.ready resolves, before the boot sequence. */
