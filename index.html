@@ -168,11 +168,26 @@
   <div class="tabpane" id="tab-qr" hidden>
     <div class="card">
       <div class="field">
+        <label class="lbl">QR type</label>
+        <div class="apps" id="qrKinds">
+          <button type="button" data-qrkind="chat" aria-pressed="true">WhatsApp chat</button>
+          <button type="button" data-qrkind="vcard" aria-pressed="false">Save my contact</button>
+        </div>
+      </div>
+      <div class="field">
         <label class="lbl" for="qrNum">Your WhatsApp number</label>
         <input id="qrNum" dir="ltr" class="txt" inputmode="tel" autocomplete="off" placeholder="+966 5X XXX XXXX">
         <div class="hint" id="qrHint">Clients scan the code and land in a chat with you.</div>
       </div>
-      <div class="field">
+      <div class="field" id="qrVnField" hidden>
+        <label class="lbl" for="qrVn">Your name (optional)</label>
+        <input id="qrVn" class="txt" dir="auto" autocomplete="off" placeholder="e.g. Hossam Gouda">
+      </div>
+      <div class="field" id="qrOrgField" hidden>
+        <label class="lbl" for="qrOrg">Company (optional)</label>
+        <input id="qrOrg" class="txt" dir="auto" autocomplete="off" placeholder="e.g. Gouda Trading">
+      </div>
+      <div class="field" id="qrMsgField">
         <label class="lbl" for="qrMsg">Message the client sends you</label>
         <textarea id="qrMsg" dir="auto" placeholder="Hello, I'd like a quotation."></textarea>
       </div>

@@ -166,7 +166,13 @@ const AR={
 'Skip asks why (wrong number / no answer / not interested); wrong numbers can be marked lost, and try-later skips are resumable':'التخطي يسأل عن السبب (رقم خاطئ / لا رد / غير مهتم)، والأرقام الخاطئة يمكن تعليمها «لم تتم»، والمتخطّى بسبب «لاحقًا» يمكن استئنافه',
 'Build batches from your people: pasted numbers merge with saved contacts (names and status remembered), or pick them from a searchable sheet':'ابنِ الدفعات من أشخاصك: الأرقام الملصقة تندمج مع جهاتك المحفوظة (الأسماء والحالات محفوظة)، أو اخترها من قائمة قابلة للبحث',
 'Pace control (off / 3 / 8 / 15 s) spaces out WhatsApp opens to protect your account, with a warning on big batches':'التحكم في الوتيرة (إيقاف / 3 / 8 / 15 ثانية) يباعد بين فتحات واتساب لحماية حسابك، مع تحذير من الدفعات الكبيرة',
-'End of batch: retry skipped contacts, attach a task to the whole batch follow-up, and see last-batch + sent-this-week stats':'نهاية الدفعة: أعد محاولة جهات تم تخطيها، وأرفق مهمة بمتابعة الدفعة كلها، واطلع على إحصاءات آخر دفعة وما أُرسل هذا الأسبوع'
+'End of batch: retry skipped contacts, attach a task to the whole batch follow-up, and see last-batch + sent-this-week stats':'نهاية الدفعة: أعد محاولة جهات تم تخطيها، وأرفق مهمة بمتابعة الدفعة كلها، واطلع على إحصاءات آخر دفعة وما أُرسل هذا الأسبوع',
+/* v5.5-quick */
+'WhatsApp chat':'محادثة واتساب','Save my contact':'احفظ رقمي','QR type':'نوع الرمز',
+'Your name (optional)':'اسمك (اختياري)','Company (optional)':'الشركة (اختياري)',
+'e.g. Hossam Gouda':'مثال: حسام جودة','e.g. Gouda Trading':'مثال: شركة جودة للتجارة',
+'Clients scan the code and save your number as a contact.':'يمسح العميل الرمز فيحفظ رقمك كجهة اتصال.',
+'QR code to save my contact':'رمز QR لحفظ رقمي'
 };
 
 const AR_RE=[
