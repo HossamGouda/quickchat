@@ -3,8 +3,9 @@ import {$} from './core.js';
 import {drawQR} from './qr.js';
 import {renderFuPrompt, renderFollowups} from './followups.js';
 import {fillTplSelect, renderQueue} from './queue.js';
+import {renderStats} from './stats.js';
 
-const TABS=['chat','fu','queue','qr'];
+const TABS=['chat','fu','queue','stats','qr'];
 export function setTab(t){
   if(!TABS.includes(t))t='chat';
   TABS.forEach(x=>{$('tab-'+x).hidden=x!==t;$('tb-'+x).setAttribute('aria-selected',x===t)});
@@ -12,6 +13,7 @@ export function setTab(t){
   if(t==='qr')drawQR();
   if(t==='fu'){renderFuPrompt();renderFollowups()}
   if(t==='queue'){fillTplSelect();renderQueue()}
+  if(t==='stats')renderStats()
   window.scrollTo(0,0);
 }
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)setTab(b.dataset.tab)});

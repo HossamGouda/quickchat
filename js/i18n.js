@@ -164,6 +164,9 @@ const AR={
 'New "Add stale leads" button on the Queue tab pulls in everyone quiet for 14+ days so you can re-engage them':'زر جديد «أضف العملاء المتوقفين» في تبويب القائمة يجمع كل من سكتّ 14 يومًا أو أكثر لإعادة التواصل معهم',
 'Queue setup warns when a number was already messaged recently ("last messaged 3 d ago")':'إعداد القائمة يحذرك إذا أُرسلت رسالة للرقم مؤخرًا («آخر رسالة قبل 3 أيام»)',
 '"Save my contact" QR now shares a full business card — name, company and email included':'رمز QR «احفظ بياناتي» يشارك الآن بطاقة أعمال كاملة — الاسم والشركة والبريد الإلكتروني',
+'New Stats tab: outcomes, response rate, weekly activity, pipeline, lost reasons and lead sources at a glance':'تبويب إحصائيات جديد: النتائج ونسبة الرد والنشاط الأسبوعي والمسار وأسباب الخسارة ومصادر العملاء في لمحة',
+/* v5.5 stats tab */
+'Stats':'الإحصائيات','Overview':'نظرة عامة','Contacts':'جهات الاتصال','Replies':'الردود','Response rate':'نسبة الرد','Weekly activity':'النشاط الأسبوعي','last 8 weeks':'آخر 8 أسابيع','Pipeline':'المسار','Lost reasons':'أسباب الخسارة','Where leads come from':'مصادر العملاء','No reason given':'بدون سبب','No data yet — outcomes appear as you message people':'لا توجد بيانات بعد — تظهر النتائج هنا كلما راسلت عملاءك',
 /* v5.1 what's new */
 'Contact picking is fixed and unified: "Add from your people" and the follow-up contact icon now open the same sheet with two sources — your phone contacts (in the app) and your QuickChat people — pick one or many':'تم إصلاح اختيار جهات الاتصال وتوحيده: زرا «أضف من أشخاصك» وأيقونة المتابعة يفتحان الآن نفس النافذة بمصدرين — جهات اتصال هاتفك (في التطبيق) وأشخاص QuickChat — اختر واحدًا أو أكثر',
 'On the website the phone-book source now says plainly that it needs the Android app, instead of doing nothing':'في موقع الويب يوضح مصدر جهات الهاتف الآن بوضوح أنه يحتاج تطبيق أندرويد بدلًا من عدم فعل شيء',

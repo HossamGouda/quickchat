@@ -29,6 +29,7 @@
     <button type="button" role="tab" id="tb-chat" data-tab="chat" aria-selected="true">Chat</button>
     <button type="button" role="tab" id="tb-fu" data-tab="fu" aria-selected="false">Follow-ups</button>
     <button type="button" role="tab" id="tb-queue" data-tab="queue" aria-selected="false">Queue</button>
+    <button type="button" role="tab" id="tb-stats" data-tab="stats" aria-selected="false">Stats</button>
     <button type="button" role="tab" id="tb-qr" data-tab="qr" aria-selected="false">My QR</button>
   </nav>
 
@@ -164,6 +165,15 @@
       </div>
     </div>
     <div class="list" id="qList" hidden></div>
+  </div>
+
+  <div class="tabpane" id="tab-stats" hidden>
+    <div class="card notice" id="stEmpty" hidden><p></p></div>
+    <div class="card" id="stOverview"></div>
+    <div class="card" id="stWeekly"></div>
+    <div class="card" id="stPipeline"></div>
+    <div class="card" id="stLost" hidden></div>
+    <div class="card" id="stSrc" hidden></div>
   </div>
 
   <div class="tabpane" id="tab-qr" hidden>

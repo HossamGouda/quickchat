@@ -263,3 +263,21 @@ select.txt{appearance:auto}
 .qc-pick{cursor:pointer}
 .qc-pick[data-on="true"]{outline:2px solid var(--accent);background:var(--accent-soft)}
 .qc-pick-tick{color:var(--accent);font-weight:700}
+
+/* v5.5: statistics dashboard */
+.stgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.stchip{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center}
+.stchip b{display:block;font-size:19px}
+.stchip span{font-size:11px;color:var(--muted)}
+.stlegend{display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 2px;font-size:12px}
+.stlegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:4px;vertical-align:-1px}
+.stweeks{display:flex;align-items:flex-end;gap:6px;margin-top:8px}
+.stcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.stcol small{font-size:10px;color:var(--muted)}
+.ststack{display:flex;flex-direction:column-reverse;justify-content:flex-start;gap:2px;height:76px;width:100%;align-items:center}
+.ststack span{width:14px;border-radius:3px 3px 0 0;display:block}
+.strow{display:flex;align-items:center;gap:8px;padding:3px 0}
+.stlbl{width:96px;font-size:12px;color:var(--muted);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stbar{flex:1;background:var(--bg);border-radius:6px;height:14px;overflow:hidden}
+.stbar span{display:block;height:100%;border-radius:6px}
+.strow b{font-size:12px;min-width:24px;text-align:end}
