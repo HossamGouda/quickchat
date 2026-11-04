@@ -3,12 +3,19 @@
 const path = require("path"), { pathToFileURL } = require("url");
 const modUrl = (p) => pathToFileURL(path.join(__dirname, "..", p)).href;
 
+/* 2d canvas context: no-op for any method, swallows any property set. */
+const stubCtx = new Proxy({}, {
+  get: (t, k) => (k === Symbol.toPrimitive ? undefined : (typeof k === "string" ? () => stubCtx : undefined)),
+  set: () => true,
+});
 const stubEl = () => ({
   innerHTML: "", textContent: "", value: "", hidden: false, className: "",
   style: {}, dataset: {}, readOnly: false, placeholder: "", href: "",
   classList: { add() {}, remove() {}, contains: () => false },
   addEventListener() {}, removeEventListener() {}, setAttribute() {}, getAttribute: () => null,
   click() {}, focus() {}, select() {}, scrollIntoView() {}, appendChild() {}, remove() {},
+  prepend() {}, toBlob() {},
+  getContext: () => stubCtx,
   querySelector: () => null, querySelectorAll: () => [], closest: () => null,
   parentElement: null, onkeydown: null,
 });
