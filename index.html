@@ -137,6 +137,13 @@
         <select id="qTpl" class="txt"></select>
       </div>
       <div class="vars" id="qVars" hidden></div>
+      <div class="field">
+        <label class="lbl">Open in</label>
+        <div class="apps" id="qApps">
+          <button type="button" data-qapp="wa" aria-pressed="true">WhatsApp</button>
+          <button type="button" data-qapp="wb" aria-pressed="false">WhatsApp Business</button>
+        </div>
+      </div>
       <p class="note">You still tap send in WhatsApp for every message. WhatsApp may restrict accounts that message many people who haven't saved their number, so keep batches small and message people who expect to hear from you.</p>
       <button type="button" class="go" id="qStart" aria-disabled="true">Start queue</button>
     </div>
@@ -147,6 +154,10 @@
       <div id="qActs" class="stack">
         <button type="button" class="go" id="qOpen">Open chat</button>
         <button type="button" class="go" id="qSent" hidden>Sent ✓</button>
+        <div class="apps" id="qRunApps">
+          <button type="button" data-qapp="wa" aria-pressed="true">WhatsApp</button>
+          <button type="button" data-qapp="wb" aria-pressed="false">WhatsApp Business</button>
+        </div>
         <div class="row2"><button type="button" class="btn" id="qPrev" style="flex:1">Back</button><button type="button" class="btn" id="qSkip" style="flex:1">Skip</button></div>
       </div>
     </div>

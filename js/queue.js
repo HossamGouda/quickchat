@@ -78,7 +78,7 @@ $('qStart').onclick=()=>{
   q={items:qFoundList.map(n=>{
     const kr=state.recents.find(x=>x.full===n.full);
     return {full:n.full,code:n.code,local:n.local,country:n.country,name:n.name||(kr&&kr.label)||'',status:'pending'};
-  }),raw,extra:Object.assign({},qExtra),idx:0,arm:false,pace:paceMs(store.get('qc_qpace',3000))};
+  }),raw,extra:Object.assign({},qExtra),idx:0,arm:false,pace:paceMs(store.get('qc_qpace',3000)),app:store.get('qc_qapp',state.app||'wa')};
   lockUntil=0;
   saveQ();renderQueue();
 };
@@ -125,6 +125,23 @@ $('qPace').addEventListener('change',()=>{
   if(q){q.pace=v;saveQ()}
 });
 
+/* Per-queue "Open in": WhatsApp or WhatsApp Business. While a queue runs the
+   choice lives on q.app (applies to the next opens); in setup it persists as
+   the qc_qapp default and is copied into each new queue. */
+function qAppVal(){return q?(q.app||'wa'):store.get('qc_qapp',state.app||'wa')}
+function paintQApp(){
+  const v=qAppVal();
+  document.querySelectorAll('[data-qapp]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.qapp===v)));
+}
+['qApps','qRunApps'].forEach(id=>{
+  const el=$(id);if(!el)return;
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('[data-qapp]');if(!b)return;
+    if(q){q.app=b.dataset.qapp;saveQ()}else store.set('qc_qapp',b.dataset.qapp);
+    paintQApp();
+  });
+});
+
 export function renderQueue(){
   const setup=$('qSetup'),run=$('qRun'),list=$('qList');
   if(!q){
@@ -132,12 +149,14 @@ export function renderQueue(){
     qText.value=qText.value||store.get('qc_qdraft','');
     const ps=$('qPace');if(ps)ps.value=String(store.get('qc_qpace',3000));
     renderQStats();
+    paintQApp();
     qParse();return;
   }
   setup.hidden=true;run.hidden=false;list.hidden=false;
+  paintQApp();
   const sent=q.items.filter(x=>x.status==='sent').length,sk=q.items.filter(x=>x.status==='skipped').length,tot=q.items.length;
   $('qBar').style.width=Math.round((sent+sk)/tot*100)+'%';
-  const via=state.app==='wb'?tr(' · WhatsApp Business'):'';
+  const via=(q.app||'wa')==='wb'?tr(' · WhatsApp Business'):'';
   $('qEnd').textContent=q.idx===null?tr('New queue'):tr('End queue');
   const ps=$('qPace');if(ps)ps.value=String(q.pace||0);
   if(q.idx===null){
@@ -182,7 +201,7 @@ $('qOpen').onclick=()=>{
   if(left){toast(tr(left.includes('{name}')?'Enter the name first':'Fill '+[...new Set(left)].join(', ')+' first'));const n=$('qName');if(n)n.focus();return}
   if(it.status==='pending'){it.status='opened';saveQ();renderQueue()}
   armLock();
-  openChat(buildLink(it.full,msg),it.full);
+  openChat(buildLink(it.full,msg,q.app),it.full);
 };
 /* Q1/Q4: confirming sent — advance, weekly counter, history, undo. */
 $('qSent').onclick=()=>{

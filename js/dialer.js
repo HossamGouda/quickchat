@@ -76,11 +76,11 @@ export function handleText(text,source){
   return true;
 }
 
-export function buildLink(full,txt){
+export function buildLink(full,txt,app){
   const t=(txt===undefined?msgIn.value:txt).trim();
   const p='phone='+full+(t?'&text='+encodeURIComponent(t):'');
   const web='https://wa.me/'+full+(t?'?text='+encodeURIComponent(t):'');
-  const pkg=state.app==='wb'?'com.whatsapp.w4b':'com.whatsapp';
+  const pkg=(app||state.app)==='wb'?'com.whatsapp.w4b':'com.whatsapp';
   if(/Android/i.test(navigator.userAgent))
     return 'intent://send?'+p+'#Intent;scheme=whatsapp;package='+pkg+';S.browser_fallback_url='+encodeURIComponent(web)+';end';
   return web;
