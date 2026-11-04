@@ -178,7 +178,7 @@ const AR_RE=[
  [/^(\d+) sent, (\d+) skipped\. Tap a contact below to open it again\.$/,(m,a,b)=>'أُرسل '+a+'، وتم تخطي '+b+'. اضغط جهة اتصال بالأسفل لفتحها مجددًا.'],
  [/^Follow up with the (\d+) sent:$/,(m,a)=>'متابعة من أُرسل إليهم ('+a+'):'],
  [/^(\d+) today or overdue$/,(m,a)=>a+' اليوم أو متأخرة'],[/^(\d+) due$/,(m,a)=>a+' مستحقة'],
- [/^(\d+) numbers? found, (\d+) with a name(, (\d+) already known)?(, (\d+) skipped — do not contact)?\.$/,(m,a,b,k,d)=>'تم العثور على '+a+' رقم، '+b+' منها باسم'+(k?'، و'+k+' معروف لديك':'')+(d?'، وتخطينا '+d+' — عدم التواصل':'')+'.'],
+ [/^(\d+) numbers? found, (\d+) with a name(, (\d+) already known( — last messaged (.+?))?)?(, (\d+) skipped — do not contact)?\.$/,(m,a,b,_1,k,_2,la,_3,d)=>'تم العثور على '+a+' رقم، '+b+' منها باسم'+(k?'، و'+k+' معروف لديك'+(la?' — آخر مراسلة '+trCore(la):''):'')+(d?'، وتخطينا '+d+' — عدم التواصل':'')+'.'],
  [/^What happened with (.+)\?$/,(m,a)=>'ماذا حدث مع '+a+'؟'],
  [/^Reminder set — quote expires (.+)$/,(m,a)=>'تم ضبط التذكير — تنتهي صلاحية العرض '+a],
  [/^Sequence started — next: (.+)$/,(m,a)=>'بدأ التسلسل — الخطوة التالية: '+a],

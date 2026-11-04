@@ -3,7 +3,7 @@
    skip reasons, undo, pacing between opens, people picker + recents merge,
    resume + batch memory at the finish line. */
 import {$, store, state, COUNTRIES, ST_LABEL, esc, toast, notifyEvent, normalize,
-  VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow, dueWhen, fmtShort, logEv} from './core.js';
+  VAR_RE, autoVars, fillTpl, customKeys, todayStr, dueLow, dueWhen, fmtShort, logEv, ago} from './core.js';
 import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
 import {setDueVal, setStatus, isOpen, logOutcome, openLostSheet} from './followups.js';
@@ -19,6 +19,9 @@ export function queueState(){return q}
 /* Called once store.ready resolves: restores an in-progress batch queue. */
 export function initQueue(){q=store.get('qc_queue',null)}
 const NOISE=/\b(mob(ile)?|tel|phone|whats ?app|wa|cell|no|number|contact)\b\.?|جوال|واتساب|هاتف|رقم/gi;
+/* Duplicate-warning window: "messaged X ago" shows for contacts messaged in
+   the last 30 days; the setup hint turns warn-colored inside 7 days. */
+const RECENT_MS=30*864e5,DUP_MS=7*864e5;
 function extractWithNames(text){
   const out=[],seen=new Set();
   String(text).split(/\r?\n/).forEach(line=>{
@@ -53,11 +56,14 @@ export function qParse(){
   const dnc=all.filter(x=>{const r=state.recents.find(r=>r.full===x.full);return r&&r.dnc}).length;
   qFoundList=all.filter(x=>{const r=state.recents.find(r=>r.full===x.full);return !r||!r.dnc});
   const named=qFoundList.filter(x=>x.name).length,
-    known=qFoundList.filter(x=>state.recents.some(r=>r.full===x.full)).length,
+    knownRecs=qFoundList.map(x=>state.recents.find(r=>r.full===x.full)).filter(Boolean),
+    known=knownRecs.length,
+    lastAt=knownRecs.reduce((m,r)=>Math.max(m,r.at||0),0),
+    lastAgo=lastAt&&Date.now()-lastAt<RECENT_MS?ago(lastAt):'',
     el=$('qFound');
-  el.className='hint'+(qFoundList.length?' ok':'');
+  el.className='hint'+(qFoundList.length?' ok':'')+(lastAgo&&Date.now()-lastAt<DUP_MS?' warn':'');
   el.textContent=qFoundList.length
-    ?tr(`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name${known?`, ${known} already known`:''}${dnc?`, ${dnc} skipped — do not contact`:''}.`)
+    ?tr(`${qFoundList.length} number${qFoundList.length>1?'s':''} found, ${named} with a name${known?`, ${known} already known${lastAgo?` — last messaged ${lastAgo}`:''}`:''}${dnc?`, ${dnc} skipped — do not contact`:''}.`)
     :tr('Paste numbers from a sheet, a message or an email.');
   const big=$('qBig');
   if(big){
@@ -176,7 +182,10 @@ export function renderQueue(){
     const it=q.items[q.idx],c=COUNTRIES.find(x=>x.id===it.country);
     /* Q0: known line — remember who you're refreshing before opening. */
     const kr=state.recents.find(x=>x.full===it.full);
-    const known=kr&&(kr.status||kr.due)?`<div class="meta">${esc(tr(`In your follow-ups: ${kr.status?ST_LABEL[kr.status]:tr('no status')}${kr.due&&isOpen(kr)?' · '+dueWhen(kr):''}`))}</div>`:'';
+    const bits=[];
+    if(kr&&(kr.status||kr.due))bits.push(tr(`In your follow-ups: ${kr.status?ST_LABEL[kr.status]:tr('no status')}${kr.due&&isOpen(kr)?' · '+dueWhen(kr):''}`));
+    if(kr&&kr.at&&Date.now()-kr.at<RECENT_MS)bits.push(tr(`Messaged ${ago(kr.at)}`));
+    const known=bits.length?`<div class="meta">${esc(bits.join(' · '))}</div>`:'';
     $('qProg').textContent=`${q.idx+1} of ${tot} · ${sent} sent${via}`;
     $('qCur').innerHTML=`<div class="field"><label class="lbl" for="qName">Name</label><input id="qName" class="txt" dir="auto" autocomplete="off" value="${esc(it.name||'')}" placeholder="Client name"></div>
       <div class="rnum">+${it.code?it.code+' '+it.local:it.full} <span class="meta">${c&&c.id!=='ot'?tr(c.name):''}</span></div>
