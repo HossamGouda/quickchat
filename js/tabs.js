@@ -1,6 +1,6 @@
 /* tabs.js — top tab navigation. */
 import {$} from './core.js';
-import {drawQR} from './qr.js';
+import {drawQR, fillCampSelect, drawCamp} from './qr.js';
 import {renderFuPrompt, renderFollowups} from './followups.js';
 import {fillTplSelect, renderQueue} from './queue.js';
 import {renderStats} from './stats.js';
@@ -10,7 +10,7 @@ export function setTab(t){
   if(!TABS.includes(t))t='chat';
   TABS.forEach(x=>{$('tab-'+x).hidden=x!==t;$('tb-'+x).setAttribute('aria-selected',x===t)});
   try{history.replaceState(null,'',location.pathname+location.search+(t==='chat'?'':'#'+t))}catch(e){}
-  if(t==='qr')drawQR();
+  if(t==='qr'){drawQR();fillCampSelect();drawCamp()}
   if(t==='fu'){renderFuPrompt();renderFollowups()}
   if(t==='queue'){fillTplSelect();renderQueue()}
   if(t==='stats')renderStats()

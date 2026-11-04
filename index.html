@@ -41,6 +41,22 @@
     <div class="row2"><button type="button" class="btn primary" id="nudgeGo" style="flex:1">Back up now</button><button type="button" class="btn" id="nudgeLater" style="flex:1">Later</button></div>
   </div>
   <div class="card notice" id="attach" hidden></div>
+  <div class="card notice" id="setupCard" hidden>
+    <p><b>Welcome to QuickChat</b></p>
+    <p class="bk">Pick your country and your name — used for the example number, greetings and your contact QR.</p>
+    <div class="field">
+      <label class="lbl">Country</label>
+      <div class="countries" id="suCountries"></div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="suName">Your name (optional)</label>
+      <input id="suName" class="txt" dir="auto" autocomplete="off" placeholder="e.g. Hossam Gouda">
+    </div>
+    <div class="row2">
+      <button type="button" class="btn primary" id="suGo" style="flex:1">Get started</button>
+      <button type="button" class="btn" id="suSkip" style="flex:1">Skip</button>
+    </div>
+  </div>
   <div class="card">
     <div class="field">
       <label class="lbl">Country</label>
@@ -189,6 +205,7 @@
         <label class="lbl" for="qrNum">Your WhatsApp number</label>
         <input id="qrNum" dir="ltr" class="txt" inputmode="tel" autocomplete="off" placeholder="+966 5X XXX XXXX">
         <div class="hint" id="qrHint">Clients scan the code and land in a chat with you.</div>
+        <div class="hint" id="qrVcardTip" hidden>Some phones need Google Lens to scan contact codes.</div>
       </div>
       <div class="field" id="qrVnField" hidden>
         <label class="lbl" for="qrVn">Your name (optional)</label>
@@ -218,6 +235,17 @@
         <button type="button" class="btn" id="qrCopy" style="flex:1">Copy link</button>
       </div>
       <p class="bk">Use it on quotations, invoices, business cards or a site board.</p>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label class="lbl" for="qrCampSel">Campaign QR</label>
+        <select id="qrCampSel" class="txt"></select>
+        <div class="hint" id="qrCampHint">Scanning opens WhatsApp with this message ready to forward.</div>
+      </div>
+      <div class="qrbox">
+        <canvas id="qrCampCanvas" width="640" height="560" aria-label="QR code for a campaign message"></canvas>
+        <button type="button" class="btn primary" id="qrCampCopy" style="width:100%">Copy message link</button>
+      </div>
     </div>
   </div>
 </div>

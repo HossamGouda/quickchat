@@ -12,6 +12,7 @@ import {APP_VERSION, renderWhatsNew} from './version.js';
 import {setTab} from './tabs.js';
 import {renderQueue, initQueue} from './queue.js';
 import {drawQR, initQR} from './qr.js';
+import {initSetup} from './setup.js';
 import {initSync} from './sync.js';
 import {initNotify} from './notify.js';
 import {initContacts} from './contacts.js';
@@ -33,7 +34,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 /* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
 async function boot(){
 await store.ready;
-hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initContacts();initCollapsibles();
+hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initContacts();initCollapsibles();initSetup();
 document.addEventListener('qc:nav',e=>{e.detail==='settings'?openSettings():setTab(e.detail)});
 document.addEventListener('qc:open-contact',e=>{setTab('fu');openCardFull(e.detail)});
 setCountry(state.country);setApp(state.app);renderTpls();renderRecents();renderBk();checkStorage();
@@ -42,7 +43,7 @@ $('ver').textContent='QuickChat version '+APP_VERSION;
 const qs=new URLSearchParams(location.search);
 const shared=[qs.get('title'),qs.get('text'),qs.get('url')].filter(Boolean).join(' ');
 const action=qs.get('action'),pack=qs.get('pack'),fu=qs.get('fu'),sf=qs.get('file');
-if(shared||action||pack||fu||sf){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true)}
+if(shared||action||pack||fu||sf){try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}store.set('qc_seen',true);store.set('qc_setup_done',true)}
 setTab(location.hash.slice(1));
 renderFuPrompt();
 if(sf){setTab('chat');loadSharedFile()}else loadSharedFile();

@@ -165,6 +165,14 @@ const AR={
 'Queue setup warns when a number was already messaged recently ("last messaged 3 d ago")':'إعداد القائمة يحذرك إذا أُرسلت رسالة للرقم مؤخرًا («آخر رسالة قبل 3 أيام»)',
 '"Save my contact" QR now shares a full business card — name, company and email included':'رمز QR «احفظ بياناتي» يشارك الآن بطاقة أعمال كاملة — الاسم والشركة والبريد الإلكتروني',
 'New Stats tab: outcomes, response rate, weekly activity, pipeline, lost reasons and lead sources at a glance':'تبويب إحصائيات جديد: النتائج ونسبة الرد والنشاط الأسبوعي والمسار وأسباب الخسارة ومصادر العملاء في لمحة',
+/* v5.5 Q1-Q3: QR hint, campaign QR, first-run setup */
+'Some phones need Google Lens to scan contact codes.':'تحتاج بعض الهواتف إلى عدسة Google لمسح رموز جهات الاتصال.',
+'Campaign QR':'رمز QR للحملة','Pick a template':'اختر قالبًا','Pick a template above':'اختر قالبًا أعلاه','Pick a template first':'اختر قالبًا أولًا',
+'Pick a template above — the QR lets anyone forward your campaign message.':'اختر قالبًا أعلاه — يسمح الرمز لأي شخص بإعادة توجيه رسالة حملتك.',
+'Scanning opens WhatsApp with this message ready to forward.':'يفتح المسح واتساب بهذه الرسالة جاهزة لإعادة التوجيه.',
+'Message link copied':'تم نسخ رابط الرسالة','Copy message link':'نسخ رابط الرسالة',
+'Welcome to QuickChat':'مرحبًا بك في QuickChat','Pick your country and your name — used for the example number, greetings and your contact QR.':'اختر بلدك واسمك — يُستخدمان للرقم التجريبي والتحيات ورمز جهة الاتصال الخاص بك.',
+'Get started':'ابدأ','You are all set':'كل شيء جاهز',
 /* v5.5 stats tab */
 'Stats':'الإحصائيات','Overview':'نظرة عامة','Contacts':'جهات الاتصال','Replies':'الردود','Response rate':'نسبة الرد','Weekly activity':'النشاط الأسبوعي','last 8 weeks':'آخر 8 أسابيع','Pipeline':'المسار','Lost reasons':'أسباب الخسارة','Where leads come from':'مصادر العملاء','No reason given':'بدون سبب','No data yet — outcomes appear as you message people':'لا توجد بيانات بعد — تظهر النتائج هنا كلما راسلت عملاءك',
 /* v5.1 what's new */
