@@ -14,6 +14,7 @@ import {TEABLE_API, TEABLE_TABLES as TBLS, TEABLE_MATCH_FIELDS as MATCH, PROTOCO
 import {saveRecents} from './recents.js';
 import {renderTpls} from './templates.js';
 import {tombstones, addTombstone, removeTombstone, purgeTombstone, purgeDue} from './tombstones.js';
+import {contactToFields, contactFromRow, EXTRA_CONTACT_FIELDS} from './syncmap.js';
 import {tr} from './i18n.js';
 
 const token=()=>store.get('qc_teable_token','');
@@ -42,6 +43,18 @@ async function tb(method, path, body){
   return txt?JSON.parse(txt):{};
 }
 
+/* Self-healing schema: create any v3 contact fields missing from the Teable
+   base so upserts never fail on unknown field names. Idempotent. */
+async function ensureContactFields(){
+  const d=await tb('GET',`/table/${TBLS.contacts}/field`);
+  const list=Array.isArray(d)?d:(d.data||d.fields||[]);
+  const have=new Set(list.map(f=>f.name));
+  for(const [name,type] of Object.entries(EXTRA_CONTACT_FIELDS)){
+    if(have.has(name))continue;
+    await tb('POST',`/table/${TBLS.contacts}/field`,{name,type});
+  }
+}
+
 /* Read every record of a table (paged). */
 async function pullAll(tableId){
   const out=[];let offset=0;
@@ -68,38 +81,9 @@ async function pushRows(tableId,matchField,fieldsList){
   return n;
 }
 
-/* ---- field mapping: local recent <-> Teable row ---- */
-function dayMs(ds){const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).getTime()}
-function dayFromCell(v){
-  if(typeof v==='number'&&v){const d=new Date(v);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-  if(typeof v==='string'&&/^\d{4}-\d\d-\d\d/.test(v))return v.slice(0,10);
-  return '';
-}
-function contactToFields(r){
-  const f={Number:r.full,Code:r.code||'',Local:r.local||'',Country:r.country||'',Label:r.label||'',
-    DueTime:r.dueTime||'',Value:+r.value||0,At:+r.at||Date.now(),
-    Log:JSON.stringify(r.log||[]),UpdatedAt:r._lu||r.at||0};
-  if(r.status)f.Status=r.status;
-  if(r.due)f.Due=dayMs(r.due);
-  if(r.note)f.Note=r.note;
-  if(r.fuMsg)f.FuMsg=r.fuMsg;
-  return f;
-}
-function contactFromRow(row){
-  const g=row.fields||{};
-  if(!g.Number)return null;
-  let log=[];
-  try{log=JSON.parse(g.Log||'[]')}catch(e){log=[]}
-  return {full:String(g.Number),code:String(g.Code||''),local:String(g.Local||String(g.Number)),
-    country:COUNTRIES.some(c=>c.id===g.Country)?g.Country:'ot',
-    at:+g.At||Date.now(),label:String(g.Label||''),
-    due:dayFromCell(g.Due),
-    status:STATUSES.includes(g.Status)?g.Status:'',
-    dueTime:/^\d\d:\d\d$/.test(g.DueTime||'')?g.DueTime:'',
-    value:Math.round(+g.Value||0),
-    note:String(g.Note||'').slice(0,500),fuMsg:String(g.FuMsg||'').slice(0,2000),
-    log,_lu:+g.UpdatedAt||0};
-}
+/* ---- field mapping lives in syncmap.js (pure, unit-tested) ---- */
+const CTX={COUNTRIES,STATUSES};
+const fromRow=row=>contactFromRow(row,CTX);
 function delFields(full,delAt){return {Number:full,Deleted:true,DeletedAt:delAt,UpdatedAt:delAt}}
 function delFieldsTpl(id,delAt){return {TplId:id,Deleted:true,DeletedAt:delAt,UpdatedAt:delAt}}
 
@@ -124,7 +108,7 @@ async function writeMeta(key,value){
 /* ---- settings blob: device preferences mirrored via SyncMeta ----
    Per-device keys (token, lock, notification toggle) are never synced.
    Language applies on next open; the rest apply immediately. */
-const SETTING_KEYS=['qc_country','qc_app','qc_qr','qc_qtpl','qc_qdraft','qc_cal','qc_lang'];
+const SETTING_KEYS=['qc_country','qc_app','qc_qr','qc_qtpl','qc_qdraft','qc_cal','qc_lang','qc_campaigns'];
 function settingsBlob(){
   const v={};
   for(const k of SETTING_KEYS){const x=store.get(k,undefined);if(x!==undefined)v[k]=x}
@@ -173,7 +157,7 @@ export async function restoreFromCloud(){
       const g=row.fields||{};if(!g.Number)continue;
       const full=String(g.Number);seen.add(full);
       if(g.Deleted){addTombstone('c',full);state.recents=state.recents.filter(x=>x.full!==full);continue}
-      const m=contactFromRow(row);
+      const m=fromRow(row);
       if(!m)continue;
       const ex=state.recents.find(x=>x.full===full);
       if(ex)Object.assign(ex,m);else state.recents.push(m);
@@ -313,8 +297,11 @@ export async function syncNow(opts={}){
     backfillLu();
     const metaRows=await pullAll(TBLS.syncMeta);
     const proto=await readMeta(metaRows,'protocol');
-    if(proto&&+proto!==PROTOCOL_VERSION)
+    /* Older cloud schema: migrate it (creates missing fields) then stamp the
+       new protocol. Newer cloud schema: this app is outdated — refuse. */
+    if(proto&&+proto>PROTOCOL_VERSION)
       throw new Error(`Sync protocol mismatch: this device v${PROTOCOL_VERSION}, cloud v${proto}. Update the app on all devices.`);
+    if(proto&&+proto<PROTOCOL_VERSION)await ensureContactFields();
 
     let pushed=0,pulled=0;
     const lastSync=store.get('qc_last_sync',0);
@@ -322,7 +309,7 @@ export async function syncNow(opts={}){
 
     /* Contacts */
     const remote=new Map((await pullAll(TBLS.contacts)).map(r=>[String((r.fields||{}).Number||''),r]));
-    const mC=mergeRecords('c',remote,state.recents,contactToFields,contactFromRow,delFields,lastSync);
+    const mC=mergeRecords('c',remote,state.recents,contactToFields,fromRow,delFields,lastSync);
     pushed+=await pushRows(TBLS.contacts,MATCH.contacts,mC.pushList);
     pulled+=mC.pulled;conflicts.push(...mC.conflicts);
     state.recents.sort((a,b)=>b.at-a.at);
