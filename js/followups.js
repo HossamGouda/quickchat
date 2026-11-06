@@ -534,7 +534,7 @@ function openMergeSheet(r){
   mergeSheet=document.createElement('div');mergeSheet.className='qc-sheet-back';
   mergeSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('Merge with which record?'))}">
     <div class="qc-ct-head"><b>${esc(tr('Merge with which record?'))}</b><button type="button" class="btn small" data-x aria-label="${esc(tr('Close'))}">✕</button></div>
-    ${cand.map(x=>`<button type="button" class="qc-sheet-item" data-mf="${esc(x.full)}"><div class="lab" dir="auto">${esc(x.label||'—')}</div><div class="rnum">+${x.code?x.code+' '+x.local:x.full}</div><div class="meta">${x.status?esc(tr(ST_LABEL[x.status]))+' · ':''}${esc(ago(x.at||0))}</div></button>`).join('')}
+    <div class="qc-ct-list">${cand.map(x=>`<button type="button" class="qc-sheet-item" data-mf="${esc(x.full)}"><div class="lab" dir="auto">${esc(x.label||'—')}</div><div class="rnum">+${x.code?x.code+' '+x.local:x.full}</div><div class="meta">${x.status?esc(tr(ST_LABEL[x.status]))+' · ':''}${esc(ago(x.at||0))}</div></button>`).join('')}</div>
   </div>`;
   mergeSheet.addEventListener('click',e=>{
     if(e.target===mergeSheet||e.target.closest('[data-x]')){closeMergeSheet();return}
