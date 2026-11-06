@@ -8,8 +8,10 @@ export const TEABLE_BASE_ID = 'bseFic1XljL6STITEdM';
 /* Bump when the sync wire format changes; mismatched clients refuse to sync.
    v3 (2026-11): adds Dnc, LostWhy, Valid, Outcome, Seq, Company, LeadSource, Vars
    to the contacts mapping; sync.js creates the missing Teable fields on first
-   v3 sync and older app versions refuse against a v3 cloud. */
-export const PROTOCOL_VERSION = 3;
+   v3 sync and older app versions refuse against a v3 cloud.
+   v4 (2026-11): adds Inquiries (longText JSON of the per-contact inquiry list,
+   protocol of js/inq.js). Older apps refuse against a v4 cloud. */
+export const PROTOCOL_VERSION = 4;
 
 /* Records are addressed by field NAME (fieldKeyType=name), so only table IDs are needed. */
 export const TEABLE_TABLES = {

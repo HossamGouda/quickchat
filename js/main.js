@@ -19,6 +19,7 @@ import {initNotify} from './notify.js';
 import {initContacts} from './contacts.js';
 import {initLock} from './lock.js';
 import {initSettings, openSettings} from './settings.js';
+import {migrateRecents} from './inq.js';
 
 /* Language switch re-renders every visible surface, then re-walks the DOM for translation. */
 function setLang(l,quiet){
@@ -35,7 +36,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.s
 /* ---- Boot: wait for IndexedDB hydration, then run the original sequence ---- */
 async function boot(){
 await store.ready;
-hydrateState();initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initContacts();initCollapsibles();initSetup();
+hydrateState();migrateRecents(state.recents);initLock();initQueue();initQR();initSync();initNotify();initSettings();initBell();renderBell();initClipboardAsk();initContacts();initCollapsibles();initSetup();
   /* E3: shrink the header once the user leaves the top of the page. */
   const hdr=document.querySelector('.hdr');
   if(hdr)window.addEventListener('scroll',()=>hdr.classList.toggle('compact',window.scrollY>48),{passive:true});

@@ -2,8 +2,8 @@
 import {$, store, esc} from './core.js';
 import {tr} from './i18n.js';
 
-export const APP_VERSION='5.7';
-const WHATS_NEW=['A full interface polish pass: the tab bar, Stats and the follow-up card all got cleaner layouts','New Appearance setting: force Light or Dark, or follow the system','Stats tab fixed: "Messaged" now counts everyone you actually messaged, and tapping a weekly bar shows that week\'s numbers','A "today" strip on the Chat tab: due follow-ups, expiring quotes and new leads at a glance — tap to jump','Arabic translation sweep closed every remaining untranslated string, and switching language re-renders Stats correctly now'];
+export const APP_VERSION='6.0';
+const WHATS_NEW=['Multiple inquiries per contact: track separate quotes and deals on one number, and switch between them with chips on the contact card','Sync protocol v4: inquiries travel with cloud sync — sync once on each device after updating','The contact card shows an inquiry chip row; history can be filtered per inquiry or shown for all'];
 export function renderWhatsNew(){
   const el=$('whatsNew'),seen=store.get('qc_ver','');
   if(seen===APP_VERSION||!store.get('qc_seen',false)){store.set('qc_ver',APP_VERSION);el.hidden=true;return}

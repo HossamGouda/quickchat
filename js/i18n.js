@@ -4,7 +4,7 @@ import {state, setTranslator} from './core.js';
 
 const AR={
 '(example)':'(مثال)','+ New':'+ جديد','+ Status':'+ الحالة','1 week':'أسبوع','3 days':'3 أيام','2 weeks':'أسبوعان','in 1 week':'بعد أسبوع','in 3 days':'بعد 3 أيام',
-'Active':'النشطة','All':'الكل','History':'السجل',
+'Active':'النشطة','All':'الكل','History':'السجل','Inquiries':'الاستفسارات',
 'Settings':'الإعدادات','Cloud sync (Teable)':'المزامنة السحابية (Teable)','Reminders':'التذكيرات','Privacy':'الخصوصية','About':'عن التطبيق',
 'Notifications':'الإشعارات','Clear all':'مسح الكل','No notifications yet':'لا إشعارات بعد',
 'Also add a reminder to my phone calendar':'أضف تذكيرًا إلى تقويم الهاتف أيضًا',
@@ -42,7 +42,7 @@ const AR={
 'QR code for your WhatsApp chat link':'رمز QR لرابط محادثتك على واتساب','Queue':'القائمة','Quote value (SAR)':'قيمة العرض (ريال)',
 'Reminder removed':'تم حذف التذكير','Remove':'إزالة','Remove numbers without a name or follow-up?':'حذف الأرقام التي بلا اسم أو متابعة؟','Rename':'إعادة تسمية',
 'Save':'حفظ','Save image':'حفظ الصورة','Scan to chat on WhatsApp':'امسح الرمز للمحادثة على واتساب','Search name or number':'ابحث بالاسم أو الرقم','Search name, note or number':'ابحث بالاسم أو الملاحظة أو الرقم',
-'Sections':'الأقسام','Share':'مشاركة','Skip':'تخطٍّ','Start queue':'ابدأ القائمة','Title':'العنوان','Today':'اليوم','Tomorrow':'غدًا','today':'اليوم','tomorrow':'غدًا',
+'Sections':'الأقسام','Share':'مشاركة','Show all':'عرض الكل','Show this inquiry':'عرض هذا الاستفسار','Skip':'تخطٍّ','Start queue':'ابدأ القائمة','Title':'العنوان','Today':'اليوم','Tomorrow':'غدًا','today':'اليوم','tomorrow':'غدًا',
 'Tip: select text with a number in any app, tap Share, then QuickChat. Your data is stored only on this phone, so back it up now and then.':'نصيحة: حدّد نصًا فيه رقم في أي تطبيق، واضغط مشاركة ثم QuickChat. بياناتك محفوظة على هذا الهاتف فقط، فاحرص على النسخ الاحتياطي من وقت لآخر.',
 'Unknown country code. Number used as typed.':'رمز دولة غير معروف. سيُستخدم الرقم كما كُتب.','Upcoming':'القادمة',
 'Use it on quotations, invoices, business cards or a site board.':'استخدمه في عروض الأسعار والفواتير وبطاقات العمل ولوحات المواقع.',
@@ -118,7 +118,7 @@ const AR={
 'Contacts access denied. Enable it in system settings for QuickChat.':'تم رفض إذن الوصول إلى جهات الاتصال. فعّله من إعدادات النظام لتطبيق QuickChat.',
 'Time':'الوقت',
 'Select':'تحديد','Cancel selection':'إلغاء التحديد','Apply':'تطبيق','Set date':'تحديد تاريخ','Snooze to tomorrow':'تأجيل إلى الغد',
-'New follow-up':'متابعة جديدة','Phone number':'رقم الهاتف','What is this follow-up for?':'ما الغرض من هذه المتابعة؟',
+'New follow-up':'متابعة جديدة','New inquiry':'استفسار جديد','Phone number':'رقم الهاتف','What is this follow-up for?':'ما الغرض من هذه المتابعة؟',
 'e.g. Get material test certificate from QC':'مثال: استلام شهادة فحص المادة من الجودة','Save follow-up':'حفظ المتابعة','Enter a phone number':'أدخل رقم الهاتف',
 'Repeat':'تكرار','No repeat':'بدون تكرار','Every 3 days':'كل 3 أيام','Every week':'كل أسبوع','Every 2 weeks':'كل أسبوعين','Every month':'كل شهر',
 'Next step…':'الخطوة التالية…','Undo':'تراجع','Today':'اليوم','Tomorrow':'غدًا','Overdue':'متأخرة','Later this week':'لاحقًا هذا الأسبوع',
@@ -230,10 +230,14 @@ const AR={
 'New Appearance setting: force Light or Dark, or follow the system':'إعداد مظهر جديد: فاتح أو داكن أو حسب النظام',
 'Stats tab fixed: "Messaged" now counts everyone you actually messaged, and tapping a weekly bar shows that week\'s numbers':'إصلاح تبويب الإحصائيات: «تمت المراسلة» يحسب الآن كل من راسلته فعلًا، ولمس عمود الأسبوع يعرض أرقامه',
 'A "today" strip on the Chat tab: due follow-ups, expiring quotes and new leads at a glance — tap to jump':'شريط «اليوم» في تبويب المحادثة: المتابعات المستحقة والعروض المنتهية والعملاء الجدد في لمحة — اضغط للانتقال',
-'Arabic translation sweep closed every remaining untranslated string, and switching language re-renders Stats correctly now':'مسح شامل للترجمة العربية أغلق كل النصوص غير المترجمة، وتبديل اللغة يعيد رسم الإحصائيات بشكل صحيح الآن'
+'Arabic translation sweep closed every remaining untranslated string, and switching language re-renders Stats correctly now':'مسح شامل للترجمة العربية أغلق كل النصوص غير المترجمة، وتبديل اللغة يعيد رسم الإحصائيات بشكل صحيح الآن',
+'Multiple inquiries per contact: track separate quotes and deals on one number, and switch between them with chips on the contact card':'عدة استفسارات لكل جهة اتصال: تتبّع عروضًا وصفقات منفصلة على رقم واحد، وبدّل بينها بالرقائق في بطاقة جهة الاتصال',
+'Sync protocol v4: inquiries travel with cloud sync — sync once on each device after updating':'بروتوكول مزامنة v4: الاستفسارات تنتقل مع المزامنة السحابية — زامِن مرة واحدة على كل جهاز بعد التحديث',
+'The contact card shows an inquiry chip row; history can be filtered per inquiry or shown for all':'بطاقة جهة الاتصال تعرض صف رقائق الاستفسارات؛ ويمكن تصفية السجل لكل استفسار أو عرضه للجميع'
 };
 
 const AR_RE=[
+ [/^Inquiry (\d+)$/,(m,a)=>'استفسار '+a],
  [/^(\d+) min ago$/,(m,a)=>'قبل '+a+' د'],[/^(\d+) h ago$/,(m,a)=>'قبل '+a+' س'],[/^(\d+) d ago$/,(m,a)=>'قبل '+a+' يوم'],
  [/^Overdue (\d+) d$/,(m,a)=>'متأخرة '+a+' يوم'],[/^on (.+)$/,(m,a)=>'يوم '+a],
  [/^Messaged (.+)$/,(m,a)=>'رُوسل '+trCore(a)],[/^Last contact (.+)$/,(m,a)=>'آخر تواصل '+trCore(a)],

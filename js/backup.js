@@ -5,6 +5,7 @@ import {renderRecents, keep, trimRecents, saveRecents} from './recents.js';
 import {renderTpls} from './templates.js';
 import {tombstones, addTombstone} from './tombstones.js';
 import {parseCsv, classifyHeaders, mapRow} from './csvutil.js';
+import {inqSet} from './inq.js';
 import {tr} from './i18n.js';
 
 function tracked(){return state.recents.filter(keep).length}
@@ -73,19 +74,20 @@ $('importFile').onchange=async e=>{
     if(ex){let ch=false;
       if(!ex.label&&r.label){ex.label=String(r.label);ch=true}
       if(!ex.due&&okDay(r.due)){ex.due=r.due;ch=true}
-      if(!ex.status&&STATUSES.includes(r.status)&&r.status){ex.status=r.status;ch=true}
+      if(!ex.status&&STATUSES.includes(r.status)&&r.status){inqSet(ex,{status:r.status});ch=true}
       if(!ex.note&&r.note){ex.note=String(r.note).slice(0,500);ch=true}
       if(!ex.fuMsg&&r.fuMsg){ex.fuMsg=String(r.fuMsg).slice(0,2000);ch=true}
       if(!ex.dueTime&&/^\d\d:\d\d$/.test(r.dueTime||'')){ex.dueTime=r.dueTime;ch=true}
-      if(!ex.value&&+r.value){ex.value=Math.round(+r.value);ch=true}
-      if(!ex.valid&&okDay(r.valid)){ex.valid=r.valid;ch=true}
-      if(!ex.lostWhy&&typeof r.lostWhy==='string'&&r.lostWhy){ex.lostWhy=r.lostWhy.slice(0,80);ch=true}
+      /* Inquiry-scoped fields fill the ACTIVE inquiry (mirror-checked empties). */
+      if(!ex.value&&+r.value){inqSet(ex,{value:Math.round(+r.value)});ch=true}
+      if(!ex.valid&&okDay(r.valid)){inqSet(ex,{valid:r.valid});ch=true}
+      if(!ex.lostWhy&&typeof r.lostWhy==='string'&&r.lostWhy){inqSet(ex,{lostWhy:r.lostWhy.slice(0,80)});ch=true}
       if(!ex.dnc&&r.dnc){ex.dnc=1;ch=true}
-      if(!ex.outcome&&typeof r.outcome==='string'){ex.outcome=r.outcome.slice(0,20);ch=true}
+      if(!ex.outcome&&typeof r.outcome==='string'){inqSet(ex,{outcome:r.outcome.slice(0,20)});ch=true}
       if(!ex.company&&r.company){ex.company=String(r.company).slice(0,120);ch=true}
       if(!ex.src&&r.src){ex.src=String(r.src).slice(0,120);ch=true}
-      if(!ex.seq&&r.seq&&r.seq.k==='quote'){ex.seq={k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))};ch=true}
-      if(r.vars&&Object.keys(r.vars||{}).length){ex.vars=cleanVars(Object.assign({},ex.vars,r.vars));ch=true}
+      if(!ex.seq&&r.seq&&r.seq.k==='quote'){inqSet(ex,{seq:{k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))}});ch=true}
+      if(r.vars&&Object.keys(r.vars||{}).length){inqSet(ex,{vars:cleanVars(Object.assign({},ex.vars,r.vars))});ch=true}
       if(!(ex.log&&ex.log.length)&&r.log){ex.log=okLog(r.log);ch=true}
       if(ch){ex._lu=Date.now();nn++}return}
     state.recents.push({full:r.full,code:String(r.code||''),local:String(r.local||r.full),country:COUNTRIES.some(c=>c.id===r.country)?r.country:'ot',at:+r.at||Date.now(),label:String(r.label||''),due:okDay(r.due)?r.due:'',status:STATUSES.includes(r.status)?r.status:'',note:String(r.note||'').slice(0,500),fuMsg:String(r.fuMsg||'').slice(0,2000),dueTime:/^\d\d:\d\d$/.test(r.dueTime||'')?r.dueTime:'',value:Math.round(+r.value||0),log:okLog(r.log),valid:okDay(r.valid)?r.valid:'',lostWhy:typeof r.lostWhy==='string'?r.lostWhy.slice(0,80):'',dnc:r.dnc?1:0,outcome:typeof r.outcome==='string'?r.outcome.slice(0,20):'',seq:r.seq&&r.seq.k==='quote'?{k:'quote',step:Math.min(3,Math.max(1,+r.seq.step||1))}:null,company:String(r.company||'').slice(0,120),src:String(r.src||'').slice(0,120),vars:cleanVars(r.vars),_lu:Date.now()});nn++;
@@ -138,13 +140,14 @@ $('importCsvFile').onchange=async e=>{
       if(!ex.note&&fields.note){ex.note=fields.note.slice(0,500);ch=true}
       if(!ex.company&&fields.company){ex.company=fields.company.slice(0,120);ch=true}
       if(!ex.src&&fields.src){ex.src=fields.src.slice(0,120);ch=true}
-      if(!ex.status&&csvStatus(fields.status)){ex.status=csvStatus(fields.status);ch=true}
+      if(!ex.status&&csvStatus(fields.status)){inqSet(ex,{status:csvStatus(fields.status)});ch=true}
       if(!ex.due&&okDayCsv(fields.due)){ex.due=fields.due;ch=true}
-      if(!ex.value&&+fields.value){ex.value=Math.round(+fields.value);ch=true}
-      if(!ex.valid&&okDayCsv(fields.valid)){ex.valid=fields.valid;ch=true}
-      if(!ex.lostWhy&&fields.lostWhy){ex.lostWhy=fields.lostWhy.slice(0,80);ch=true}
+      /* Inquiry-scoped fields fill the ACTIVE inquiry (mirror-checked empties). */
+      if(!ex.value&&+fields.value){inqSet(ex,{value:Math.round(+fields.value)});ch=true}
+      if(!ex.valid&&okDayCsv(fields.valid)){inqSet(ex,{valid:fields.valid});ch=true}
+      if(!ex.lostWhy&&fields.lostWhy){inqSet(ex,{lostWhy:fields.lostWhy.slice(0,80)});ch=true}
       if(!ex.fuMsg&&fields.fuMsg){ex.fuMsg=fields.fuMsg.slice(0,2000);ch=true}
-      if(Object.keys(v).length){ex.vars=Object.assign({},ex.vars,v);ch=true}
+      if(Object.keys(v).length){inqSet(ex,{vars:Object.assign({},ex.vars,v)});ch=true}
       if(ch){ex._lu=Date.now();nn++}
       return;
     }

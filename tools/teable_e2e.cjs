@@ -82,10 +82,14 @@ function seed(recs,tombs){
   const pulled=await evalJs(`(()=>{try{return JSON.parse(localStorage.getItem('qc_recents')||'[]').length}catch(e){return -1}})()`);
   console.log('  local recents count (via ls fallback may be -1): '+pulled);
 
-  /* C: seeded contact exercising every v3 field, then sync. */
+  /* C: seeded contact exercising every v3 field AND the v4 inquiry list,
+     then sync. */
   await seed([{full:'966500000001',code:'966',local:'500000001',country:'sa',at:Date.now(),label:'QC Sync Test',
     status:'quoted',valid:(()=>{const x=new Date();x.setDate(x.getDate()+7);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')})(),
     dnc:0,outcome:'sent',lostWhy:'price',seq:{k:'quote',step:2},company:'Test Co',src:'qr',vars:{a:1},value:5000,note:'e2e probe',
+    inq:[{id:'q1',label:'Valves',status:'quoted',value:2500,valid:'2026-12-15',seq:{k:'quote',step:2},vars:{b:2}},
+         {id:'q2',status:'won',value:100}],
+    act:'q1',
     log:[{t:Date.now(),e:'msg'}]}],[]);
   s=await syncAndWait('C');
   check('C push-sync succeeded',/Synced with Teable/.test(s.t),s);

@@ -15,7 +15,7 @@ function deleteRecent(f){
   if(window.dispatchEvent)window.dispatchEvent(new Event('qc-data-changed'));
 }
 
-export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg||r.dnc||r.company||r.src}
+export function keep(r){return r.label||r.due||r.status||r.note||r.value||r.fuMsg||r.dnc||r.company||r.src||(Array.isArray(r.inq)&&r.inq.length>0)}
 export function trimRecents(){let un=0;state.recents=state.recents.filter(r=>keep(r)||++un<=20).slice(0,500)}
 
 export function addRecent(){

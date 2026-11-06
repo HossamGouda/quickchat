@@ -13,6 +13,7 @@ import {pickContact} from './contacts.js';
 import {nextRepeatDue} from './ntfutil.js';
 import {seqPlan, SEQ_LBL, lastOutcomeStreak} from './qutil.js';
 import {addTombstone} from './tombstones.js';
+import {inqEnsure, inqActive, inqSet, inqMerge, inqAdd, inqSwitch, inqList, hasOpenInq} from './inq.js';
 import {renderTodayMini} from './stats.js';
 
 export function isOpen(r){return r.status!=='won'&&r.status!=='lost'}
@@ -25,9 +26,14 @@ export const REPEAT_LBL={d3:'Every 3 days',w1:'Every week',w2:'Every 2 weeks',m1
 
 export function setStatus(r,s){
   const snap={due:r.due,dueTime:dueTime(r),status:r.status||''};
-  if((r.status||'')===s)return;r.status=s;r._lu=Date.now();logEv(r,'status',s);
-  if(s!=='lost')delete r.lostWhy;
-  if(s==='won'||s==='lost')r.seq=null;
+  if((r.status||'')===s)return;
+  /* Status (and its companions lostWhy/seq) is inquiry-scoped: write the
+     active inquiry and let the mirror refresh. */
+  const patch={status:s};
+  if(s==='won'||s==='lost')patch.seq=null;
+  if(s!=='lost')patch.lostWhy='';
+  inqSet(r,patch);
+  logEv(r,'status',s);
   if((s==='won'||s==='lost')&&r.due){r.due='';toast(`Marked ${ST_LABEL[s]}. Follow-up cleared`,{action:undoAction(r,snap)})}
 }
 export function setDueVal(r,ds){if((r.due||'')===ds)return;r.due=ds;r._lu=Date.now();logEv(r,ds?'due':'done',ds)}
@@ -36,12 +42,12 @@ export function cycleStatus(r){
   const prev={status:r.status||'',due:r.due,dueTime:dueTime(r)};
   setStatus(r,STATUSES[(STATUSES.indexOf(r.status||'')+1)%STATUSES.length]);
   store.set('qc_recents',state.recents);
-  if(r.status!==prev.status)toast(`Status: ${ST_LABEL[r.status]}`,{action:{label:tr('Undo'),fn:()=>{Object.assign(r,{status:prev.status,due:prev.due,dueTime:prev.dueTime});r._lu=Date.now();store.set('qc_recents',state.recents);renderFollowups()}}});
+  if(r.status!==prev.status)toast(`Status: ${ST_LABEL[r.status]}`,{action:{label:tr('Undo'),fn:()=>{r.due=prev.due;r.dueTime=prev.dueTime;inqSet(r,{status:prev.status});store.set('qc_recents',state.recents);renderFollowups()}}});
 }
 /* F4: snapshot-based undo action for toasts shown after a mutation. */
 function undoAction(r,snap){
   snap=snap||{due:r.due,dueTime:dueTime(r),status:r.status||''};
-  return {label:tr('Undo'),fn:()=>{Object.assign(r,{due:snap.due,dueTime:snap.dueTime,status:snap.status});r._lu=Date.now();saveRecents();renderFollowups();renderFuPrompt();renderBk()}};
+  return {label:tr('Undo'),fn:()=>{r.due=snap.due;r.dueTime=snap.dueTime;inqSet(r,{status:snap.status});saveRecents();renderFollowups();renderFuPrompt();renderBk()}};
 }
 
 /* F0/F1: the one completion path for web rows, the card, batch actions and
@@ -60,13 +66,14 @@ export function completeFollowUp(r,opts){
   /* O3: an active sequence schedules the next chase step with its message. */
   let seqNext=null;
   if(r.seq&&r.seq.k){
-    seqNext=seqPlan(r.seq.k,(r.seq.step||0)+1,todayStr());
+    const k=r.seq.k,step=(r.seq.step||0)+1;
+    seqNext=seqPlan(k,step,todayStr());
     if(seqNext){
-      r.seq.step=(r.seq.step||0)+1;
+      inqSet(r,{seq:{k,step}});
       setDueVal(r,seqNext.due);
       r.fuMsg=seqNext.msg;
-      logEv(r,'seq',tr(`Step ${r.seq.step} of ${seqNext.total}`));
-    }else r.seq=null;
+      logEv(r,'seq',tr(`Step ${step} of ${seqNext.total}`));
+    }else inqSet(r,{seq:null});
   }
   saveRecents();
   if(!opts.silent){
@@ -162,7 +169,7 @@ $('fuFilters').addEventListener('click',e=>{const b=e.target.closest('[data-flt]
 $('fltSearch').addEventListener('input',()=>renderFollowups());
 
 export function renderFollowups(){
-  const key=r=>r.due+' '+dueTime(r),all=state.recents.filter(r=>r.due&&isOpen(r)).sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
+  const key=r=>r.due+' '+dueTime(r),all=state.recents.filter(r=>r.due&&hasOpenInq(r)).sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0);
   const t=todayStr(),due=all.filter(r=>r.due<=t),up=all.filter(r=>r.due>t);
   $('tb-fu').innerHTML='<span>Follow</span>'+(due.length?`<span class="badge" aria-label="${due.length} due">${due.length}</span>`:'');
   renderPipeline();renderFilters();
@@ -345,13 +352,28 @@ const EV_TXT={msg:()=>'Messaged',status:v=>v?'Status: '+ST_LABEL[v]:'Status clea
   valid:v=>'Quote valid until '+fmtDay(v),dnc:v=>+v?'Do not contact: on':'Do not contact: off',
   merge:v=>'Merged with '+v};
 /* Contact card: pure template builder (renderFuPrompt wires state around it). */
+/* v6: inquiry chip row — one chip per inquiry on the contact, active chip
+   mirrors r.act; the ＋ chip appends a fresh inquiry. */
+let inqHistAll=false,inqHistFor='';
+function inqBar(r){
+  const list=inqList(r);
+  if(!list.length)return '';
+  return `<div class="wrapr"><span class="bk">${esc(tr('Inquiries'))}</span>${list.map((q,i)=>{
+    const lab=q.label||tr('Inquiry '+(i+1));
+    const sfx=q.status==='won'?' ✓':q.status==='lost'?' ✕':'';
+    return `<button type="button" class="chip" data-iq="${esc(q.id)}" aria-pressed="${q.id===r.act}">${esc(lab)}${sfx}</button>`;
+  }).join('')}<button type="button" class="chip" data-iq="__new" aria-label="${esc(tr('New inquiry'))}">＋</button></div>`;
+}
 function cardHtml(r,cal,log,head){
+  const histBtn=(Array.isArray(r.inq)&&r.inq.length>1&&(r.log||[]).some(x=>x.q))
+    ?` <button type="button" class="btn small" data-x="histall">${esc(tr(inqHistAll?'Show this inquiry':'Show all'))}</button>`:'';
   return `<div class="qhead"><span class="bk">${head}</span><button type="button" class="btn small" data-x="1">${state.cardMode==='just'&&!r.due?'Not needed':'Close'}</button></div>
     <input class="txt" id="fpName" dir="auto" autocomplete="off" placeholder="Name" value="${esc(r.label||'')}" aria-label="Name">
     <div class="numrow-card"><span class="rnum">+${r.code?r.code+' '+r.local:r.full}</span>
       <a class="btn small" href="tel:+${r.full}" aria-label="${esc(tr('Call'))}">${tr('Call')}</a>
       <button type="button" class="btn small" data-x="copynum">${tr('Copy number')}</button>
       <button type="button" class="btn small" data-x="merge">${tr('Merge')}</button></div>
+    ${inqBar(r)}
     <div class="two"><label class="field"><span class="lbl">${tr('Company')}</span><input class="txt" id="fpCo" dir="auto" autocomplete="organization" placeholder="${esc(tr('e.g. Gouda Trading'))}" value="${esc(r.company||'')}"></label>
       <label class="field"><span class="lbl">${tr('Lead source')}</span><input class="txt" id="fpSrc" dir="auto" autocomplete="off" placeholder="${esc(tr('e.g. WhatsApp ad, referral'))}" value="${esc(r.src||'')}"></label></div>
     <div class="wrapr"><span class="bk">Status</span>${['lead','contacted','quoted','waiting','negotiating','won','lost'].map(s=>`<button type="button" class="chip" data-s="${s}" aria-pressed="${r.status===s}">${ST_LABEL[s]}</button>`).join('')}</div>
@@ -376,13 +398,17 @@ function cardHtml(r,cal,log,head){
     <label class="field"><span class="lbl">${tr('What is this follow-up for?')}</span><input class="txt" id="fpTask" dir="auto" autocomplete="off" placeholder="${esc(tr('e.g. Get material test certificate from QC'))}" value="${esc(r.task||'')}"></label>
     <label class="field"><span class="lbl">Message to send (optional)</span><textarea id="fpMsg" dir="auto" rows="3" placeholder="Leave empty to use your Follow-up template">${esc(r.fuMsg||'')}</textarea></label>
     <label class="field"><span class="lbl">Note</span><textarea id="fpNote" dir="auto" rows="2" placeholder="What was quoted, site, products">${esc(r.note||'')}</textarea></label>
-    ${log.length?`<details class="tl"><summary>History (${log.length})</summary><ol>${log.map(x=>`<li><span class="d">${fmtShort(x.t)}</span> <span>${(EV_TXT[x.e]||(()=>x.e))(x.v)}</span></li>`).join('')}</ol></details>`:''}
+    ${log.length?`<details class="tl"><summary>History (${log.length})${histBtn}</summary><ol>${log.map(x=>`<li><span class="d">${fmtShort(x.t)}</span> <span>${(EV_TXT[x.e]||(()=>x.e))(x.v)}</span></li>`).join('')}</ol></details>`:''}
     <button type="button" class="btn primary" data-x="go">Follow up now</button>`;
 }
 export function renderFuPrompt(){
   const el=$('fuPrompt'),f=store.get('qc_fuPrompt',''),r=state.recents.find(x=>x.full===f);
-  if(!r){el.hidden=true;el.innerHTML='';return}
-  const cal=store.get('qc_cal',true),log=(r.log||[]).slice().reverse();
+  if(!r){el.hidden=true;el.innerHTML='';inqHistFor='';return}
+  if(inqHistFor!==f){inqHistAll=false;inqHistFor=f}
+  inqEnsure(r);
+  const cal=store.get('qc_cal',true);
+  let log=(r.log||[]).slice().reverse();
+  if(!inqHistAll&&Array.isArray(r.inq)&&r.inq.length>1)log=log.filter(x=>!x.q||x.q===r.act);
   const head=state.cardMode==='just'?'Just messaged':'Contact';
   el.innerHTML=cardHtml(r,cal,log,head);
   el.hidden=false;
@@ -391,7 +417,7 @@ function saveCardFields(r){
   const n=$('fpName'),v=$('fpVal'),no=$('fpNote');if(!n)return;
   r.label=n.value.trim();
   const val=Math.round(parseFloat(String(v.value).replace(/[^\d.]/g,''))||0);
-  if(val!==(+r.value||0)){r.value=val;if(val)logEv(r,'value',val)}
+  if(val!==(+r.value||0)){inqSet(r,{value:val});if(val)logEv(r,'value',val)}
   r.note=no.value.trim().slice(0,500);
   const co=$('fpCo'),src=$('fpSrc');
   if(co)r.company=co.value.trim().slice(0,120);
@@ -413,23 +439,23 @@ $('fuPrompt').addEventListener('change',e=>{
   const r=state.recents.find(x=>x.full===store.get('qc_fuPrompt',''));if(!r)return;
   if(e.target.id==='fpCal'){store.set('qc_cal',e.target.checked);return}
   if(e.target.id==='fpMute'){r.muted=e.target.checked?1:0;r._lu=Date.now();saveRecents();renderFollowups();toast(tr(e.target.checked?'Reminders muted for this contact':'Reminders on for this contact'));return}
-  if(e.target.id==='fpRepeat'){r.fuRepeat=e.target.value||'';if(r.fuRepeat)r.seq=null;r._lu=Date.now();logEv(r,'repeat',REPEAT_LBL[r.fuRepeat]||'');saveRecents();return}
+  if(e.target.id==='fpRepeat'){r.fuRepeat=e.target.value||'';if(r.fuRepeat)inqSet(r,{seq:null});r._lu=Date.now();logEv(r,'repeat',REPEAT_LBL[r.fuRepeat]||'');saveRecents();return}
   /* O3: picking a sequence seeds step 1 (due + message) and clears Repeat —
      one rescheduler owns the next due date. */
   if(e.target.id==='fpSeq'){
     const k=e.target.value||'';
     if(k){
       const p=seqPlan(k,1,todayStr());
-      r.seq={k,step:1};r.fuRepeat='';
+      inqSet(r,{seq:{k,step:1}});r.fuRepeat='';
       if(p){setDueVal(r,p.due);r.fuMsg=p.msg}
       logEv(r,'seq',SEQ_LBL[k]);
       toast(tr(`Sequence started — next: ${dueLow(r.due)}`),{type:'ok'});
-    }else r.seq=null;
+    }else inqSet(r,{seq:null});
     r._lu=Date.now();saveRecents();renderFollowups();renderFuPrompt();return;
   }
   /* O4: quote validity arms a reminder two days before expiry. */
   if(e.target.id==='fpValid'){
-    r.valid=e.target.value||'';r._lu=Date.now();
+    inqSet(r,{valid:e.target.value||''});
     logEv(r,'valid',r.valid||'cleared');
     if(r.valid&&r.valid>todayStr()){
       const d=new Date(r.valid+'T12:00:00');d.setDate(d.getDate()-2);
@@ -457,6 +483,12 @@ $('fuPrompt').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.d){setDue(r,todayStr(+b.dataset.d));return}
   saveCardFields(r);
+  if(b.dataset.iq){
+    if(b.dataset.iq==='__new')inqAdd(r);
+    else inqSwitch(r,b.dataset.iq);
+    saveRecents();renderFuPrompt();return;
+  }
+  if(b.dataset.x==='histall'){inqHistAll=!inqHistAll;renderFuPrompt();return}
   if(b.dataset.s){
     const s=b.dataset.s;
     /* O2: first time marking lost, ask why (patterns need the reason). */
@@ -464,9 +496,9 @@ $('fuPrompt').addEventListener('click',e=>{
     const prev={status:r.status||'',due:r.due,dueTime:dueTime(r),lostWhy:r.lostWhy||''};
     const clearing=r.status===s;
     setStatus(r,clearing?'':s);
-    if(clearing)r.lostWhy='';
+    if(clearing)inqSet(r,{lostWhy:''});
     saveRecents();renderFuPrompt();
-    if(r.status!==prev.status)toast(`Status: ${ST_LABEL[r.status]||'—'}`,{action:{label:tr('Undo'),fn:()=>{Object.assign(r,prev);r._lu=Date.now();saveRecents();renderFuPrompt();renderFollowups()}}});
+    if(r.status!==prev.status)toast(`Status: ${ST_LABEL[r.status]||'—'}`,{action:{label:tr('Undo'),fn:()=>{r.due=prev.due;r.dueTime=prev.dueTime;inqSet(r,{status:prev.status,lostWhy:prev.lostWhy});saveRecents();renderFuPrompt();renderFollowups()}}});
     return;
   }
   if(b.dataset.x==='clear'){setDueVal(r,'');toast('Reminder removed');saveRecents();renderFuPrompt();return}
@@ -513,10 +545,10 @@ export function openLostSheet(r,cb){
     closeLostSheet();
     const prev={status:r.status||'',due:r.due,dueTime:dueTime(r),lostWhy:r.lostWhy||''};
     setStatus(r,'lost');
-    r.lostWhy=why;
+    inqSet(r,{lostWhy:why});
     logEv(r,'lostwhy',LOST_LBL[why]||why);
     saveRecents();renderFollowups();renderFuPrompt();
-    toast(`${tr('Lost reason')}: ${tr(LOST_LBL[why]||why)}`,{action:{label:tr('Undo'),fn:()=>{Object.assign(r,prev);r._lu=Date.now();saveRecents();renderFollowups();renderFuPrompt()}}});
+    toast(`${tr('Lost reason')}: ${tr(LOST_LBL[why]||why)}`,{action:{label:tr('Undo'),fn:()=>{r.due=prev.due;r.dueTime=prev.dueTime;inqSet(r,{status:prev.status,lostWhy:prev.lostWhy});saveRecents();renderFollowups();renderFuPrompt()}}});
     if(cb)cb(why);
   });
   document.body.appendChild(lostSheet);
@@ -546,12 +578,14 @@ function openMergeSheet(r){
   document.body.appendChild(mergeSheet);
 }
 function doMerge(r,l){
-  ['label','company','src','task','fuMsg','dueTime','valid','lostWhy','fuRepeat'].forEach(k=>{if(!r[k]&&l[k])r[k]=l[k]});
-  if(!r.status&&l.status)r.status=l.status;
+  /* Contact-level fields: the loser fills any field the winner lacks. */
+  ['label','company','src','task','fuMsg','dueTime','fuRepeat'].forEach(k=>{if(!r[k]&&l[k])r[k]=l[k]});
   if(!r.due&&l.due){r.due=l.due;if(l.dueTime)r.dueTime=l.dueTime}
-  if(!r.value&&l.value)r.value=l.value;
-  if(!r.outcome&&l.outcome)r.outcome=l.outcome;
-  if(!r.seq&&l.seq)r.seq=l.seq;
+  /* Inquiry-scoped fields: the loser's inquiries join the winner's list
+     (deduped by id, collisions re-keyed); the winner's active inquiry is
+     untouched. The legacy per-field fallback lives inside inqMerge's
+     migration, so nothing is lost from pre-v6 records. */
+  inqMerge(r,l);
   if(l.note&&l.note!==(r.note||'')&&!(r.note||'').includes(l.note))r.note=((r.note?r.note+'\n':'')+l.note).slice(0,500);
   r.log=(r.log||[]).concat(l.log||[]).filter((x,i,a)=>a.findIndex(y=>y.t===x.t&&y.e===x.e)===i).sort((a,b)=>a.t-b.t).slice(-40);
   r.dnc=r.dnc||l.dnc||0;
@@ -572,11 +606,17 @@ export function stampOutcomeAsk(full){
   if(state.recents.some(x=>x.full===full))store.set('qc_po',{full,t:Date.now()});
 }
 export function clearOutcomeAsk(){store.set('qc_po',null)}
-/* Write an outcome once per contact per day; returns false on a same-day dup. */
+/* Write an outcome once per (contact, active inquiry) per day — log events
+   carry the inquiry id; legacy untagged events count for any inquiry so a
+   pre-v6 same-day entry still blocks the prompt. Returns false on a dup. */
 export function logOutcome(r,v){
   const day=new Date();day.setHours(0,0,0,0);
-  if((r.log||[]).some(x=>x.e==='outcome'&&x.t>=day.getTime()))return false;
-  r.outcome=v;r._lu=Date.now();logEv(r,'outcome',v);saveRecents();renderFollowups();return true;
+  inqEnsure(r);
+  const qid=r.act||'';
+  if((r.log||[]).some(x=>x.e==='outcome'&&x.t>=day.getTime()&&(!x.q||x.q===qid)))return false;
+  inqSet(r,{outcome:v});
+  logEv(r,'outcome',v,qid);
+  saveRecents();renderFollowups();return true;
 }
 let poSheet=null;
 function closePoSheet(){if(poSheet){poSheet.remove();poSheet=null}}
@@ -602,7 +642,8 @@ function maybeOutcomeSheet(){
   const r=state.recents.find(x=>x.full===po.full);
   if(!r){clearOutcomeAsk();return}
   const day=new Date();day.setHours(0,0,0,0);
-  if((r.log||[]).some(x=>x.e==='outcome'&&x.t>=day.getTime())){clearOutcomeAsk();return}
+  const qid=(inqEnsure(r),r.act)||'';
+  if((r.log||[]).some(x=>x.e==='outcome'&&x.t>=day.getTime()&&(!x.q||x.q===qid))){clearOutcomeAsk();return}
   closePoSheet();
   poSheet=document.createElement('div');poSheet.className='qc-sheet-back';
   poSheet.innerHTML=`<div class="qc-sheet" role="dialog" aria-label="${esc(tr('What happened?'))}">

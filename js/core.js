@@ -315,8 +315,10 @@ export function fmtSize(n){return n>1048576?(n/1048576).toFixed(1)+' MB':Math.ma
 /* ---- Downloads ---- */
 export function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
 
-/* ---- Contact history log ---- */
-export function logEv(r,e,v){(r.log=r.log||[]).push({t:Date.now(),e,v:v===undefined?'':v});if(r.log.length>40)r.log.splice(0,r.log.length-40)}
+/* ---- Contact history log ----
+   Events may carry an inquiry id (q) when they belong to the active inquiry
+   of a multi-inquiry record (v6); legacy events simply have no q. */
+export function logEv(r,e,v,q){const ev={t:Date.now(),e,v:v===undefined?'':v};if(q)ev.q=q;(r.log=r.log||[]).push(ev);if(r.log.length>40)r.log.splice(0,r.log.length-40)}
 
 /* ---- Number normalization (pure) ---- */
 /* Pure: turn one raw number string into {country, local, code, full} or null */

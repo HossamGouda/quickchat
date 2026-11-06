@@ -57,6 +57,27 @@ eq('date cells from ISO strings', contactFromRow({ fields: { Number: '1', Valid:
 /* v3 field catalog covers every new mapping key */
 const NEED = ['LostWhy', 'Valid', 'Dnc', 'Outcome', 'Seq', 'Company', 'LeadSource', 'Vars'];
 eq('EXTRA_CONTACT_FIELDS covers v3 fields', NEED.filter(k => !EXTRA_CONTACT_FIELDS[k]), []);
+eq('EXTRA_CONTACT_FIELDS covers v4 Inquiries', EXTRA_CONTACT_FIELDS.Inquiries, 'longText');
+
+/* v4: inquiries ride as JSON and re-derive the mirror on import. */
+const inqRec = { full: '966500000002', code: '966', local: '500000002', country: 'sa', at: 1,
+  inq: [
+    { id: 'q1', label: 'Pumps', status: 'won', value: 100, valid: '2026-10-01', lostWhy: '', outcome: 'replied', seq: null, vars: { a: 1 } },
+    { id: 'q2', label: 'Valves', status: 'quoted', value: 250, valid: '2026-12-15', lostWhy: '', outcome: '', seq: { k: 'quote', step: 2 }, vars: {} }
+  ],
+  act: 'q2' };
+const inqFields = contactToFields(inqRec);
+eq('toFields serializes Inquiries', typeof inqFields.Inquiries, 'string');
+const inqBack = contactFromRow({ fields: { Number: '966500000002', UpdatedAt: 1, Inquiries: inqFields.Inquiries, Status: 'stale', Value: 1, Valid: '2020-01-01' } }, CTX);
+eq('fromRow parses inq list', inqBack.inq.length, 2);
+eq('fromRow keeps act', inqBack.act, 'q2');
+eq('fromRow mirror = active inquiry (status)', inqBack.status, 'quoted');
+eq('fromRow mirror = active inquiry (value)', inqBack.value, 250);
+eq('fromRow mirror = active inquiry (valid)', inqBack.valid, '2026-12-15');
+eq('fromRow mirror = active inquiry (seq)', inqBack.seq.step, 2);
+eq('fromRow mirror ignores stale legacy columns', inqBack.status !== 'stale' && inqBack.valid !== '2020-01-01', true);
+eq('fromRow bad act falls back to first', contactFromRow({ fields: { Number: '1', Inquiries: JSON.stringify({ inq: [{ id: 'q1', status: 'won' }], act: 'gone' }) } }, CTX).act, 'q1');
+eq('fromRow garbage Inquiries -> legacy columns', (() => { const r = contactFromRow({ fields: { Number: '1', Inquiries: '{oops', Status: 'quoted', Value: 42 } }, CTX); return r.status === 'quoted' && r.value === 42 && !r.inq })(), true);
 
 console.log(fail ? `FAILURES: ${fail}` : 'ALL SYNCMAP TESTS PASSED');
 process.exit(fail ? 1 : 0);

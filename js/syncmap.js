@@ -27,6 +27,9 @@ export function contactToFields(r){
   if(r.company)f.Company=r.company;
   if(r.src)f.LeadSource=r.src;
   if(r.vars&&Object.keys(r.vars).length)f.Vars=JSON.stringify(r.vars);
+  /* v4: the inquiry list rides along as JSON; the seven mirror columns above
+     stay for human readability in Teable and as the legacy fallback. */
+  if(Array.isArray(r.inq)&&r.inq.length)f.Inquiries=JSON.stringify({inq:r.inq,act:r.act});
   return f;
 }
 
@@ -40,7 +43,7 @@ export function contactFromRow(row,ctx){
   try{const s=JSON.parse(g.Seq||'null');if(s&&s.k)seq={k:String(s.k),step:Math.min(3,Math.max(1,+s.step||1))}}catch(e){}
   let vars={};
   try{const v=JSON.parse(g.Vars||'{}');if(v&&typeof v==='object'&&!Array.isArray(v))vars=v}catch(e){}
-  return {full:String(g.Number),code:String(g.Code||''),local:String(g.Local||String(g.Number)),
+  const out={full:String(g.Number),code:String(g.Code||''),local:String(g.Local||String(g.Number)),
     country:ctx.COUNTRIES.some(c=>c.id===g.Country)?g.Country:'ot',
     at:+g.At||Date.now(),label:String(g.Label||''),
     due:dayFromCell(g.Due),
@@ -57,12 +60,33 @@ export function contactFromRow(row,ctx){
     src:String(g.LeadSource||'').slice(0,120),
     vars,
     log,_lu:+g.UpdatedAt||0};
+  /* v4: a parsed Inquiries payload wins over the legacy mirror columns —
+     the top level must reflect the ACTIVE inquiry or every read site shows
+     stale data. Garbage/missing payload -> legacy columns stand (lazy
+     migration wraps them into an inquiry on the first local write). */
+  try{
+    const p=JSON.parse(g.Inquiries||'null');
+    if(p&&Array.isArray(p.inq)&&p.inq.length){
+      out.inq=p.inq;out.act=p.inq.some(i=>i.id===p.act)?p.act:p.inq[0].id;
+      const a=p.inq.find(i=>i.id===out.act)||p.inq[0];
+      out.status=ctx.STATUSES.includes(a.status)?a.status:'';
+      out.value=Math.round(+a.value||0);
+      out.valid=typeof a.valid==='string'&&/^\d{4}-\d\d-\d\d/.test(a.valid)?a.valid.slice(0,10):'';
+      out.lostWhy=typeof a.lostWhy==='string'?a.lostWhy.slice(0,80):'';
+      out.outcome=typeof a.outcome==='string'?a.outcome.slice(0,20):'';
+      out.seq=a.seq&&a.seq.k?{k:String(a.seq.k),step:Math.min(3,Math.max(1,+a.seq.step||1))}:null;
+      out.vars=a.vars&&typeof a.vars==='object'&&!Array.isArray(a.vars)?a.vars:{};
+    }
+  }catch(e){}
+  return out;
 }
 
 /* v3 fields that may not exist yet in the Teable base; sync.js creates them
    on demand (name -> Teable field type). Teable has no 'text' type — the API
-   enum is singleLineText/longText/... and rejects 'text' with a 400. */
+   enum is singleLineText/longText/... and rejects 'text' with a 400.
+   v6: Inquiries (protocol v4) serializes the per-contact inquiry list. */
 export const EXTRA_CONTACT_FIELDS={
   LostWhy:'singleLineText',Valid:'date',Dnc:'checkbox',Outcome:'singleLineText',
   Seq:'singleLineText',Company:'singleLineText',LeadSource:'singleLineText',Vars:'singleLineText',
+  Inquiries:'longText',
 };

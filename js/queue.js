@@ -7,6 +7,7 @@ import {$, store, state, COUNTRIES, ST_LABEL, esc, toast, notifyEvent, normalize
 import {buildLink, openChat} from './dialer.js';
 import {pushRecent, saveRecents} from './recents.js';
 import {setDueVal, setStatus, isOpen, logOutcome, openLostSheet} from './followups.js';
+import {hasOpenInq} from './inq.js';
 import {tr} from './i18n.js';
 import {pickPeople} from './contacts.js';
 import {retryableSkipped, isoWeekKey, paceMs, SKIP_REASONS, bumpDayCounter, DAY_WARN_AT} from './qutil.js';
@@ -352,7 +353,7 @@ const STALE_MS=14*864e5;
 function staleLeads(){
   const now=Date.now();
   return state.recents.filter(r=>{
-    if(!isOpen(r)||r.dnc)return false;
+    if(!hasOpenInq(r)||r.dnc)return false;
     const lastOut=(r.log||[]).filter(x=>x.e==='outcome').reduce((m,x)=>Math.max(m,x.t),0);
     return now-Math.max(r.at||0,lastOut)>=STALE_MS;
   });

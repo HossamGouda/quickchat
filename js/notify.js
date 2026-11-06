@@ -10,6 +10,7 @@
 import {$, store, state, todayStr, parseDay, dueTime, dueWhen, sar, toast, notifyEvent} from './core.js';
 import {tr} from './i18n.js';
 import {isOpen, who} from './followups.js';
+import {hasOpenInq} from './inq.js';
 import {applyQuiet, snoozeUntilMs, snoozeUntilParts, nextNagMs, groupAlerts} from './ntfutil.js';
 
 const NTF_KEY='qc_notify', NTF_SEEN='qc_notified', CAP_IDS='qc_cap_ntf_ids';
@@ -21,7 +22,7 @@ let capDenied=false; /* native: OS-level notification access is blocked */
 
 export function dueNow(){
   const t=todayStr();
-  return state.recents.filter(r=>r.due&&isOpen(r)&&!r.muted&&r.due<=t)
+  return state.recents.filter(r=>r.due&&hasOpenInq(r)&&!r.muted&&r.due<=t)
     .sort((a,b)=>(a.due+dueTime(a)).localeCompare(b.due+dueTime(b)));
 }
 function dueAt(r){const d=parseDay(r.due),hm=dueTime(r).split(':');d.setHours(+hm[0],+hm[1],0,0);return d}
@@ -194,7 +195,7 @@ async function capSchedule(){
      scheduled for Thursday 14:00 fires Thursday 14:00 even if the app
      hasn't been opened since Monday. Replaced by id on every refresh.
      Burst-summary grouping applies to due-now items only. */
-  const future=state.recents.filter(r=>r.due&&isOpen(r)&&!r.muted&&r.due>todayStr()&&r.due<=todayStr(14));
+  const future=state.recents.filter(r=>r.due&&hasOpenInq(r)&&!r.muted&&r.due>todayStr()&&r.due<=todayStr(14));
   for(const r of future){
     if(sz[r.full]>now)continue;
     const at=notifyTimeRaw(r);
