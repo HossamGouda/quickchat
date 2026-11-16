@@ -30,14 +30,19 @@ async function waitBoot(){
   throw new Error('boot never completed');
 }
 async function syncAndWait(tag){
+  /* Idle status is "Cloud sync on · Last sync <ts>"; completion = the
+     timestamp text changed and no failure/in-progress marker. */
+  const before=await evalJs(`document.getElementById('syncStatus').textContent`);
   await evalJs(`document.getElementById('syncNow').click();'clicked'`);
   for(let i=0;i<90;i++){
     await sleep(1000);
     const s=await evalJs(`(()=>{const e=document.getElementById('syncStatus');return {t:e.textContent,c:e.className}})()`);
-    if(/Synced with Teable|Sync failed|Not synced yet/.test(s.t)&&!/…|in progress|Syncing/i.test(s.t))return s;
+    if(/Sync failed/i.test(s.t))return s;
+    if(s.t!==before&&/Last sync/.test(s.t)&&!/…|in progress|Syncing/i.test(s.t))return s;
     if(i===89)return s;
   }
 }
+function syncOk(s){return /Last sync|Synced with Teable/.test(s.t)&&!/Sync failed/i.test(s.t)}
 function seed(recs,tombs){
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
   const test={full:'966500000001',code:'966',local:'500000001',country:'sa',at:Date.now(),label:'QC Sync Test',
@@ -72,15 +77,21 @@ function seed(recs,tombs){
   check('A boot reached',true);
 
   /* B: token + first sync — field creation + full pull. */
+  const sBefore=await evalJs(`document.getElementById('syncStatus').textContent`);
   await evalJs(`document.getElementById('syncToken').value=${JSON.stringify(TK)};'set'`);
   await evalJs(`document.getElementById('syncSave').click();'clicked'`);
   let s=null;
   for(let i=0;i<90;i++){await sleep(1000);s=await evalJs(`(()=>{const e=document.getElementById('syncStatus');return {t:e.textContent,c:e.className}})()`);
-    if(/Synced with Teable|Sync failed/.test(s.t))break}
-  check('B first sync succeeded',/Synced with Teable/.test(s.t),s);
+    if(/Sync failed/.test(s.t))break;
+    if(s.t!==sBefore&&/Last sync/.test(s.t))break}
+  check('B first sync succeeded',syncOk(s),s);
   console.log('  status after first sync: '+JSON.stringify(s));
-  const pulled=await evalJs(`(()=>{try{return JSON.parse(localStorage.getItem('qc_recents')||'[]').length}catch(e){return -1}})()`);
-  console.log('  local recents count (via ls fallback may be -1): '+pulled);
+  const pulled=await evalJs(`new Promise(res=>{
+    const rq=indexedDB.open('quickchat',1);
+    rq.onsuccess=()=>{const g=rq.result.transaction('kv').objectStore('kv').get('qc_recents');g.onsuccess=()=>res((g.result||[]).length)};
+    rq.onerror=()=>res(-1);
+  })`);
+  check('B pull imported contacts into IDB',pulled>0,pulled);
 
   /* C: seeded contact exercising every v3 field AND the v4 inquiry list,
      then sync. */
@@ -92,13 +103,13 @@ function seed(recs,tombs){
     act:'q1',
     log:[{t:Date.now(),e:'msg'}]}],[]);
   s=await syncAndWait('C');
-  check('C push-sync succeeded',/Synced with Teable/.test(s.t),s);
+  check('C push-sync succeeded',syncOk(s),s);
   console.log('  status after push sync: '+JSON.stringify(s));
 
   /* D: tombstone for the test contact, empty recents, sync → deletion propagates. */
   await seed([],[{k:'c',full:'966500000001',delAt:Date.now()}]);
   s=await syncAndWait('D');
-  check('D delete-sync succeeded',/Synced with Teable/.test(s.t),s);
+  check('D delete-sync succeeded',syncOk(s),s);
   console.log('  status after delete sync: '+JSON.stringify(s));
 
   /* E: disable sync on this device (so it never re-syncs on its own). */
